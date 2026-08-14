@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 100">
+<rect width="100" height="100" rx="18" fill="#4F46E5"></rect>
+<path d="M20,16 L66,16 L66,44 L70,48 L70,84 L20,84 Z M40,24 L58,24 L58,40 L40,40 Z M40,54 L62,54 L62,76 L40,76 Z" fill="#FFFFFF" fill-rule="evenodd"></path>
+<text x="108" y="74" font-family="&#39;Plus Jakarta Sans&#39;, Helvetica, Arial, sans-serif" font-weight="700" font-size="72" letter-spacing="-0.5" fill="#161616">uildBridge</text>
+</svg>

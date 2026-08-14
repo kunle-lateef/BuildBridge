@@ -1,0 +1,14 @@
+node_modules
+.next
+prisma/migrations
+pnpm-lock.yaml
+package-lock.json
+
+# Governance docs and generated token sources are not part of the app
+# codebase Prettier formats — see .agents/rules/architecture.md's directory
+# layout. Never run a broad Prettier glob against the repo root; scope it to
+# app/, components/, lib/, workers/, prisma/, and root config files only.
+AGENTS.md
+.agents/
+workflows/
+tokens/

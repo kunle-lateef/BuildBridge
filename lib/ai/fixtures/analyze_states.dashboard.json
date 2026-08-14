@@ -1,0 +1,16 @@
+{
+  "states": [
+    {
+      "name": "Empty",
+      "description": "Table likely needs an empty state when no records exist; not shown in this screen",
+      "provenance": "Suggested",
+      "confidence": 0.35
+    },
+    {
+      "name": "Loading",
+      "description": "No loading state is visible in the provided screen",
+      "provenance": "Suggested",
+      "confidence": 0.3
+    }
+  ]
+}

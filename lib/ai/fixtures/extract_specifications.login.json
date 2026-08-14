@@ -1,0 +1,28 @@
+{
+  "specifications": [
+    {
+      "category": "Dimensions",
+      "property": "height",
+      "value": "48",
+      "unit": "px",
+      "provenance": "Detected",
+      "confidence": 0.95
+    },
+    {
+      "category": "Radius",
+      "property": "border-radius",
+      "value": "8",
+      "unit": "px",
+      "provenance": "Detected",
+      "confidence": 0.9
+    },
+    {
+      "category": "Spacing",
+      "property": "padding",
+      "value": "16",
+      "unit": "px",
+      "provenance": "Inferred",
+      "confidence": 0.75
+    }
+  ]
+}

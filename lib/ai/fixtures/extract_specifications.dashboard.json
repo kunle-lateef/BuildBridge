@@ -1,0 +1,27 @@
+{
+  "specifications": [
+    {
+      "category": "Spacing",
+      "property": "gap",
+      "value": "24",
+      "unit": "px",
+      "provenance": "Detected",
+      "confidence": 0.88
+    },
+    {
+      "category": "Typography",
+      "property": "font-size",
+      "value": "14",
+      "unit": "px",
+      "provenance": "Detected",
+      "confidence": 0.9
+    },
+    {
+      "category": "Color",
+      "property": "background-color",
+      "value": "#F1F5F9",
+      "provenance": "Inferred",
+      "confidence": 0.7
+    }
+  ]
+}

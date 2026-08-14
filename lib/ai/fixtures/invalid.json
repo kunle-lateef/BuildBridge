@@ -1,0 +1,4 @@
+{
+  "unexpectedShape": true,
+  "missingAllRequiredFields": "on purpose — used to exercise the PartiallyCompleted path"
+}

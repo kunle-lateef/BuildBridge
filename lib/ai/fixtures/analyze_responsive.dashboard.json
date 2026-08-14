@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {
+      "viewportCategory": "Desktop",
+      "behavior": "Sidebar and content area are shown side by side.",
+      "provenance": "Detected",
+      "confidence": 0.85
+    }
+  ]
+}

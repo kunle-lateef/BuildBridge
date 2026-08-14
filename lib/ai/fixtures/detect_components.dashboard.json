@@ -1,0 +1,28 @@
+{
+  "components": [
+    {
+      "name": "Sidebar Navigation",
+      "type": "Navigation",
+      "description": "Vertical navigation with icon and label items",
+      "region": { "x": 0, "y": 0, "width": 240, "height": 900 },
+      "provenance": "Detected",
+      "confidence": 0.92
+    },
+    {
+      "name": "Metrics Card",
+      "type": "Card",
+      "description": "Card displaying a summary metric with a label",
+      "region": { "x": 260, "y": 40, "width": 220, "height": 120 },
+      "provenance": "Detected",
+      "confidence": 0.9
+    },
+    {
+      "name": "Data Table",
+      "type": "Table",
+      "description": "Tabular list of records with column headers",
+      "region": { "x": 260, "y": 200, "width": 900, "height": 480 },
+      "provenance": "Detected",
+      "confidence": 0.88
+    }
+  ]
+}

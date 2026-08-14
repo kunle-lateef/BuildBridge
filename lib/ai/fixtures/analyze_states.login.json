@@ -1,0 +1,16 @@
+{
+  "states": [
+    {
+      "name": "Default",
+      "description": "Button shown with a solid primary fill",
+      "provenance": "Detected",
+      "confidence": 0.9
+    },
+    {
+      "name": "Disabled",
+      "description": "Likely disabled until both fields are filled; not directly observable in this screen",
+      "provenance": "Suggested",
+      "confidence": 0.4
+    }
+  ]
+}

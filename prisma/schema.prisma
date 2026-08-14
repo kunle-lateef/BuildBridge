@@ -1,0 +1,634 @@
+// BuildBridge database schema.
+// Source of truth for the logical model: .agents/skills/db-migration-runner/SKILL.md.
+// Do not hand-edit this file's shape without cross-checking that document first.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PlanTier {
+  Free
+  Paid
+}
+
+enum HandoffStatus {
+  Draft
+  Analyzing
+  NeedsReview
+  Ready
+  Shared
+  Archived
+}
+
+enum AssetProcessingStatus {
+  Uploaded
+  Processing
+  Processed
+  Failed
+  Deleted
+}
+
+// Not defined anywhere in .agents/skills/db-migration-runner/SKILL.md ("Not
+// yet defined" per that doc) — this value set is Phase 0's proposed default
+// per the approved implementation plan, flagged there for developer
+// confirmation before Phase P0b needs a per-screen indicator.
+enum ScreenAnalysisStatus {
+  Pending
+  Analyzing
+  Analyzed
+  Failed
+}
+
+enum AnalysisRunStatus {
+  Queued
+  Processing
+  Completed
+  PartiallyCompleted
+  Failed
+}
+
+enum ProvenanceType {
+  Detected
+  Inferred
+  Suggested
+}
+
+enum ReviewStatus {
+  Unreviewed
+  Confirmed
+  Modified
+  Rejected
+  Resolved
+}
+
+enum IssueSeverity {
+  Critical
+  High
+  Medium
+  Low
+  Recommendation
+}
+
+enum IssueStatus {
+  Open
+  InReview
+  Resolved
+  Dismissed
+}
+
+// The six fixed readiness categories from architecture.md's readiness
+// formula. Not in code-style.md's named-enum list, but the value set is
+// unambiguous (named identically in both architecture.md and the product
+// prompt) and lib/readiness.ts's correctness depends on exact matching, so
+// this is modeled as an enum rather than a free-text category string.
+enum ReadinessCategory {
+  VisualSpecifications
+  Components
+  ResponsiveBehavior
+  InteractionStates
+  EdgeCases
+  Accessibility
+}
+
+// The seven specification categories from architecture.md's pipeline stage
+// 2 table. Same reasoning as ReadinessCategory above — unambiguous value set,
+// worth the data-integrity guarantee of an enum over a free-text field.
+enum SpecificationCategory {
+  Spacing
+  Typography
+  Color
+  Dimensions
+  Border
+  Radius
+  Shadow
+}
+
+// The seven component-state names from architecture.md's pipeline stage 3.
+enum ComponentStateName {
+  Default
+  Hover
+  Focus
+  Disabled
+  Loading
+  Error
+  Empty
+}
+
+// The three viewport categories from architecture.md's pipeline stage 4.
+enum ViewportCategory {
+  Desktop
+  Tablet
+  Mobile
+}
+
+enum DesignerDecisionAction {
+  Confirm
+  Modify
+  Reject
+  Override
+}
+
+enum FindingType {
+  Component
+  Specification
+  ComponentState
+  ResponsiveRule
+  HandoffIssue
+}
+
+// Not yet defined in db-migration-runner/SKILL.md. Phase 0's proposed
+// default per the approved plan — "expired" is computed from expiresAt
+// rather than stored as a third value. Confirm with developer at Phase P1a.
+enum ShareLinkStatus {
+  Active
+  Revoked
+}
+
+// Not yet defined in db-migration-runner/SKILL.md. Phase 0's proposed
+// default per the approved plan. Confirm with developer before Phase P2.
+enum AIMessageRole {
+  User
+  Assistant
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (NextAuth v5) adapter models
+//
+// Required shape for @auth/prisma-adapter. Account/VerificationToken exist
+// for forward compatibility with an OAuth provider if one is ever added;
+// Session exists because the adapter's schema contract requires it, but goes
+// unused at runtime — NextAuth requires `session.strategy: "jwt"` for the
+// Credentials provider (a hard library constraint, not a choice made here),
+// so sessions are signed JWTs in an httpOnly cookie, not Session rows. See
+// User.sessionVersion below for how server-side session revocation is still
+// achieved despite JWT-strategy sessions — required by security.md's
+// "logout invalidates the session on the server side" rule.
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refreshToken      String? @map("refresh_token") @db.Text
+  accessToken       String? @map("access_token") @db.Text
+  expiresAt         Int?    @map("expires_at")
+  tokenType         String? @map("token_type")
+  scope             String?
+  idToken           String? @map("id_token") @db.Text
+  sessionState      String? @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// BuildBridge domain models
+// ---------------------------------------------------------------------------
+
+model User {
+  id     String  @id @default(cuid())
+  name   String?
+  email  String  @unique
+  avatar String?
+
+  // Added for the Credentials (email + password) sign-in method decided for
+  // this build — not in db-migration-runner/SKILL.md's original User table,
+  // added here per that skill file's own instruction to update it once a
+  // gap like this is agreed with the developer (see reference in
+  // .agents/skills/db-migration-runner/SKILL.md).
+  passwordHash String @map("password_hash")
+
+  // Incremented to force-invalidate every previously issued JWT session
+  // (e.g. on a "sign out everywhere" action or credential compromise).
+  // Checked against the value embedded in each JWT on every session read.
+  // Exists because NextAuth's Credentials provider requires JWT-strategy
+  // sessions, which have no server-side session table to delete from on
+  // logout — this is the mechanism that still satisfies security.md's
+  // "logout invalidates the session on the server side" requirement.
+  sessionVersion Int @default(0) @map("session_version")
+
+  planTier           PlanTier @default(Free) @map("plan_tier")
+  analysisQuota      Int      @default(5) @map("analysis_quota")
+  analysisUsageCount Int      @default(0) @map("analysis_usage_count")
+  billingCycleStart  DateTime @default(now()) @map("billing_cycle_start")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  accounts           Account[]
+  sessions           Session[]
+  handoffs           Handoff[]
+  designerDecisions  DesignerDecision[]
+  designerNotes      DesignerNote[]
+  aiConversations    AIConversation[]
+
+  @@map("users")
+}
+
+model Handoff {
+  id          String  @id @default(cuid())
+  ownerId     String  @map("owner_id")
+  name        String
+  description String?
+
+  status HandoffStatus @default(Draft)
+
+  readinessScore            Int? @map("readiness_score")
+  readinessAlgorithmVersion Int? @map("readiness_algorithm_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  designAssets      DesignAsset[]
+  screens           Screen[]
+  analysisRuns      AnalysisRun[]
+  components        Component[]
+  handoffIssues     HandoffIssue[]
+  designerNotes     DesignerNote[]
+  designerDecisions DesignerDecision[]
+  shareLinks        ShareLink[]
+  aiConversations   AIConversation[]
+
+  @@index([ownerId])
+  @@map("handoffs")
+}
+
+model DesignAsset {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+
+  filename  String
+  mediaType String @map("media_type")
+  size      Int
+
+  // Pointer into object storage, never raw file content.
+  storageReference String @map("storage_reference")
+
+  // Used by the AI pipeline's cost-reuse logic to detect an unchanged asset.
+  checksum String
+
+  processingStatus AssetProcessingStatus @default(Uploaded) @map("processing_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff Handoff  @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  screens Screen[]
+
+  @@index([handoffId])
+  @@index([checksum])
+  @@map("design_assets")
+}
+
+model Screen {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+  assetId   String @map("asset_id")
+
+  name  String
+  order Int
+
+  // { width: number, height: number }
+  dimensions Json?
+
+  analysisStatus ScreenAnalysisStatus @default(Pending) @map("analysis_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  handoff Handoff     @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  asset   DesignAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  componentInstances ComponentInstance[]
+  specifications     Specification[]
+  responsiveRules    ResponsiveRule[]
+  handoffIssues      HandoffIssue[]
+  designerNotes      DesignerNote[]
+
+  @@index([handoffId])
+  @@index([assetId])
+  @@map("screens")
+}
+
+// Immutable historical record once created — see architecture.md's Database
+// Access rules and db-migration-runner/SKILL.md's special rules. No update
+// or delete path beyond the run's own status-transition logic during its
+// lifecycle. Deliberately not cascade-deleted with its Handoff for the same
+// reason — it's an audit trail, not owned content.
+model AnalysisRun {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+
+  status AnalysisRunStatus @default(Queued)
+
+  modelIdentifier String? @map("model_identifier")
+  analysisVersion Int     @map("analysis_version")
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  errorCode   String?   @map("error_code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff Handoff @relation(fields: [handoffId], references: [id])
+
+  @@index([handoffId])
+  @@map("analysis_runs")
+}
+
+model Component {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+
+  name        String
+  type        String
+  description String?
+
+  confidence Float
+  provenance ProvenanceType
+
+  reviewStatus ReviewStatus @default(Unreviewed) @map("review_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  handoff Handoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+
+  instances      ComponentInstance[]
+  specifications Specification[]
+  states         ComponentState[]
+  responsiveRules ResponsiveRule[]
+  handoffIssues  HandoffIssue[]
+  designerNotes  DesignerNote[]
+
+  @@index([handoffId])
+  @@map("components")
+}
+
+model ComponentInstance {
+  id          String @id @default(cuid())
+  componentId String @map("component_id")
+  screenId    String @map("screen_id")
+
+  // Pointer into the screen image (e.g. bounding box), not pixel data.
+  regionReference String @map("region_reference")
+
+  // { width: number, height: number, x: number, y: number }
+  dimensions Json?
+
+  // Additional detected properties specific to this instance.
+  properties Json?
+
+  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  screen    Screen    @relation(fields: [screenId], references: [id], onDelete: Cascade)
+
+  @@index([componentId])
+  @@index([screenId])
+  @@map("component_instances")
+}
+
+model Specification {
+  id          String  @id @default(cuid())
+  screenId    String? @map("screen_id")
+  componentId String? @map("component_id")
+
+  category SpecificationCategory
+  property String
+  value    String
+  unit     String?
+
+  confidence     Float
+  provenance     ProvenanceType
+  reviewStatus   ReviewStatus   @default(Unreviewed) @map("review_status")
+  sourceReference String?       @map("source_reference")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  screen    Screen?    @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  component Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([screenId])
+  @@index([componentId])
+  @@map("specifications")
+}
+
+model ComponentState {
+  id          String @id @default(cuid())
+  componentId String @map("component_id")
+
+  name ComponentStateName
+
+  description String?
+
+  // Distinct from reviewStatus below — meaning not defined anywhere in
+  // db-migration-runner/SKILL.md ("confirm with the developer whether it's
+  // an intentional third dimension or a leftover"). Phase 0's proposed
+  // default per the approved plan: optional free text, no invented enum,
+  // confirmed with developer before this stage's persistence logic is built.
+  status String?
+
+  provenance   ProvenanceType
+  confidence   Float
+  reviewStatus ReviewStatus   @default(Unreviewed) @map("review_status")
+
+  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([componentId])
+  @@map("component_states")
+}
+
+model ResponsiveRule {
+  id          String  @id @default(cuid())
+  screenId    String? @map("screen_id")
+  componentId String? @map("component_id")
+
+  viewportCategory ViewportCategory @map("viewport_category")
+  behavior         String
+
+  confidence   Float
+  provenance   ProvenanceType
+  reviewStatus ReviewStatus   @default(Unreviewed) @map("review_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  screen    Screen?    @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  component Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([screenId])
+  @@index([componentId])
+  @@map("responsive_rules")
+}
+
+model HandoffIssue {
+  id          String  @id @default(cuid())
+  handoffId   String  @map("handoff_id")
+  screenId    String? @map("screen_id")
+  componentId String? @map("component_id")
+
+  title       String
+  description String
+
+  severity IssueSeverity
+  category ReadinessCategory
+
+  recommendation String?
+
+  status IssueStatus @default(Open)
+
+  provenance ProvenanceType
+  confidence Float
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  handoff   Handoff    @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  screen    Screen?    @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  component Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([handoffId])
+  @@index([screenId])
+  @@index([componentId])
+  @@map("handoff_issues")
+}
+
+// First-class audit record, not a convenience log — see
+// db-migration-runner/SKILL.md's special rules. Never deleted in the normal
+// application flow (a Reject action is itself a DesignerDecision row).
+// Deliberately not cascade-deleted with its Handoff for the same reason
+// AnalysisRun isn't.
+model DesignerDecision {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+
+  findingType      FindingType             @map("finding_type")
+  findingReference String                  @map("finding_reference")
+  action           DesignerDecisionAction
+
+  previousValue String? @map("previous_value")
+  newValue      String? @map("new_value")
+  note          String?
+
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff Handoff @relation(fields: [handoffId], references: [id])
+  creator User    @relation(fields: [createdBy], references: [id])
+
+  @@index([handoffId])
+  @@index([findingType, findingReference])
+  @@map("designer_decisions")
+}
+
+model DesignerNote {
+  id          String  @id @default(cuid())
+  handoffId   String  @map("handoff_id")
+  screenId    String? @map("screen_id")
+  componentId String? @map("component_id")
+
+  content String
+
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  handoff   Handoff    @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  screen    Screen?    @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  component Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  creator   User       @relation(fields: [createdBy], references: [id])
+
+  @@index([handoffId])
+  @@map("designer_notes")
+}
+
+model ShareLink {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+
+  // Stores a SHA-256 hash of the actual bearer token, never the raw token —
+  // the token is a bearer credential per security.md and must not be
+  // recoverable from a database read. The raw token is shown to the
+  // designer once at creation time, embedded in the share URL.
+  tokenReference String @unique @map("token_reference")
+
+  status ShareLinkStatus @default(Active)
+
+  expiresAt DateTime? @map("expires_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  handoff Handoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+
+  @@index([handoffId])
+  @@map("share_links")
+}
+
+model AIConversation {
+  id        String @id @default(cuid())
+  handoffId String @map("handoff_id")
+  createdBy String @map("created_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  handoff Handoff    @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  creator User       @relation(fields: [createdBy], references: [id])
+  messages AIMessage[]
+
+  @@index([handoffId])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String @id @default(cuid())
+  conversationId String @map("conversation_id")
+
+  role    AIMessageRole
+  content String
+
+  // Screen/component references the assistant's answer cites.
+  citations Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}

@@ -1,0 +1,22 @@
+{
+  "issues": [
+    {
+      "title": "Empty state not defined",
+      "description": "No empty state is shown for the data table when it has no records.",
+      "severity": "High",
+      "category": "EdgeCases",
+      "recommendation": "Design and confirm an empty state for the table.",
+      "provenance": "Suggested",
+      "confidence": 0.35
+    },
+    {
+      "title": "Responsive behavior undetermined",
+      "description": "Only a desktop screen was provided; tablet and mobile layout is not defined.",
+      "severity": "Medium",
+      "category": "ResponsiveBehavior",
+      "recommendation": "Provide tablet and mobile screens or explicitly define breakpoint behavior.",
+      "provenance": "Suggested",
+      "confidence": 0.3
+    }
+  ]
+}

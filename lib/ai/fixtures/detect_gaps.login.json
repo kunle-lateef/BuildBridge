@@ -1,0 +1,13 @@
+{
+  "issues": [
+    {
+      "title": "Disabled state not defined",
+      "description": "The Sign In button's disabled state is not confirmed by direct evidence.",
+      "severity": "Medium",
+      "category": "InteractionStates",
+      "recommendation": "Define whether the button is disabled until both fields are valid.",
+      "provenance": "Suggested",
+      "confidence": 0.4
+    }
+  ]
+}
