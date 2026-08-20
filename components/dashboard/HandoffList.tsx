@@ -8,13 +8,23 @@ type HandoffListProps = {
     status: HandoffStatus;
     readinessScore: number | null;
     updatedAt: string;
+    openIssueCount: number;
+    openFlagCount: number;
   }[];
+  /** Distinguishes "nothing matches the current filter" from "you have no handoffs at all" — the two need different messages. */
+  isFiltered: boolean;
 };
 
-/** Single-column, per design-system.md's Dashboard Layout — no multi-column dashboard for MVP. */
-export function HandoffList({ handoffs }: HandoffListProps) {
+/** Single-column default view, per design-system.md's Dashboard Layout — see HandoffGrid.tsx for the opt-in card view. */
+export function HandoffList({ handoffs, isFiltered }: HandoffListProps) {
   if (handoffs.length === 0) {
-    return <p className="text-[--color-text-secondary]">No handoffs match this filter.</p>;
+    return (
+      <p className="text-[--color-text-secondary]">
+        {isFiltered
+          ? 'No handoffs match this filter.'
+          : 'You haven’t created a handoff yet — use “New handoff” above to get started.'}
+      </p>
+    );
   }
 
   return (
