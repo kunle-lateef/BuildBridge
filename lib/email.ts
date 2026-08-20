@@ -39,3 +39,67 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     });
   }
 }
+
+const RUN_STATUS_SUBJECT: Record<string, string> = {
+  Completed: 'Analysis complete',
+  PartiallyCompleted: 'Analysis partially complete',
+  Failed: 'Analysis failed',
+};
+
+/** Same never-throw contract as sendPasswordResetEmail — called only from lib/notifications.ts, gated on User.emailNotificationsEnabled. */
+export async function sendAnalysisRunNotificationEmail(
+  to: string,
+  handoffName: string,
+  status: 'Completed' | 'PartiallyCompleted' | 'Failed',
+  handoffUrl: string,
+): Promise<void> {
+  try {
+    await getClient().emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject: `${RUN_STATUS_SUBJECT[status]}: ${handoffName}`,
+      text: `Analysis on "${handoffName}" finished with status ${status}.\n\nReview it: ${handoffUrl}`,
+    });
+  } catch (error) {
+    logger.error('email.send_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+/** Same never-throw contract as sendPasswordResetEmail — called only from lib/notifications.ts, gated on User.emailNotificationsEnabled. */
+export async function sendDeveloperFlagNotificationEmail(
+  to: string,
+  handoffName: string,
+  flagKind: 'Mismatch' | 'Question',
+  handoffUrl: string,
+): Promise<void> {
+  try {
+    await getClient().emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject: `A developer flagged a ${flagKind.toLowerCase()}: ${handoffName}`,
+      text: `A developer submitted a ${flagKind.toLowerCase()} on "${handoffName}".\n\nReview it: ${handoffUrl}`,
+    });
+  } catch (error) {
+    logger.error('email.send_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+/** Same never-throw contract as sendPasswordResetEmail — called only from lib/notifications.ts, gated on User.emailNotificationsEnabled. */
+export async function sendImplementationMarkedEmail(to: string, handoffName: string, handoffUrl: string): Promise<void> {
+  try {
+    await getClient().emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject: `A developer marked something implemented: ${handoffName}`,
+      text: `A developer marked a finding implemented on "${handoffName}".\n\nReview it: ${handoffUrl}`,
+    });
+  } catch (error) {
+    logger.error('email.send_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
