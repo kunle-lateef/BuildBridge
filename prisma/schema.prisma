@@ -245,6 +245,11 @@ model User {
   analysisUsageCount Int      @default(0) @map("analysis_usage_count")
   billingCycleStart  DateTime @default(now()) @map("billing_cycle_start")
 
+  // Single global on/off — not per-event-type. If per-event granularity is
+  // ever wanted, it needs its own preferences model; deliberately not built
+  // ahead of that need. See lib/notifications.ts.
+  emailNotificationsEnabled Boolean @default(true) @map("email_notifications_enabled")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -254,6 +259,8 @@ model User {
   designerDecisions  DesignerDecision[]
   designerNotes      DesignerNote[]
   aiConversations    AIConversation[]
+  screenFlows        ScreenFlow[]
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -283,6 +290,10 @@ model Handoff {
   designerDecisions DesignerDecision[]
   shareLinks        ShareLink[]
   aiConversations   AIConversation[]
+  screenFlows       ScreenFlow[]
+  developerFlags    DeveloperFlag[]
+  notifications     Notification[]
+  implementationMarks ImplementationMark[]
 
   @@index([ownerId])
   @@map("handoffs")
@@ -338,10 +349,41 @@ model Screen {
   responsiveRules    ResponsiveRule[]
   handoffIssues      HandoffIssue[]
   designerNotes      DesignerNote[]
+  outgoingFlows      ScreenFlow[]        @relation("ScreenFlowSource")
+  incomingFlows      ScreenFlow[]        @relation("ScreenFlowTarget")
 
   @@index([handoffId])
   @@index([assetId])
   @@map("screens")
+}
+
+// A designer-authored "this screen leads to that screen" annotation —
+// navigation intent isn't reliably inferable from a static image the way
+// components/specs are, so this is always human-authored, never AI-
+// generated (no provenance/confidence fields, unlike every AI-facing
+// model above). A dedicated model rather than extending DesignerNote:
+// DesignerNote's screenId/componentId both mean "anchored to," and a
+// source/target pair is a different shape (an edge, not an anchor) that
+// would force every "notes for this screen" query to special-case
+// direction.
+model ScreenFlow {
+  id             String @id @default(cuid())
+  handoffId      String @map("handoff_id")
+  sourceScreenId String @map("source_screen_id")
+  targetScreenId String @map("target_screen_id")
+
+  label String?
+
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff      Handoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  sourceScreen Screen  @relation("ScreenFlowSource", fields: [sourceScreenId], references: [id], onDelete: Cascade)
+  targetScreen Screen  @relation("ScreenFlowTarget", fields: [targetScreenId], references: [id], onDelete: Cascade)
+  creator      User    @relation(fields: [createdBy], references: [id])
+
+  @@index([handoffId])
+  @@map("screen_flows")
 }
 
 // Immutable historical record once created — see architecture.md's Database
@@ -362,12 +404,51 @@ model AnalysisRun {
   completedAt DateTime? @map("completed_at")
   errorCode   String?   @map("error_code")
 
+  // A snapshot of computeReadiness's result (lib/readiness.ts) at the
+  // moment this run finished — { version, overall, hasUnresolvedCritical,
+  // categories }. Handoff.readinessScore is a single current value,
+  // overwritten on every run, so there's no other way to reconstruct a
+  // per-category trend across runs. Nullable since older rows predate this
+  // field. Only ever written once, at the end of a run — never updated
+  // afterward, matching AnalysisRun's existing immutable-record convention.
+  readinessSnapshot Json? @map("readiness_snapshot")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   handoff Handoff @relation(fields: [handoffId], references: [id])
 
+  findings           AnalysisRunFinding[]
+  sourceForIssues    HandoffIssue[]       @relation("HandoffIssueSourceRun")
+
   @@index([handoffId])
   @@map("analysis_runs")
+}
+
+enum AnalysisRunFindingKind {
+  Created
+  Reaffirmed
+  Conflict
+}
+
+// The re-analysis changelog's event log — one row per gap-detection finding
+// per run, recording whether it was newly created, re-confirmed an
+// already-open issue, or conflicted with one the designer had already
+// Resolved/Dismissed (see lib/decisions.ts's reconcileIssueFindings). Never
+// updated after creation, same immutability spirit as AnalysisRun itself.
+model AnalysisRunFinding {
+  id             String                 @id @default(cuid())
+  analysisRunId  String                 @map("analysis_run_id")
+  handoffIssueId String                 @map("handoff_issue_id")
+  kind           AnalysisRunFindingKind
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  analysisRun  AnalysisRun  @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
+  handoffIssue HandoffIssue @relation(fields: [handoffIssueId], references: [id], onDelete: Cascade)
+
+  @@index([analysisRunId])
+  @@index([handoffIssueId])
+  @@map("analysis_run_findings")
 }
 
 model Component {
@@ -514,12 +595,20 @@ model HandoffIssue {
   provenance ProvenanceType
   confidence Float
 
+  // Which AnalysisRun first created this issue — nullable since older rows
+  // predate this field. Lets the changelog answer "new since run N" as a
+  // plain filter instead of joining AnalysisRunFinding for the common case.
+  sourceAnalysisRunId String? @map("source_analysis_run_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  handoff   Handoff    @relation(fields: [handoffId], references: [id], onDelete: Cascade)
-  screen    Screen?    @relation(fields: [screenId], references: [id], onDelete: Cascade)
-  component Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  handoff         Handoff      @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  screen          Screen?      @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  component       Component?   @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  sourceAnalysisRun AnalysisRun? @relation("HandoffIssueSourceRun", fields: [sourceAnalysisRunId], references: [id])
+
+  analysisRunFindings AnalysisRunFinding[]
 
   @@index([handoffId])
   @@index([screenId])
@@ -595,8 +684,148 @@ model ShareLink {
 
   handoff Handoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
 
+  developerFlags      DeveloperFlag[]
+  implementationMarks ImplementationMark[]
+
   @@index([handoffId])
   @@map("share_links")
+}
+
+enum DeveloperFlagKind {
+  Mismatch
+  Question
+}
+
+enum DeveloperFlagStatus {
+  Open
+  Acknowledged
+  Resolved
+}
+
+// The one scoped exception to "no public writes" — see architecture.md's
+// Data Flow section. An anonymous developer viewing a share link can submit
+// a flag; nothing else in the app reads this table for correctness
+// (buildDeveloperProjection never includes it), so it cannot influence
+// existing Handoff content. The message is immutable once submitted — only
+// `status` transitions, and only a designer can change it (see
+// updateDeveloperFlagStatus in actions.ts), matching the audit-trail
+// pattern AnalysisRun/DesignerDecision already use elsewhere.
+model DeveloperFlag {
+  id          String @id @default(cuid())
+  handoffId   String @map("handoff_id")
+  shareLinkId String @map("share_link_id")
+
+  // Optionally anchors the flag to one specific finding the developer is
+  // reacting to. Nullable — a general question about the handoff has no
+  // single finding to point at.
+  findingType      FindingType?
+  findingReference String?      @map("finding_reference")
+
+  kind    DeveloperFlagKind
+  message String            @db.Text
+
+  // Unverified, unauthenticated free text — the public submitter has no
+  // BuildBridge account. Never treat this as equivalent to a signed-in
+  // user's identity.
+  submittedByName String? @map("submitted_by_name")
+
+  status DeveloperFlagStatus @default(Open)
+
+  // Lets the anonymous submitter check their own flag's status later
+  // without authentication — see app/api/share/[token]/flags/track/. A
+  // Prisma cuid() id is NOT random enough to serve as a bearer capability
+  // (timestamp/counter-derived, not cryptographic), so this follows the
+  // same "raw token shown once, only the hash persisted" pattern as
+  // ShareLink.tokenReference and password-reset tokens (lib/tokens.ts).
+  trackingTokenHash String @unique @map("tracking_token_hash")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff   Handoff   @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  shareLink ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  @@index([handoffId])
+  @@index([shareLinkId])
+  @@map("developer_flags")
+}
+
+// A distinct concept from DeveloperFlag: a status ("implemented or not, one
+// per finding"), not an append-only message log. Deliberately NOT modeled
+// as a third DeveloperFlagKind (would force a fake placeholder message and
+// pile up duplicate rows on every re-mark) and NOT written to the existing
+// ReviewStatus column on Component/Specification/ComponentState/
+// ResponsiveRule (that column is designer-controlled, written only inside
+// applyDecisionToFinding alongside an audited DesignerDecision row — an
+// anonymous public actor writing into it directly would break that
+// invariant). See lib/notifications.ts for the designer-facing signal this
+// drives, and components/handoff/ImplementationMarkButton.tsx /
+// ReviewStatusBadge for why the designer-side rendering must stay visually
+// distinct from a designer-verified "Confirmed" badge — this is an
+// unverified developer claim, trusted at a glance, not designer-reviewed.
+model ImplementationMark {
+  id          String @id @default(cuid())
+  handoffId   String @map("handoff_id")
+  shareLinkId String @map("share_link_id")
+
+  findingType      FindingType @map("finding_type")
+  findingReference String      @map("finding_reference")
+
+  // Same "unverified, unauthenticated free text, never treat as a real
+  // identity" framing as DeveloperFlag.submittedByName above.
+  markedByName String? @map("marked_by_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  handoff   Handoff   @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  shareLink ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  // Scoped to (findingType, findingReference) only, NOT shareLinkId — a
+  // handoff can have multiple active share links, and "implemented" is a
+  // global fact about the finding, not a per-link one. Presence = the
+  // finding has been marked; no unmark/undo in v1 (matches AnalysisRun/
+  // DesignerDecision's existing audit-trail-never-reverted convention).
+  @@unique([findingType, findingReference])
+  @@index([handoffId])
+  @@map("implementation_marks")
+}
+
+enum NotificationType {
+  AnalysisRunCompleted
+  AnalysisRunPartiallyCompleted
+  AnalysisRunFailed
+  DeveloperFlagReceived
+  ImplementationMarked
+}
+
+// One row per (user, event) — see lib/notifications.ts's dispatch
+// architecture (a BullMQ queue/worker, mirroring lib/queue.ts's analysis
+// pipeline pattern, so triggering a notification never blocks the request
+// that caused it). Display fields are denormalized (handoffName snapshotted
+// into `title`/`body`, not a live join) so a row still reads sensibly after
+// the Handoff it references has since changed name or been deleted. Never
+// mutated except `readAt` — there is no edit path for a notification's
+// content, only its read state.
+model Notification {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  type      NotificationType
+  handoffId String?          @map("handoff_id")
+
+  title   String
+  body    String
+  linkUrl String? @map("link_url")
+
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handoff Handoff? @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([handoffId])
+  @@map("notifications")
 }
 
 model AIConversation {
