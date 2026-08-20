@@ -11,10 +11,15 @@ import { env } from '@/lib/env';
 // Cloudflare R2, accessed through its S3-compatible API — see
 // .agents/rules/security.md's Secrets and Configuration section for why
 // STORAGE_ENDPOINT is required here (a non-AWS provider) where plain AWS S3
-// wouldn't need it.
+// wouldn't need it. forcePathStyle avoids virtual-hosted-style addressing
+// (bucket.endpoint/key), which depends on the provider supporting wildcard
+// subdomain DNS — path-style (endpoint/bucket/key) works universally across
+// S3-compatible providers, R2 included, and is required for a local dev
+// backend like MinIO that has no such DNS.
 const client = new S3Client({
   region: 'auto',
   endpoint: env.STORAGE_ENDPOINT,
+  forcePathStyle: true,
   credentials: {
     accessKeyId: env.STORAGE_ACCESS_KEY,
     secretAccessKey: env.STORAGE_SECRET_KEY,

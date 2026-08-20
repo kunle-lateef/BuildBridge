@@ -63,6 +63,18 @@ const store: RateLimitStore =
   process.env.NODE_ENV === 'production' ? new RedisStore(env.REDIS_URL) : new InMemoryStore();
 
 /**
+ * Best-effort client IP from the `x-forwarded-for` header set by the
+ * platform's reverse proxy — used only as a rate-limit key, never trusted
+ * for anything security-critical like access control. Shared between
+ * middleware.ts (the authenticated-route matcher) and any route handler on
+ * the public, unauthenticated share-link boundary that needs an IP-scoped
+ * limit of its own (e.g. app/api/share/[token]/flags/route.ts).
+ */
+export function clientIp(request: Request): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+}
+
+/**
  * Fixed-window rate limiter. `key` should uniquely identify the actor plus
  * the action being limited, e.g. `login:${ip}` or `analysis-run:${userId}`.
  * See .agents/rules/security.md's Rate Limiting section for which routes

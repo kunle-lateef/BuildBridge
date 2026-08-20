@@ -16,7 +16,11 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "worker": "tsx watch workers/analysis-worker.ts"
+    "dev:up": "powershell -ExecutionPolicy Bypass -File scripts/dev-up.ps1",
+    "worker": "tsx watch workers/analysis-worker.ts",
+    "worker:start": "tsx workers/analysis-worker.ts",
+    "worker:notifications": "tsx watch workers/notification-worker.ts",
+    "worker:notifications:start": "tsx workers/notification-worker.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -32,6 +36,7 @@
     "bullmq": "^5.28.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "file-type": "^22.0.1",
     "ioredis": "^5.4.1",

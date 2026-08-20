@@ -67,6 +67,8 @@ Server actions in Next.js include built-in CSRF protection. Route handlers that 
 
 The public share-link read endpoint (`app/api/share/[token]/`) is a GET-only, read-only boundary — it doesn't need CSRF protection because it never mutates state, but it still needs the token/expiry/revocation checks described below.
 
+The public share-link **flag** endpoint (`app/api/share/[token]/flags/`, POST) does mutate state — it creates a `DeveloperFlag` row — but still needs no CSRF protection, for a different reason: this boundary has no session cookie at all. The bearer token embedded in the share URL is the entire credential, so a forged same-site request against this route gains an attacker nothing they don't already get from simply knowing the link. Rate limiting (per-IP and per-link, see Rate Limiting below) is the real control here, not CSRF — a forged request still has to pass the same limits a legitimate one does.
+
 ## AI Output & Structured Data Trust
 
 **This is the most important section in this file. Read it twice.** BuildBridge's entire value proposition depends on never letting AI output masquerade as a confirmed fact. A trust-model bug here is not cosmetic — it is the product failing at the one thing it exists to do.
@@ -82,6 +84,8 @@ The public share-link read endpoint (`app/api/share/[token]/`) is a GET-only, re
 - Return only the developer-facing projection of the single `Handoff` the link is scoped to — never the designer review interface's data shape, never any other handoff, never raw AI output that hasn't been through the provenance/review pipeline.
 - Never leak `ownerId`, other users' data, or internal identifiers not needed by the developer view.
 
+**The flag endpoint must verify a finding reference belongs to the same handoff as the token, not just that it exists.** When a `DeveloperFlag` submission includes a `findingReference`, resolve it (`lib/decisions.ts`'s `resolveFinding`) and check `finding.handoffId === shareLink.handoffId` before accepting — otherwise a crafted request could plant a flag against a finding on an unrelated handoff, using one legitimately-held share link as a key to reference data outside its scope.
+
 **Ownership checks are explicit, not implied by URL shape.** Every dashboard action on a `Handoff` (and everything under it — screens, components, specs, issues, notes) must check `handoff.ownerId === session.userId` explicitly. Do not rely on a nested route param alone to enforce that a user can only reach their own data; a crafted URL can target any row.
 
 ## File Uploads
@@ -94,6 +98,8 @@ Design assets are uploaded by designers. They are untrusted input, same as any u
 - Store files in the configured object storage with a random filename. Never use the client's filename directly.
 - Serve uploaded design assets from the storage provider's domain or a CDN, never from the same origin as the app.
 
+**Dedicated malware scanning (e.g. ClamAV) is deliberately not built for MVP** — a developer decision, not an oversight. Uploads are already restricted to `image/png`/`image/jpeg`/`image/webp` (`lib/validators/upload.ts`), validated by real magic bytes via `file-type` rather than the client-declared MIME type, and every accepted file is fully re-encoded through `sharp` before storage (`recordUpload` in `app/(dashboard)/handoffs/[handoffId]/actions.ts`) — a payload that isn't genuinely decodable image data doesn't survive that re-encode. A dedicated scanner would mean new persistent infrastructure (most options, like ClamAV, need their own long-running service), the same category of problem as `workers/analysis-worker.ts`'s hosting — see `architecture.md`'s Environments section. Revisit if the accepted file types ever expand beyond raster images (e.g. PDFs, which `architecture.md`'s original scope mentions but which were never actually implemented).
+
 ## Rate Limiting
 
 Apply rate limits to:
@@ -101,6 +107,7 @@ Apply rate limits to:
 - Password reset requests (if applicable to the chosen auth provider)
 - `AnalysisRun` creation (both to protect against abuse and because it's the plan model's quota-enforcement checkpoint — see `.agents/skills/api-route-scaffolder/SKILL.md` for the exact enforcement logic)
 - The public share-link read endpoint (to prevent token brute-forcing, since a share-link token is effectively a bearer credential)
+- The public share-link flag endpoint (`app/api/share/[token]/flags/`, POST) — two limits, both applied inside the route handler itself (the token isn't known to middleware without a DB lookup): per-IP, to slow down one abusive source; and per-link (`share-link-write:link:${shareLink.id}`), since a leaked link can be spammed from many different IPs once it circulates beyond the intended developer
 
 Use an in-memory limiter for development and a Redis-backed one for production. The limiter lives in `lib/rate-limit.ts`.
 

@@ -167,7 +167,7 @@ This is the most important page in the product — the moment a developer's trus
 
 ## Dashboard Layout
 
-A single-column list of handoffs with status and readiness score, sortable/filterable. Do not build a multi-column dashboard for MVP; the data is simple enough that a single column is easier to scan.
+A single-column list of handoffs with status and readiness score, sortable/filterable, is the **default** view — it stays the default because it's still the easier scan for a status/score-only row. That MVP premise no longer holds unconditionally now that a row can carry richer signal (issue counts, open developer flags, a screen thumbnail): a visual card/grid view is allowed as an **opt-in** toggle alongside the list (e.g. a `view` URL param), never as a replacement for the single-column default and never forced on load. The rule this amends was "do not build a multi-column dashboard for MVP" — read it now as "never make the default view harder to scan," not "never offer an alternative one."
 
 ## Iconography
 
@@ -183,7 +183,12 @@ Every interactive element is reachable by keyboard, with a visible focus state u
 
 ## Logo & Brand Assets
 
-The app-facing logo lives at `public/logo/buildbridge-logo.svg` (dark-on-light) and `public/logo/buildbridge-logo-white.svg` (light-on-dark, for use on `--color-primary`/gradient backgrounds). Reference assets from `public/logo/` in application code — the copies under the repo-root `Desktop logo/` and `Mobile logo/` folders are design-handoff drops, not app assets; don't import from them.
+`public/logo/` holds two sets of four files:
+
+- `buildbridge-logo*.svg` / `buildbridge-logo-white*.svg` — the full icon+wordmark **lockup**, `viewBox="0 0 650 100"` (6.5:1), with "BuildBridge" baked in as real SVG `<text>`. This is what `components/ui/BrandMark.tsx` actually uses — it treats `size` as height only and derives width from the 6.5:1 ratio, rather than forcing it into a square (which crushes the wordmark to a sliver — a real bug hit and fixed once already, don't reintroduce it).
+- `buildbridge-icon*.svg` / `buildbridge-icon-white*.svg` — the icon glyph only, `viewBox="0 0 100 100"` (the lockup's first 100 units, text dropped), for any context that wants the mark without the wordmark. Not currently referenced by `BrandMark`; kept as a ready-made alternative rather than something to regenerate if this choice changes again.
+
+Each set has a Desktop and Mobile cut, and a dark-on-light (`buildbridge-logo*`) / light-on-dark (`buildbridge-logo-white*`, for `--color-primary`/`--color-primary-dark`/gradient backgrounds) variant. Never reference these paths directly — use `BrandMark`, which renders both cuts and toggles visibility at the `sm` breakpoint so the right one shows without a client component. The repo-root `Desktop logo/` and `Mobile logo/` folders, if present, are design-handoff drops, not app assets — don't import from them.
 
 ## What Not to Do
 

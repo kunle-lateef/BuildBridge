@@ -13,4 +13,32 @@
     background-color: var(--color-background);
     color: var(--color-text-body);
   }
+
+  /*
+   * Tailwind's Preflight resets every heading to font-size/weight:
+   * inherit, so an <h1>-<h4> with no explicit type-scale class renders as
+   * plain body text — most section headers across the dashboard never set
+   * one. These are fallback defaults, not overrides: any component that
+   * sets its own text-[length:var(--font-...)] class (as page titles
+   * already do) still wins, since utility classes cascade after @layer
+   * base.
+   */
+  h1 {
+    font-size: var(--font-desktop-heading-2-semi-bold-size);
+    font-weight: var(--font-desktop-heading-2-semi-bold-weight);
+    line-height: var(--font-desktop-heading-2-semi-bold-line-height);
+    letter-spacing: var(--font-desktop-heading-2-semi-bold-letter-spacing);
+  }
+
+  h2 {
+    font-size: var(--font-desktop-heading-3-semi-bold-size);
+    font-weight: var(--font-desktop-heading-3-semi-bold-weight);
+    line-height: var(--font-desktop-heading-3-semi-bold-line-height);
+  }
+
+  h3 {
+    font-size: var(--font-desktop-heading-4-semi-bold-size);
+    font-weight: var(--font-desktop-heading-4-semi-bold-weight);
+    line-height: var(--font-desktop-heading-4-semi-bold-line-height);
+  }
 }

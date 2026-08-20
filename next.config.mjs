@@ -2,10 +2,11 @@
 // public bucket (security.md's File Uploads section) — next/image still
 // needs the storage host allow-listed to optimize/serve them. Read directly
 // from process.env here rather than lib/env.ts, since this file runs
-// outside the app's TypeScript/webpack bundle.
-const storageHostname = process.env.STORAGE_ENDPOINT
-  ? new URL(process.env.STORAGE_ENDPOINT).hostname
-  : undefined;
+// outside the app's TypeScript/webpack bundle. Protocol is derived from the
+// endpoint too (not hardcoded to 'https') — R2 is always TLS in production,
+// but a local dev backend like MinIO serves plain http, and next/image
+// matches protocol as strictly as hostname.
+const storageUrl = process.env.STORAGE_ENDPOINT ? new URL(process.env.STORAGE_ENDPOINT) : undefined;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -18,7 +19,9 @@ const nextConfig = {
   // node_modules at runtime instead, which is what these packages expect.
   serverExternalPackages: ['bullmq', 'ioredis', 'sharp', 'file-type'],
   images: {
-    remotePatterns: storageHostname ? [{ protocol: 'https', hostname: storageHostname }] : [],
+    remotePatterns: storageUrl
+      ? [{ protocol: storageUrl.protocol.replace(':', ''), hostname: storageUrl.hostname, port: storageUrl.port }]
+      : [],
   },
 };
 

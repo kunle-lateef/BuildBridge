@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
-import type { IssueStatus, ReviewStatus } from '@/lib/types';
+import type { DeveloperFlagStatus, IssueStatus, ReviewStatus } from '@/lib/types';
 
-type StatusValue = ReviewStatus | IssueStatus;
+type StatusValue = ReviewStatus | IssueStatus | DeveloperFlagStatus;
 
 const STYLES: Record<StatusValue, string> = {
   Unreviewed: 'bg-[--color-surface] text-[--color-text-secondary]',
@@ -12,6 +12,7 @@ const STYLES: Record<StatusValue, string> = {
   Open: 'bg-[--color-surface] text-[--color-text-secondary]',
   InReview: 'bg-[--color-surface] text-[--color-text-secondary]',
   Dismissed: 'bg-[--color-surface] text-[--color-text-dismissed] line-through',
+  Acknowledged: 'bg-[--color-primary-light] text-[--color-primary-dark]',
 };
 
 type ReviewStatusBadgeProps = {
@@ -21,11 +22,13 @@ type ReviewStatusBadgeProps = {
 
 /**
  * Shared for a finding's ReviewStatus (Unreviewed/Confirmed/Modified/
- * Rejected/Resolved) and a HandoffIssue's IssueStatus (Open/InReview/
- * Resolved/Dismissed) — the visual pattern is identical even though the
- * two enums are distinct and don't share every value. Pass the enum's
- * actual value straight through; never translate one enum's spelling to
- * the other's. See .agents/rules/design-system.md's Color semantics table.
+ * Rejected/Resolved), a HandoffIssue's IssueStatus (Open/InReview/
+ * Resolved/Dismissed), and a DeveloperFlag's DeveloperFlagStatus
+ * (Open/Acknowledged/Resolved) — the visual pattern is identical even
+ * though the enums are distinct and don't share every value. Pass the
+ * enum's actual value straight through; never translate one enum's
+ * spelling to another's. See .agents/rules/design-system.md's Color
+ * semantics table.
  */
 export function ReviewStatusBadge({ status, className }: ReviewStatusBadgeProps) {
   return (

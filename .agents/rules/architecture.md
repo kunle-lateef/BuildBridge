@@ -79,7 +79,7 @@ There are three kinds of writes in this app:
 
 2. **AI-initiated writes from the analysis pipeline** happen inside `workers/analysis-worker.ts`, not in a request/response cycle. Each of the five pipeline stages (see AI Processing, below) validates its own output against its Zod schema before writing anything. A stage's output is never trusted as-is, and a `DesignerDecision` that already exists on a finding is never overwritten by a later run — conflicting results are flagged for re-review instead of applied.
 
-3. **Public reads from a share link** go through the route handler at `app/api/share/[token]/`. This is the one boundary in the app that serves data without an authenticated BuildBridge session. It validates the token against the `ShareLink` record (checking `status` and `expiresAt`), and returns only the developer-facing projection of that single handoff — never the designer review data, never any other handoff. There is no public write path in BuildBridge; unlike a checkout flow, nothing on the public side ever mutates data.
+3. **Public reads from a share link** go through the route handler at `app/api/share/[token]/`. This is the one boundary in the app that serves data without an authenticated BuildBridge session. It validates the token against the `ShareLink` record (checking `status` and `expiresAt`), and returns only the developer-facing projection of that single handoff — never the designer review data, never any other handoff. No public path may mutate or influence existing Handoff content — this is the binding rule, not "no public writes" literally. The one scoped exception is `DeveloperFlag` (`app/api/share/[token]/flags/route.ts`): an anonymous developer can create a flag against the handoff they're viewing, but the row is append-only (no public path ever updates or deletes one), nothing else in the app reads the table for correctness (`buildDeveloperProjection` never includes it), and only a designer's own `updateDeveloperFlagStatus` server action can change its `status`. A technically-public `create` that cannot influence existing Handoff content satisfies the rule; anything that could is still forbidden.
 
 ## State Management
 
@@ -150,6 +150,8 @@ This applies to application errors, not to AI epistemic uncertainty — those ar
 - `production` runs on the deployment target with production Claude API keys, production database, and production Redis.
 
 There is no staging environment yet. When we add one, it will use a separate production-shaped database and a Claude API key with its own spend cap.
+
+**Worker hosting is separate from the Next.js app's hosting.** `AGENTS.md`'s Tech Stack section lists Vercel as the hosting target, but Vercel's serverless functions are request-scoped and cannot host `workers/analysis-worker.ts`'s persistent BullMQ consumer — it has to sit and wait on Redis indefinitely, not run-and-exit. `workers/Dockerfile` builds a standalone image for the worker, deployed separately (to whatever platform supports a persistent process — Railway, Render, Fly.io, a plain VPS; not yet decided) and pointed at the same production `REDIS_URL`/`DATABASE_URL` as the Vercel-hosted app. `npm run worker:start` is the production entrypoint (no file-watching, unlike the local-dev `npm run worker`).
 
 ## What Not to Do
 
