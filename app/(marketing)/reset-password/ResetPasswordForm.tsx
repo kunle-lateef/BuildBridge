@@ -1,10 +1,14 @@
 'use client';
 
 import { AlertCircle } from 'lucide-react';
-import Link from 'next/link';
-import { useActionState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useEffect } from 'react';
 
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
+import { resetPasswordSchema } from '@/lib/validators/auth';
 
 import { resetPassword } from './actions';
 
@@ -15,38 +19,42 @@ type ResetPasswordFormProps = {
 };
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(resetPassword, initialState);
+  const { fieldProps } = useFieldErrors(resetPasswordSchema);
 
-  if (state?.ok) {
-    return (
-      <p role="status" className="text-[--color-success]">
-        Password updated.{' '}
-        <Link href="/sign-in" className="underline">
-          Sign in
-        </Link>
-        .
-      </p>
-    );
-  }
+  useEffect(() => {
+    if (state?.ok) {
+      router.push('/handoffs');
+      router.refresh();
+    }
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
       <input type="hidden" name="token" value={token} />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-[--color-text-body]">
-          New password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-        />
-      </div>
+      <Input
+        id="password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        label="New password"
+        {...fieldProps('password')}
+      />
+
+      <Input
+        id="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        label="Confirm new password"
+        {...fieldProps('confirmPassword')}
+      />
 
       {state && !state.ok && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -55,13 +63,9 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-[--radius-md] bg-[--color-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-      >
-        {isPending ? 'Saving…' : 'Reset password'}
-      </button>
+      <Button type="submit" disabled={isPending}>
+        {isPending ? 'Resetting…' : 'Reset password'}
+      </Button>
     </form>
   );
 }

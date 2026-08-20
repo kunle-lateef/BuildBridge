@@ -64,15 +64,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Re-checked against the DB on every session read so an incremented
       // sessionVersion (forced sign-out) invalidates this token immediately,
-      // even though it hasn't expired — see prisma/schema.prisma.
+      // even though it hasn't expired — see prisma/schema.prisma. `name` is
+      // refreshed here too, off the same query, so an edited profile name
+      // (see app/(dashboard)/settings/actions.ts's updateProfile) shows up
+      // without needing a fresh sign-in — a JWT session otherwise has no
+      // other route back to the DB's current value.
       const currentUser = await db.user.findUnique({
         where: { id: token.userId },
-        select: { sessionVersion: true },
+        select: { sessionVersion: true, name: true },
       });
 
       if (!currentUser || currentUser.sessionVersion !== token.sessionVersion) {
         return null;
       }
+
+      token.name = currentUser.name;
 
       return token;
     },

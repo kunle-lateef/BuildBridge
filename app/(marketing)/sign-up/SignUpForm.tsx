@@ -2,77 +2,66 @@
 
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useEffect } from 'react';
 
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
+import { signUpSchema } from '@/lib/validators/auth';
 
 import { signUp } from './actions';
 
-const initialState: ActionResult<{ email: string }> | null = null;
-
-const inputClassName =
-  'rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]';
-const labelClassName = 'text-[--color-text-body]';
+const initialState: ActionResult<{ success: true }> | null = null;
 
 export function SignUpForm() {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(signUp, initialState);
+  const { fieldProps } = useFieldErrors(signUpSchema);
 
-  if (state?.ok) {
-    return (
-      <p role="status" className="text-[--color-success]">
-        Account created.{' '}
-        <Link href="/sign-in" className="underline">
-          Sign in
-        </Link>
-        .
-      </p>
-    );
-  }
+  useEffect(() => {
+    if (state?.ok) {
+      router.push('/handoffs');
+      router.refresh();
+    }
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="name" className={labelClassName}>
-          Name
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          autoComplete="name"
-          required
-          className={inputClassName}
-        />
-      </div>
+      <Input id="name" name="name" type="text" autoComplete="name" required label="Name" {...fieldProps('name')} />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className={labelClassName}>
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className={inputClassName}
-        />
-      </div>
+      <Input
+        id="email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        label="Email"
+        {...fieldProps('email')}
+      />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className={labelClassName}>
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          className={inputClassName}
-        />
-      </div>
+      <Input
+        id="password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        label="Password"
+        {...fieldProps('password')}
+      />
+
+      <Input
+        id="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        label="Confirm password"
+        {...fieldProps('confirmPassword')}
+      />
 
       {state && !state.ok && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -81,13 +70,29 @@ export function SignUpForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-[--radius-md] bg-[--color-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isPending}>
         {isPending ? 'Creating account…' : 'Create account'}
-      </button>
+      </Button>
+
+      <p className="text-center text-[--color-text-muted]">
+        By creating an account, you agree to our{' '}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/privacy" className="underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
+      <p className="text-center text-[--color-text-secondary]">
+        Already have an account?{' '}
+        <Link href="/sign-in" className="text-[--color-primary] underline">
+          Sign in
+        </Link>
+        .
+      </p>
     </form>
   );
 }

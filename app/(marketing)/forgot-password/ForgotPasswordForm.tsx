@@ -1,9 +1,14 @@
 'use client';
 
 import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useActionState } from 'react';
 
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
+import { requestPasswordResetSchema } from '@/lib/validators/auth';
 
 import { requestPasswordReset } from './actions';
 
@@ -11,6 +16,7 @@ const initialState: ActionResult<{ requested: true }> | null = null;
 
 export function ForgotPasswordForm() {
   const [state, formAction, isPending] = useActionState(requestPasswordReset, initialState);
+  const { fieldProps } = useFieldErrors(requestPasswordResetSchema);
 
   if (state?.ok) {
     return (
@@ -22,19 +28,15 @@ export function ForgotPasswordForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-[--color-text-body]">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-        />
-      </div>
+      <Input
+        id="email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        label="Email"
+        {...fieldProps('email')}
+      />
 
       {state && !state.ok && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -43,13 +45,13 @@ export function ForgotPasswordForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-[--radius-md] bg-[--color-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isPending}>
         {isPending ? 'Sending…' : 'Send reset link'}
-      </button>
+      </Button>
+
+      <Link href="/sign-in" className="text-center text-[--color-primary] underline">
+        Back to login
+      </Link>
     </form>
   );
 }

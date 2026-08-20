@@ -1,11 +1,15 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
+import { signInSchema } from '@/lib/validators/auth';
 
 import { signInAction } from './actions';
 
@@ -15,6 +19,8 @@ export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
+  const { fieldProps } = useFieldErrors(signInSchema);
+  const passwordChanged = searchParams.get('passwordChanged') === '1';
 
   useEffect(() => {
     if (state?.ok) {
@@ -25,38 +31,37 @@ export function SignInForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-[--color-text-body]">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-        />
-      </div>
+      {passwordChanged && !state && (
+        <p role="status" className="flex items-center gap-1.5 text-[--color-success]">
+          <CheckCircle2 aria-hidden="true" size={16} />
+          Password changed. Sign in with your new password.
+        </p>
+      )}
 
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="password" className="text-[--color-text-body]">
-            Password
-          </label>
+      <Input
+        id="email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        label="Email"
+        {...fieldProps('email')}
+      />
+
+      <Input
+        id="password"
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        required
+        label="Password"
+        labelAction={
           <Link href="/forgot-password" className="text-[--color-primary] underline">
             Forgot password?
           </Link>
-        </div>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-        />
-      </div>
+        }
+        {...fieldProps('password')}
+      />
 
       {state && !state.ok && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -65,13 +70,16 @@ export function SignInForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-[--radius-md] bg-[--color-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isPending}>
         {isPending ? 'Signing in…' : 'Sign in'}
-      </button>
+      </Button>
+
+      <p className="text-center text-[--color-text-secondary]">
+        Don&apos;t have an account?{' '}
+        <Link href="/sign-up" className="text-[--color-primary] underline">
+          Create one
+        </Link>
+      </p>
     </form>
   );
 }

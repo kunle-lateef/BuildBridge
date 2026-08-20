@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { rateLimit } from '@/lib/rate-limit';
-
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-}
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 // Two unrelated concerns share this file because Next.js only supports one
 // middleware entrypoint: (1) protects the (dashboard) route group, per
@@ -46,5 +42,12 @@ export default auth(async (request) => {
 export const runtime = 'nodejs';
 
 export const config = {
-  matcher: ['/handoffs/:path*', '/settings/:path*', '/share/:path*', '/api/share/:path*'],
+  matcher: [
+    '/handoffs/:path*',
+    '/insights/:path*',
+    '/drift/:path*',
+    '/settings/:path*',
+    '/share/:path*',
+    '/api/share/:path*',
+  ],
 };

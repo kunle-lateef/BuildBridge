@@ -2,6 +2,7 @@
 
 import bcrypt from 'bcryptjs';
 
+import { signIn } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { hashSecureToken } from '@/lib/tokens';
@@ -17,6 +18,7 @@ export async function resetPassword(
   const parsed = resetPasswordSchema.safeParse({
     token: formData.get('token'),
     password: formData.get('password'),
+    confirmPassword: formData.get('confirmPassword'),
   });
 
   if (!parsed.success) {
@@ -61,6 +63,17 @@ export async function resetPassword(
   }
 
   logger.info('auth.password_reset_succeeded', {});
+
+  // Best-effort, same fallback as signUp: the password is already reset
+  // either way. authorize() re-reads the user fresh, so this correctly
+  // picks up the sessionVersion bump above rather than racing it.
+  try {
+    await signIn('credentials', { email: record.identifier, password, redirect: false });
+  } catch (error) {
+    logger.error('auth.password_reset_auto_sign_in_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
 
   return { ok: true, data: { reset: true } };
 }

@@ -2,6 +2,7 @@
 
 import bcrypt from 'bcryptjs';
 
+import { signIn } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { rateLimit } from '@/lib/rate-limit';
@@ -11,13 +12,14 @@ import { signUpSchema } from '@/lib/validators/auth';
 const SALT_ROUNDS = 12;
 
 export async function signUp(
-  _prevState: ActionResult<{ email: string }> | null,
+  _prevState: ActionResult<{ success: true }> | null,
   formData: FormData,
-): Promise<ActionResult<{ email: string }>> {
+): Promise<ActionResult<{ success: true }>> {
   const parsed = signUpSchema.safeParse({
     name: formData.get('name'),
     email: formData.get('email'),
     password: formData.get('password'),
+    confirmPassword: formData.get('confirmPassword'),
   });
 
   if (!parsed.success) {
@@ -71,5 +73,17 @@ export async function signUp(
 
   logger.info('auth.sign_up.succeeded', {});
 
-  return { ok: true, data: { email } };
+  // Best-effort: the account is already created either way. If this throws,
+  // the client's redirect to /handoffs just bounces through the dashboard
+  // layout's own auth check back to /sign-in — same outcome as before this
+  // change, only reached on the rare failure path instead of every time.
+  try {
+    await signIn('credentials', { email, password, redirect: false });
+  } catch (error) {
+    logger.error('auth.sign_up.auto_sign_in_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+
+  return { ok: true, data: { success: true } };
 }

@@ -1,15 +1,21 @@
 import { z } from 'zod';
 
-export const signUpSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required.').max(100),
-  email: z.string().trim().email('Enter a valid email address.'),
-  // 72 bytes is bcrypt's own input limit — bounding it here keeps the
-  // validation error in front of the user instead of a silent truncation.
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters.')
-    .max(72, 'Password must be at most 72 characters.'),
-});
+export const signUpSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required.').max(100),
+    email: z.string().trim().email('Enter a valid email address.'),
+    // 72 bytes is bcrypt's own input limit — bounding it here keeps the
+    // validation error in front of the user instead of a silent truncation.
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters.')
+      .max(72, 'Password must be at most 72 characters.'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
 
 export type SignUpInput = z.infer<typeof signUpSchema>;
 
@@ -29,12 +35,18 @@ export const requestPasswordResetSchema = z.object({
 
 export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
 
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters.')
-    .max(72, 'Password must be at most 72 characters.'),
-});
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters.')
+      .max(72, 'Password must be at most 72 characters.'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
