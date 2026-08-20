@@ -1,7 +1,10 @@
 import { ComponentInstanceCard } from '@/components/handoff/ComponentInstanceCard';
+import { FindingPinLink } from '@/components/handoff/FindingPinLink';
 import { SpecificationRow } from '@/components/handoff/SpecificationRow';
 import { ComponentStateList, type ComponentStateItem } from '@/components/review/ComponentStateList';
 import { DecisionControls } from '@/components/review/DecisionControls';
+import { Card } from '@/components/ui/Card';
+import { ImplementedIndicator } from '@/components/ui/ImplementedIndicator';
 import type { ProvenanceType, ReviewStatus, SpecificationCategory } from '@/lib/types';
 
 export type SpecificationItem = {
@@ -12,6 +15,7 @@ export type SpecificationItem = {
   unit: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  implemented: boolean;
 };
 
 type ComponentReviewCardProps = {
@@ -21,8 +25,11 @@ type ComponentReviewCardProps = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  implemented: boolean;
   specifications: SpecificationItem[];
   states: ComponentStateItem[];
+  /** The screen to open when "show on screen" is clicked — null/undefined when this component has no derivable pin. */
+  pinScreenId?: string | null;
 };
 
 /**
@@ -40,33 +47,39 @@ export function ComponentReviewCard({
   description,
   provenance,
   reviewStatus,
+  implemented,
   specifications,
   states,
+  pinScreenId,
 }: ComponentReviewCardProps) {
+  const pinKey = `component:${id}` as const;
+
   return (
-    <div className="flex flex-col gap-3 rounded-[--radius-lg] border border-[--color-border] p-4">
+    <Card className="flex flex-col gap-3">
       <ComponentInstanceCard
         name={name}
         type={type}
         description={description}
         provenance={provenance}
         reviewStatus={reviewStatus}
+        actions={pinScreenId ? <FindingPinLink screenId={pinScreenId} pinKey={pinKey} /> : undefined}
       />
+      {implemented && <ImplementedIndicator />}
       <DecisionControls findingType="Component" findingReference={id} currentValue={description ?? ''} />
 
       {specifications.length > 0 && (
         <div className="flex flex-col gap-1">
           <h3 className="text-[--color-text-secondary]">Specifications</h3>
           {specifications.map((spec) => (
-            <SpecificationRow key={spec.id} {...spec} />
+            <SpecificationRow key={spec.id} {...spec} pinScreenId={pinScreenId} pinKey={pinKey} />
           ))}
         </div>
       )}
 
       <div className="flex flex-col gap-1">
         <h3 className="text-[--color-text-secondary]">States</h3>
-        <ComponentStateList states={states} />
+        <ComponentStateList states={states} pinScreenId={pinScreenId} pinKey={pinKey} />
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,3 +1,5 @@
+import { FindingPinLink } from '@/components/handoff/FindingPinLink';
+import { ImplementationMarkButton } from '@/components/handoff/ImplementationMarkButton';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import type { ProvenanceType, ReviewStatus, SpecificationCategory } from '@/lib/types';
@@ -10,18 +12,21 @@ type Specification = {
   unit: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  implemented: boolean;
 };
 
 type SpecificationsSectionProps = {
-  components: { id: string; name: string; specifications: Specification[] }[];
+  shareToken?: string;
+  components: { id: string; name: string; specifications: Specification[]; pinScreenId?: string | null }[];
 };
 
 /**
  * Property inspection as document-native content, not a floating panel —
  * see .agents/rules/reference-inspiration.md's Figma Dev Mode section.
- * Read-only: no DecisionControls on the public developer view.
+ * Read-only otherwise: no DecisionControls on the public developer view,
+ * ImplementationMarkButton is the one interactive exception.
  */
-export function SpecificationsSection({ components }: SpecificationsSectionProps) {
+export function SpecificationsSection({ shareToken, components }: SpecificationsSectionProps) {
   const withSpecs = components.filter((component) => component.specifications.length > 0);
 
   if (withSpecs.length === 0) {
@@ -37,14 +42,25 @@ export function SpecificationsSection({ components }: SpecificationsSectionProps
         <div key={component.id} className="flex flex-col gap-1.5">
           <h3 className="text-[--color-text-secondary]">{component.name}</h3>
           {component.specifications.map((spec) => (
-            <div key={spec.id} className="flex items-center gap-2 border-b border-[--color-border] py-2 last:border-b-0">
-              <span className="min-w-[10rem] text-[--color-text-body]">{spec.property}</span>
-              <span className="font-mono text-[--color-text-body]">
-                {spec.value}
-                {spec.unit ? ` ${spec.unit}` : ''}
-              </span>
-              <ProvenanceBadge provenance={spec.provenance} />
-              <ReviewStatusBadge status={spec.reviewStatus} />
+            <div key={spec.id} className="flex flex-col gap-1 border-b border-[--color-border] py-2 last:border-b-0">
+              <div className="flex items-center gap-2">
+                <span className="min-w-[10rem] text-[--color-text-body]">{spec.property}</span>
+                <span className="font-mono text-[--color-text-body]">
+                  {spec.value}
+                  {spec.unit ? ` ${spec.unit}` : ''}
+                </span>
+                <ProvenanceBadge provenance={spec.provenance} />
+                <ReviewStatusBadge status={spec.reviewStatus} />
+                {component.pinScreenId && (
+                  <FindingPinLink screenId={component.pinScreenId} pinKey={`component:${component.id}`} />
+                )}
+              </div>
+              <ImplementationMarkButton
+                shareToken={shareToken}
+                findingType="Specification"
+                findingReference={spec.id}
+                initialImplemented={spec.implemented}
+              />
             </div>
           ))}
         </div>

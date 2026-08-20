@@ -1,3 +1,4 @@
+import { FindingPinLink } from '@/components/handoff/FindingPinLink';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
@@ -6,6 +7,7 @@ import type { IssueSeverity, IssueStatus, ProvenanceType, ReadinessCategory } fr
 type EdgeCasesSectionProps = {
   issues: {
     id: string;
+    componentId?: string | null;
     title: string;
     description: string;
     severity: IssueSeverity;
@@ -13,6 +15,7 @@ type EdgeCasesSectionProps = {
     recommendation: string | null;
     status: IssueStatus;
     provenance: ProvenanceType;
+    pinScreenId?: string | null;
   }[];
 };
 
@@ -41,6 +44,9 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
               <span className="font-medium text-[--color-text-primary]">{issue.title}</span>
               <ProvenanceBadge provenance={issue.provenance} />
               <ReviewStatusBadge status={issue.status} />
+              {issue.componentId && issue.pinScreenId && (
+                <FindingPinLink screenId={issue.pinScreenId} pinKey={`component:${issue.componentId}`} />
+              )}
             </div>
             <p className="text-[--color-text-secondary]">{issue.description}</p>
             {issue.recommendation && (

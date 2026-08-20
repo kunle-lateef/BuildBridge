@@ -10,7 +10,9 @@ const baseProjection: DeveloperHandoffProjection = {
   description: 'Q3 checkout flow',
   readinessScore: 87,
   readinessAlgorithmVersion: 1,
-  screens: [{ id: 'screen-1', name: 'Checkout', imageUrl: 'https://example.com/a.png', analysisStatus: 'Analyzed' }],
+  screens: [
+    { id: 'screen-1', name: 'Checkout', imageUrl: 'https://example.com/a.png', analysisStatus: 'Analyzed', pins: [] },
+  ],
   components: [
     {
       id: 'component-1',
@@ -19,6 +21,8 @@ const baseProjection: DeveloperHandoffProjection = {
       description: 'Primary CTA',
       provenance: 'Detected',
       reviewStatus: 'Confirmed',
+      implemented: false,
+      pinScreenId: null,
       specifications: [
         {
           id: 'spec-1',
@@ -28,6 +32,7 @@ const baseProjection: DeveloperHandoffProjection = {
           unit: 'px',
           provenance: 'Detected',
           reviewStatus: 'Unreviewed',
+          implemented: false,
         },
       ],
       states: [
@@ -37,6 +42,7 @@ const baseProjection: DeveloperHandoffProjection = {
           description: 'Not confirmed by direct evidence',
           provenance: 'Suggested',
           reviewStatus: 'Unreviewed',
+          implemented: false,
         },
       ],
     },
@@ -45,6 +51,7 @@ const baseProjection: DeveloperHandoffProjection = {
   issues: [
     {
       id: 'issue-1',
+      componentId: null,
       title: 'Disabled state undefined',
       description: 'Not confirmed',
       severity: 'Medium',
@@ -52,9 +59,12 @@ const baseProjection: DeveloperHandoffProjection = {
       recommendation: null,
       status: 'Open',
       provenance: 'Suggested',
+      pinScreenId: null,
     },
   ],
   notes: [{ id: 'note-1', content: 'Reuse the existing button component' }],
+  screenFlows: [],
+  recentUpdates: [],
 };
 
 describe('buildAssistantContextSummary', () => {

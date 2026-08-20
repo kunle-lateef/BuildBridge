@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateReadiness } from './readiness';
+import { calculateReadiness, deriveHandoffStatus, rankNextBestActions } from './readiness';
 
 describe('calculateReadiness', () => {
   it('scores a clean handoff at 100 with no unresolved critical issue', () => {
@@ -73,5 +73,118 @@ describe('calculateReadiness', () => {
 
     // 5 categories at 100 + 1 at 95 = 595 / 6 = 99.166... -> 99
     expect(result.overall).toBe(99);
+  });
+});
+
+describe('deriveHandoffStatus', () => {
+  it('moves Analyzing to Ready once there are no unresolved Critical issues — the moment analysis finishes', () => {
+    expect(deriveHandoffStatus('Analyzing', false)).toBe('Ready');
+  });
+
+  it('moves Analyzing to NeedsReview when an unresolved Critical issue remains', () => {
+    expect(deriveHandoffStatus('Analyzing', true)).toBe('NeedsReview');
+  });
+
+  it('moves NeedsReview to Ready once the last unresolved Critical issue is resolved', () => {
+    expect(deriveHandoffStatus('NeedsReview', false)).toBe('Ready');
+  });
+
+  it('moves Ready back to NeedsReview if a Critical issue reappears (e.g. an unresolved conflict from re-analysis)', () => {
+    expect(deriveHandoffStatus('Ready', true)).toBe('NeedsReview');
+  });
+
+  it('never touches Draft — there is no analysis to be ready from yet', () => {
+    expect(deriveHandoffStatus('Draft', false)).toBe('Draft');
+  });
+
+  it('never pulls a Shared handoff back to NeedsReview/Ready, even if a later decision changes readiness', () => {
+    expect(deriveHandoffStatus('Shared', true)).toBe('Shared');
+    expect(deriveHandoffStatus('Shared', false)).toBe('Shared');
+  });
+
+  it('never touches an Archived handoff', () => {
+    expect(deriveHandoffStatus('Archived', false)).toBe('Archived');
+  });
+});
+
+describe('rankNextBestActions', () => {
+  it('ranks a single Critical issue above a single High issue by delta', () => {
+    const issues = [
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'high-1', severity: 'High' as const, category: 'EdgeCases' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    expect(ranked[0]?.issueId).toBe('crit-1');
+    expect(ranked[0]?.delta).toBeGreaterThan(ranked[1]?.delta ?? Number.POSITIVE_INFINITY);
+  });
+
+  it('marks resolvesHardGate true only for the issue that actually clears the last unresolved Critical', () => {
+    const issues = [
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'low-1', severity: 'Low' as const, category: 'EdgeCases' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    expect(ranked.find((action) => action.issueId === 'crit-1')?.resolvesHardGate).toBe(true);
+    expect(ranked.find((action) => action.issueId === 'low-1')?.resolvesHardGate).toBe(false);
+  });
+
+  it('does not claim the hard gate clears if a second unresolved Critical remains in the same or a different category', () => {
+    const issues = [
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'crit-2', severity: 'Critical' as const, category: 'EdgeCases' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    expect(ranked.every((action) => action.resolvesHardGate === false)).toBe(true);
+  });
+
+  it('can honestly report delta 0 when a category stays floored at 0 even after resolving one issue — not a bug', () => {
+    // Four Criticals in one category: 100 - 4*40 = -60 -> floored to 0.
+    // Resolving any single one still leaves three: 100 - 3*40 = -20 -> still
+    // floored to 0. The category score doesn't move, so neither does the
+    // overall average — delta 0 is the honest answer, not a broken ranking.
+    const issues = [
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'crit-2', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'crit-3', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'crit-4', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    expect(ranked.every((action) => action.delta === 0)).toBe(true);
+    // Still correctly flagged as clearing nothing on its own — hasUnresolvedCritical
+    // stays true either way, since three Criticals still remain.
+    expect(ranked.every((action) => action.resolvesHardGate === false)).toBe(true);
+  });
+
+  it('excludes already-Resolved/Dismissed issues from the ranking', () => {
+    const issues = [
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Resolved' as const },
+      { id: 'high-1', severity: 'High' as const, category: 'EdgeCases' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0]?.issueId).toBe('high-1');
+  });
+
+  it('sorts by delta descending', () => {
+    const issues = [
+      { id: 'low-1', severity: 'Low' as const, category: 'EdgeCases' as const, status: 'Open' as const },
+      { id: 'crit-1', severity: 'Critical' as const, category: 'Components' as const, status: 'Open' as const },
+      { id: 'med-1', severity: 'Medium' as const, category: 'InteractionStates' as const, status: 'Open' as const },
+    ];
+
+    const ranked = rankNextBestActions(issues);
+
+    const deltas = ranked.map((action) => action.delta);
+    expect(deltas).toEqual([...deltas].sort((a, b) => b - a));
   });
 });

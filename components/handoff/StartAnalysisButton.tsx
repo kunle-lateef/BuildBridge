@@ -4,6 +4,7 @@ import { AlertCircle } from 'lucide-react';
 import { useActionState } from 'react';
 
 import { startAnalysis } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
+import { Button } from '@/components/ui/Button';
 import type { ActionResult } from '@/lib/types';
 
 const initialState: ActionResult<{ analysisRunId: string }> | null = null;
@@ -20,13 +21,9 @@ export function StartAnalysisButton({ handoffId }: StartAnalysisButtonProps) {
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
-      <button
-        type="submit"
-        disabled={isPending}
-        className="self-start rounded-[--radius-md] bg-[--color-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? 'Starting…' : 'Start Analysis'}
-      </button>
+      </Button>
       {state && !state.ok && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={16} />

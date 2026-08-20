@@ -30,6 +30,16 @@ const MODEL_BY_TIER: Record<ModelTier, string> = {
   reasoning: 'claude-sonnet-5',
 };
 
+/**
+ * A single AnalysisRun spans multiple stages at different tiers (see
+ * architecture.md's stage table), so there's no one "the model" for a run —
+ * this records both, for AnalysisRun.modelIdentifier, so a model/tier change
+ * is traceable per PRD Section 13.2 without needing a per-stage model column.
+ */
+export function currentModelIdentifierSummary(): string {
+  return `fast:${MODEL_BY_TIER.fast}, reasoning:${MODEL_BY_TIER.reasoning}`;
+}
+
 export type ImageInput = {
   base64: string;
   mediaType: 'image/png' | 'image/jpeg' | 'image/webp';

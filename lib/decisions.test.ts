@@ -19,13 +19,25 @@ describe('reconcileIssueFindings', () => {
     expect(result.conflicts).toHaveLength(0);
   });
 
-  it('skips a finding that re-confirms a still-open existing issue, without flagging a conflict', () => {
+  it('records (not duplicates) a finding that re-confirms a still-open existing issue, as a reaffirmation', () => {
     const existing = [{ id: 'issue-1', title: baseFinding.title, category: baseFinding.category, status: 'Open' as const }];
 
     const result = reconcileIssueFindings(existing, [baseFinding]);
 
     expect(result.toCreate).toHaveLength(0);
     expect(result.conflicts).toHaveLength(0);
+    expect(result.reaffirmed).toHaveLength(1);
+    expect(result.reaffirmed[0]?.existingIssueId).toBe('issue-1');
+  });
+
+  it('also records a reaffirmation for a still-InReview existing issue, not just Open', () => {
+    const existing = [
+      { id: 'issue-1', title: baseFinding.title, category: baseFinding.category, status: 'InReview' as const },
+    ];
+
+    const result = reconcileIssueFindings(existing, [baseFinding]);
+
+    expect(result.reaffirmed).toHaveLength(1);
   });
 
   it('the trust-model regression case: a re-analysis conflicting with an existing designer decision never overwrites it, and is flagged instead of silently created or dropped', () => {

@@ -1,8 +1,16 @@
 import { ScreenThumbnail } from '@/components/handoff/ScreenThumbnail';
+import type { ScreenPin } from '@/lib/screenPins';
 import type { ScreenAnalysisStatus } from '@/lib/types';
 
 type ScreensSectionProps = {
-  screens: { id: string; name: string; imageUrl: string; analysisStatus: ScreenAnalysisStatus }[];
+  screens: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    analysisStatus: ScreenAnalysisStatus;
+    /** Optional so the designer review page's own Screens rendering (which builds this inline) isn't forced through this component. */
+    pins?: ScreenPin[];
+  }[];
 };
 
 export function ScreensSection({ screens }: ScreensSectionProps) {
@@ -19,9 +27,11 @@ export function ScreensSection({ screens }: ScreensSectionProps) {
         {screens.map((screen) => (
           <ScreenThumbnail
             key={screen.id}
+            screenId={screen.id}
             name={screen.name}
             imageUrl={screen.imageUrl}
             analysisStatus={screen.analysisStatus}
+            pins={screen.pins}
           />
         ))}
       </div>

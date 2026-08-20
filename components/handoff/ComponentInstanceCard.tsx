@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import { cn } from '@/lib/cn';
@@ -9,6 +11,8 @@ type ComponentInstanceCardProps = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  /** e.g. a FindingPinLink — undefined by default, so existing callers are unaffected. */
+  actions?: ReactNode;
   className?: string;
 };
 
@@ -24,6 +28,7 @@ export function ComponentInstanceCard({
   description,
   provenance,
   reviewStatus,
+  actions,
   className,
 }: ComponentInstanceCardProps) {
   return (
@@ -33,6 +38,7 @@ export function ComponentInstanceCard({
         <span className="text-[--color-text-muted]">{type}</span>
         <ProvenanceBadge provenance={provenance} />
         <ReviewStatusBadge status={reviewStatus} />
+        {actions}
       </div>
       {description && <p className="text-[--color-text-secondary]">{description}</p>}
     </div>

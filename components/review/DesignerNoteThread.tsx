@@ -2,13 +2,25 @@
 
 import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import {
   addDesignerNote,
   editDesignerNote,
 } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/ToastProvider';
+import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
+import { addDesignerNoteSchema } from '@/lib/validators/note';
+
+// Only the field this form actually collects — handoffId is supplied from
+// the closure, not a real form input, so validating the full server schema
+// against this form's FormData would spuriously flag a field the user
+// never sees.
+const addNoteFieldSchema = addDesignerNoteSchema.pick({ content: true });
 
 export type DesignerNoteItem = {
   id: string;
@@ -31,6 +43,8 @@ type MutationResult = ActionResult<{ noteId: string }> | null;
  */
 export function DesignerNoteThread({ handoffId, notes }: DesignerNoteThreadProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const { fieldProps } = useFieldErrors(addNoteFieldSchema);
   const [addState, addFormAction, isAdding] = useActionState<MutationResult, FormData>(
     async (_prevState, formData) => {
       const content = String(formData.get('content') ?? '');
@@ -40,11 +54,19 @@ export function DesignerNoteThread({ handoffId, notes }: DesignerNoteThreadProps
     null,
   );
 
+  useEffect(() => {
+    if (addState?.ok) {
+      toast('Note added.');
+    }
+  }, [addState, toast]);
+
   return (
     <div className="flex flex-col gap-3">
-      {notes.map((note) => (
-        <NoteRow key={note.id} note={note} onSaved={() => router.refresh()} />
-      ))}
+      {notes.length === 0 ? (
+        <p className="text-[--color-text-muted]">No notes yet. Add context for the developer below.</p>
+      ) : (
+        notes.map((note) => <NoteRow key={note.id} note={note} onSaved={() => router.refresh()} />)
+      )}
 
       <form
         action={(formData) => {
@@ -52,11 +74,14 @@ export function DesignerNoteThread({ handoffId, notes }: DesignerNoteThreadProps
         }}
         className="flex flex-col gap-2"
       >
-        <textarea
+        <Textarea
+          id="new-note-content"
           name="content"
+          label="Add a note"
+          hideLabel
           rows={2}
           placeholder="Add a note for the developer…"
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          {...fieldProps('content')}
         />
         {addState && !addState.ok && (
           <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -64,19 +89,16 @@ export function DesignerNoteThread({ handoffId, notes }: DesignerNoteThreadProps
             {addState.error.message}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={isAdding}
-          className="self-start rounded-[--radius-md] border border-[--color-border] px-3 py-1.5 text-[--color-text-body] hover:bg-[--color-surface] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-50"
-        >
+        <Button type="submit" variant="secondary" size="sm" disabled={isAdding} className="self-start">
           {isAdding ? 'Adding…' : 'Add note'}
-        </button>
+        </Button>
       </form>
     </div>
   );
 }
 
 function NoteRow({ note, onSaved }: { note: DesignerNoteItem; onSaved: () => void }) {
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(note.content);
   const [isSaving, setIsSaving] = useState(false);
@@ -94,39 +116,42 @@ function NoteRow({ note, onSaved }: { note: DesignerNoteItem; onSaved: () => voi
     }
 
     setIsEditing(false);
+    toast('Note updated.');
     onSaved();
   }
 
   if (isEditing) {
+    const contentError = content.trim().length === 0 ? 'Note cannot be empty.' : undefined;
+
     return (
-      <div className="flex flex-col gap-1.5 rounded-[--radius-lg] border border-[--color-border] p-3">
-        <textarea
+      <Card className="flex flex-col gap-1.5">
+        <Textarea
+          id={`note-${note.id}-content`}
+          label="Edit note"
+          hideLabel
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={2}
           autoFocus
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-2 py-1.5 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          maxLength={2000}
+          error={contentError}
         />
         <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={() => void save()}
-            className="rounded-[--radius-sm] bg-[--color-primary] px-2 py-1 text-[length:var(--font-desktop-caption-medium-size)] text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-50"
-          >
+          <Button type="button" size="sm" disabled={isSaving || !!contentError} onClick={() => void save()}>
             {isSaving ? 'Saving…' : 'Save'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             disabled={isSaving}
             onClick={() => {
               setContent(note.content);
               setIsEditing(false);
             }}
-            className="rounded-[--radius-sm] border border-[--color-border] px-2 py-1 text-[length:var(--font-desktop-caption-medium-size)] text-[--color-text-body] hover:bg-[--color-surface]"
           >
             Cancel
-          </button>
+          </Button>
         </div>
         {error && (
           <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
@@ -134,12 +159,12 @@ function NoteRow({ note, onSaved }: { note: DesignerNoteItem; onSaved: () => voi
             {error}
           </p>
         )}
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1 rounded-[--radius-lg] border border-[--color-border] p-3">
+    <Card className="flex flex-col gap-1">
       <p className="text-[--color-text-body]">{note.content}</p>
       <div className="flex items-center gap-2">
         <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
@@ -153,6 +178,6 @@ function NoteRow({ note, onSaved }: { note: DesignerNoteItem; onSaved: () => voi
           Edit
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

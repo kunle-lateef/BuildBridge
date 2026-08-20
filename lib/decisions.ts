@@ -7,6 +7,8 @@ import type {
   ReadinessCategory,
 } from '@prisma/client';
 
+type PrismaTransaction = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -38,6 +40,8 @@ type ExistingIssue = Pick<HandoffIssue, 'id' | 'title' | 'category' | 'status'>;
 
 export type IssueReconciliation = {
   toCreate: NewIssueFinding[];
+  /** Matched an existing Open/InReview issue — the AI found the same gap again, no duplicate needed. */
+  reaffirmed: { existingIssueId: string; matchedFinding: NewIssueFinding }[];
   conflicts: { existingIssueId: string; conflictingFinding: NewIssueFinding }[];
 };
 
@@ -45,18 +49,20 @@ export type IssueReconciliation = {
  * An incoming finding "matches" an existing issue when its category and
  * title are identical (case-insensitive) — the schema has no other shared
  * key between two independently-generated HandoffIssue rows. A match
- * against an issue still Open/InReview is just a re-confirmation and is
- * skipped (no duplicate). A match against one the designer has already
- * Resolved or Dismissed is a conflict: the existing issue's status is never
- * touched, and the new finding is reported as a conflict rather than
- * silently created or silently dropped — see AGENTS.md's Non-Negotiable
- * #3.
+ * against an issue still Open/InReview is a reaffirmation — no duplicate
+ * created, but recorded (see persistGapDetectionFindings) so the re-analysis
+ * changelog can show "still flagged" distinctly from "newly flagged." A
+ * match against one the designer has already Resolved or Dismissed is a
+ * conflict: the existing issue's status is never touched, and the new
+ * finding is reported as a conflict rather than silently created or
+ * silently dropped — see AGENTS.md's Non-Negotiable #3.
  */
 export function reconcileIssueFindings(
   existingIssues: ExistingIssue[],
   newFindings: NewIssueFinding[],
 ): IssueReconciliation {
   const toCreate: NewIssueFinding[] = [];
+  const reaffirmed: IssueReconciliation['reaffirmed'] = [];
   const conflicts: IssueReconciliation['conflicts'] = [];
 
   for (const finding of newFindings) {
@@ -76,31 +82,53 @@ export function reconcileIssueFindings(
       continue;
     }
 
-    // Open/InReview: the AI found the same gap again — no duplicate needed.
+    reaffirmed.push({ existingIssueId: match.id, matchedFinding: finding });
   }
 
-  return { toCreate, conflicts };
+  return { toCreate, reaffirmed, conflicts };
 }
 
-/** DB-touching wrapper around reconcileIssueFindings — called from lib/ai/pipeline.ts's gap-detection stage. */
+/**
+ * DB-touching wrapper around reconcileIssueFindings — called from
+ * lib/ai/pipeline.ts's gap-detection stage. `analysisRunId` threads through
+ * to two places: the new HandoffIssue rows' sourceAnalysisRunId, and one
+ * AnalysisRunFinding row per finding (Created/Reaffirmed/Conflict) — see
+ * lib/changelog.ts, which reads these back for the re-analysis changelog.
+ * toCreate uses individual `create()` calls rather than `createMany`
+ * specifically so each new row's id is available for its AnalysisRunFinding
+ * — `createMany` doesn't return created rows.
+ */
 export async function persistGapDetectionFindings(
   handoffId: string,
+  analysisRunId: string,
   findings: NewIssueFinding[],
-): Promise<{ createdCount: number; conflictCount: number }> {
+): Promise<{ createdCount: number; reaffirmedCount: number; conflictCount: number }> {
   const existingIssues = await db.handoffIssue.findMany({
     where: { handoffId },
     select: { id: true, title: true, category: true, status: true },
   });
 
-  const { toCreate, conflicts } = reconcileIssueFindings(existingIssues, findings);
+  const { toCreate, reaffirmed, conflicts } = reconcileIssueFindings(existingIssues, findings);
 
-  if (toCreate.length > 0) {
-    await db.handoffIssue.createMany({
-      data: toCreate.map((finding) => ({ handoffId, ...finding })),
+  for (const finding of toCreate) {
+    const created = await db.handoffIssue.create({
+      data: { handoffId, sourceAnalysisRunId: analysisRunId, ...finding },
+    });
+    await db.analysisRunFinding.create({
+      data: { analysisRunId, handoffIssueId: created.id, kind: 'Created' },
+    });
+  }
+
+  for (const match of reaffirmed) {
+    await db.analysisRunFinding.create({
+      data: { analysisRunId, handoffIssueId: match.existingIssueId, kind: 'Reaffirmed' },
     });
   }
 
   for (const conflict of conflicts) {
+    await db.analysisRunFinding.create({
+      data: { analysisRunId, handoffIssueId: conflict.existingIssueId, kind: 'Conflict' },
+    });
     logger.warn('decisions.conflict_detected', {
       handoffId,
       findingType: 'HandoffIssue' satisfies FindingType,
@@ -108,7 +136,7 @@ export async function persistGapDetectionFindings(
     });
   }
 
-  return { createdCount: toCreate.length, conflictCount: conflicts.length };
+  return { createdCount: toCreate.length, reaffirmedCount: reaffirmed.length, conflictCount: conflicts.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,7 +211,7 @@ export async function resolveFinding(
  * audit record and the finding's new state land together or not at all.
  */
 export async function applyDecisionToFinding(
-  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  tx: PrismaTransaction,
   findingType: FindingType,
   findingReference: string,
   action: DesignerDecisionAction,
@@ -239,5 +267,98 @@ export async function applyDecisionToFinding(
         data: { reviewStatus, ...(applyValue ? { behavior: newValue } : {}) },
       });
       break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bulk decisions
+//
+// Confirm/Reject only, one provenance tier at a time — see AGENTS.md's
+// Non-Negotiable #2. A bulk action must never be able to sweep up findings
+// of a different provenance than the one the designer explicitly chose to
+// bulk-act on; fetching each row's real provenance here (not trusting the
+// client's claim) is what makes bulkRecordDecision's server-side check in
+// actions.ts actually mean something.
+// ---------------------------------------------------------------------------
+
+export type BulkFindingRow = {
+  id: string;
+  handoffId: string;
+  provenance: ProvenanceType;
+  /** True if a designer has already acted on this finding — bulk actions skip these rather than re-deciding them. */
+  isAlreadyDecided: boolean;
+};
+
+/**
+ * Fetches the real, current state of every requested finding, scoped by id
+ * only (never trusting a client-supplied handoffId/provenance) — the caller
+ * verifies handoffId/provenance match afterward. A missing row is simply
+ * absent from the result, which is what lets the caller detect "some ids
+ * didn't resolve" by comparing result length to the request.
+ */
+export async function fetchFindingsForBulk(
+  findingType: FindingType,
+  findingReferences: string[],
+): Promise<BulkFindingRow[]> {
+  switch (findingType) {
+    case 'Component': {
+      const rows = await db.component.findMany({ where: { id: { in: findingReferences } } });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.handoffId,
+        provenance: row.provenance,
+        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
+      }));
+    }
+    case 'Specification': {
+      const rows = await db.specification.findMany({
+        where: { id: { in: findingReferences } },
+        include: { component: true, screen: true },
+      });
+      return rows.flatMap((row) => {
+        const handoffId = row.component?.handoffId ?? row.screen?.handoffId;
+        return handoffId
+          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
+          : [];
+      });
+    }
+    case 'ComponentState': {
+      const rows = await db.componentState.findMany({
+        where: { id: { in: findingReferences } },
+        include: { component: true },
+      });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.component.handoffId,
+        provenance: row.provenance,
+        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
+      }));
+    }
+    case 'ResponsiveRule': {
+      const rows = await db.responsiveRule.findMany({
+        where: { id: { in: findingReferences } },
+        include: { component: true, screen: true },
+      });
+      return rows.flatMap((row) => {
+        const handoffId = row.component?.handoffId ?? row.screen?.handoffId;
+        return handoffId
+          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
+          : [];
+      });
+    }
+    case 'HandoffIssue': {
+      const rows = await db.handoffIssue.findMany({ where: { id: { in: findingReferences } } });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.handoffId,
+        provenance: row.provenance,
+        // Only 'Open' is the untouched starting state — InReview/Resolved/
+        // Dismissed are all reachable only through a prior designer decision
+        // (see applyDecisionToFinding's HandoffIssue branch above).
+        isAlreadyDecided: row.status !== 'Open',
+      }));
+    }
+    default:
+      return [];
   }
 }

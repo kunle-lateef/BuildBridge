@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, CircleDashed, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -10,7 +10,7 @@ import type { AnalysisRunStatus } from '@/lib/types';
 export type StageProgress = {
   key: string;
   label: string;
-  status: 'pending' | 'running' | 'done';
+  status: 'pending' | 'running' | 'done' | 'incomplete';
   countLabel: string;
   provenanceSplit?: { detected: number; inferred: number; suggested: number };
 };
@@ -35,6 +35,7 @@ const POLL_INTERVAL_MS = 4000;
 export function AnalysisProgressPanel({ runStatus, stages, className }: AnalysisProgressPanelProps) {
   const router = useRouter();
   const isActive = runStatus === 'Queued' || runStatus === 'Processing';
+  const completedCount = stages.filter((stage) => stage.status === 'done').length;
 
   useEffect(() => {
     if (!isActive) return;
@@ -49,6 +50,23 @@ export function AnalysisProgressPanel({ runStatus, stages, className }: Analysis
   return (
     <div className={cn('flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4', className)}>
       <h2 className="text-[--color-text-primary]">Analysis progress</h2>
+      {/* Never let an itemized stage list read as "everything succeeded" on
+          a run that didn't — see the PRD's partial-analysis acceptance
+          criteria and edge case: present as explicitly partial, with a
+          count, never silently as complete. */}
+      {runStatus === 'PartiallyCompleted' && (
+        <p className="flex items-center gap-1.5 rounded-[--radius-md] bg-[--color-warning-light] px-3 py-2 text-[--color-warning]">
+          <AlertTriangle aria-hidden="true" size={16} />
+          Only {completedCount} of {stages.length} stages completed — the rest need manual review. See the
+          stage list below for which ones.
+        </p>
+      )}
+      {runStatus === 'Failed' && (
+        <p className="flex items-center gap-1.5 rounded-[--radius-md] bg-[--color-error-light] px-3 py-2 text-[--color-error]">
+          <AlertTriangle aria-hidden="true" size={16} />
+          Analysis failed — no stages completed. Try running it again.
+        </p>
+      )}
       <ul className="flex flex-col gap-1.5">
         {stages.map((stage) => (
           <li key={stage.key} className="flex items-center gap-2 py-1">
@@ -83,6 +101,10 @@ function StageIcon({ status }: { status: StageProgress['status'] }) {
         className="shrink-0 animate-spin text-[--color-primary] motion-reduce:animate-none"
       />
     );
+  }
+
+  if (status === 'incomplete') {
+    return <XCircle aria-label="Not completed" size={16} className="shrink-0 text-[--color-error]" />;
   }
 
   return <CircleDashed aria-label="Pending" size={16} className="shrink-0 text-[--color-text-muted]" />;

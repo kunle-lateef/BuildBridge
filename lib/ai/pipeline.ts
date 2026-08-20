@@ -1,4 +1,5 @@
-import { AiOutputError, callStructured, type ImageInput } from '@/lib/ai/client';
+import { checkContrast, checkTouchTargets } from '@/lib/accessibility';
+import { AiOutputError, callStructured, currentModelIdentifierSummary, type ImageInput } from '@/lib/ai/client';
 import {
   COMPONENT_DETECTION_SYSTEM_PROMPT,
   GAP_DETECTION_SYSTEM_PROMPT,
@@ -13,10 +14,12 @@ import {
   specificationExtractionResultSchema,
   stateAnalysisResultSchema,
 } from '@/lib/ai/schemas';
+import { detectConsistencyOutliers } from '@/lib/consistency';
 import { db } from '@/lib/db';
-import { persistGapDetectionFindings } from '@/lib/decisions';
+import { persistGapDetectionFindings, type NewIssueFinding } from '@/lib/decisions';
 import { logger } from '@/lib/logger';
-import { computeReadiness } from '@/lib/readiness';
+import { enqueueNotification } from '@/lib/notification-queue';
+import { computeReadiness, deriveHandoffStatus } from '@/lib/readiness';
 import { getObjectBytes } from '@/lib/storage';
 
 type StageFailure = { stage: string; context: string; error: string };
@@ -224,7 +227,123 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
   }
 
   // Stage 5 — gap detection, once per run, synthesizing stages 1–4's
-  // persisted output rather than looking at images directly.
+  // persisted output rather than looking at images directly. Deterministic
+  // findings (accessibility, cross-component consistency) run independently
+  // of the AI call's success and are merged into one combined array, so a
+  // single persistGapDetectionFindings call reconciles all sources against
+  // existing issues without racing or double-counting — see lib/decisions.ts.
+  const combinedFindings: NewIssueFinding[] = [];
+
+  try {
+    const instances = await db.componentInstance.findMany({
+      where: { component: { handoffId } },
+      include: { component: true, screen: true },
+    });
+
+    combinedFindings.push(
+      ...checkTouchTargets(
+        instances.map((instance) => ({
+          componentName: instance.component.name,
+          componentType: instance.component.type,
+          screenName: instance.screen.name,
+          dimensions: instance.dimensions as { width: number; height: number } | null,
+        })),
+      ),
+    );
+
+    // Only counts as a real contribution to the run if there was actual
+    // data to check — a trivial "success" against zero component instances
+    // (e.g. because stage 1 itself failed on every screen) must not mask a
+    // run where nothing meaningful happened, or a total-failure run would
+    // wrongly read as PartiallyCompleted instead of Failed.
+    if (instances.length > 0) {
+      anySuccess = true;
+    }
+  } catch (error) {
+    recordFailure(failures, analysisRunId, 'accessibility_touch_targets', handoffId, error);
+  }
+
+  try {
+    // Own query (rather than reusing stage 1's fetch above) so a sampling
+    // failure here can't take down the unrelated touch-target check — each
+    // deterministic check in this block is independent, matching the
+    // pattern the consistency check below also follows.
+    const instances = await db.componentInstance.findMany({
+      where: { component: { handoffId }, screen: { asset: { processingStatus: 'Processed' } } },
+      include: { component: true, screen: { include: { asset: true } } },
+    });
+
+    const instancesByScreen = new Map<string, typeof instances>();
+    for (const instance of instances) {
+      const list = instancesByScreen.get(instance.screenId) ?? [];
+      list.push(instance);
+      instancesByScreen.set(instance.screenId, list);
+    }
+
+    for (const screenInstances of instancesByScreen.values()) {
+      const [first] = screenInstances;
+      if (!first) continue;
+
+      // Decoded once per screen and reused across every component region on
+      // it, rather than re-fetching/re-decoding per component instance.
+      const imageBuffer = await getObjectBytes(first.screen.asset.storageReference);
+
+      const contrastInputs = screenInstances.flatMap((instance) => {
+        const region = instance.dimensions as { x: number; y: number; width: number; height: number } | null;
+        return region
+          ? [
+              {
+                componentName: instance.component.name,
+                componentType: instance.component.type,
+                screenName: instance.screen.name,
+                region,
+                imageBuffer,
+              },
+            ]
+          : [];
+      });
+
+      combinedFindings.push(...(await checkContrast(contrastInputs)));
+    }
+
+    if (instances.length > 0) {
+      anySuccess = true;
+    }
+  } catch (error) {
+    recordFailure(failures, analysisRunId, 'accessibility_contrast', handoffId, error);
+  }
+
+  try {
+    // Excludes Rejected specs — a designer has already said that value is
+    // wrong, so it shouldn't anchor or pollute a majority comparison.
+    const specifications = await db.specification.findMany({
+      where: { component: { handoffId }, reviewStatus: { not: 'Rejected' } },
+      include: { component: true },
+    });
+
+    const componentSpecs = specifications.flatMap((spec) =>
+      spec.component
+        ? [
+            {
+              componentName: spec.component.name,
+              category: spec.category,
+              property: spec.property,
+              value: spec.value,
+              unit: spec.unit,
+            },
+          ]
+        : [],
+    );
+
+    combinedFindings.push(...detectConsistencyOutliers(componentSpecs));
+
+    if (specifications.length > 0) {
+      anySuccess = true;
+    }
+  } catch (error) {
+    recordFailure(failures, analysisRunId, 'consistency_check', handoffId, error);
+  }
+
   try {
     const summary = await buildHandoffSummary(handoffId);
 
@@ -237,18 +356,23 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
       userPrompt: summary,
     });
 
-    if (result.issues.length > 0) {
-      // Reconciles against existing issues rather than persisting
-      // unconditionally — this stage re-runs on every AnalysisRun, and a
-      // naive createMany here would duplicate still-open issues and, worse,
-      // silently resurrect ones the designer already Resolved/Dismissed.
-      // See lib/decisions.ts.
-      const { createdCount, conflictCount } = await persistGapDetectionFindings(handoffId, result.issues);
-      logger.info('pipeline.gap_detection_reconciled', { analysisRunId, createdCount, conflictCount });
-    }
+    combinedFindings.push(...result.issues);
     anySuccess = true;
   } catch (error) {
     recordFailure(failures, analysisRunId, 'gap_detection', handoffId, error);
+  }
+
+  if (combinedFindings.length > 0) {
+    // Reconciles against existing issues rather than persisting
+    // unconditionally — this stage re-runs on every AnalysisRun, and a
+    // naive createMany here would duplicate still-open issues and, worse,
+    // silently resurrect ones the designer already Resolved/Dismissed.
+    const { createdCount, reaffirmedCount, conflictCount } = await persistGapDetectionFindings(
+      handoffId,
+      analysisRunId,
+      combinedFindings,
+    );
+    logger.info('pipeline.gap_detection_reconciled', { analysisRunId, createdCount, reaffirmedCount, conflictCount });
   }
 
   const finalStatus = !anySuccess ? 'Failed' : failures.length > 0 ? 'PartiallyCompleted' : 'Completed';
@@ -259,6 +383,7 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
       status: finalStatus,
       completedAt: new Date(),
       errorCode: failures.length > 0 ? summarizeFailures(failures) : null,
+      modelIdentifier: currentModelIdentifierSummary(),
     },
   });
 
@@ -267,10 +392,18 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
   await db.handoff.update({
     where: { id: handoffId },
     data: {
-      status: 'NeedsReview',
+      status: deriveHandoffStatus('Analyzing', readiness.hasUnresolvedCritical),
       readinessScore: readiness.overall,
       readinessAlgorithmVersion: readiness.version,
     },
+  });
+
+  // Snapshotted here (not derived later) since Handoff.readinessScore is
+  // overwritten on every run — this is the only record of what readiness
+  // looked like specifically after this run. See lib/insights.ts's trend.
+  await db.analysisRun.update({
+    where: { id: analysisRunId },
+    data: { readinessSnapshot: readiness },
   });
 
   logger.info('pipeline.run_finished', {
@@ -278,6 +411,18 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
     status: finalStatus,
     failureCount: failures.length,
   });
+
+  // Non-blocking: a Redis hiccup here must never fail an otherwise-
+  // successful analysis run. Dispatch happens off the request path in
+  // workers/notification-worker.ts — see lib/notification-queue.ts.
+  try {
+    await enqueueNotification({ kind: 'analysis-run-finished', analysisRunId });
+  } catch (error) {
+    logger.error('pipeline.notification_enqueue_failed', {
+      analysisRunId,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
 }
 
 async function loadImage(storageKey: string, mediaType: string): Promise<ImageInput> {

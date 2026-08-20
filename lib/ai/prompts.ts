@@ -26,7 +26,9 @@ Identify meaningful UI components on this screen: navigation, cards, forms, butt
 
 export const SPECIFICATION_SYSTEM_PROMPT = `${SHARED_PREFIX}
 
-Extract measurable specifications for the single named component on this screen: spacing, typography, color, dimensions, border, radius, and shadow. Report only properties you can actually estimate from the image. Use "Detected" for values you can measure directly, "Inferred" for values that are visually apparent but approximate.`;
+Extract measurable specifications for the single named component on this screen: spacing, typography, color, dimensions, border, radius, and shadow. Report only properties you can actually estimate from the image. Use "Detected" for values you can measure directly, "Inferred" for values that are visually apparent but approximate.
+
+Use a short, canonical property name per category so the same property extracted from different components is comparable across the handoff — prefer these exact names when they apply: "padding" or "gap" (Spacing); "font-size", "font-weight", or "line-height" (Typography); "background-color", "text-color", or "border-color" (Color); "width" or "height" (Dimensions); "border-width" (Border); "corner-radius" (Radius); "elevation" (Shadow). Only use a different name when none of these fit the property you're reporting.`;
 
 export const STATE_ANALYSIS_SYSTEM_PROMPT = `${SHARED_PREFIX}
 

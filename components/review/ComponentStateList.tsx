@@ -1,4 +1,6 @@
+import { FindingPinLink } from '@/components/handoff/FindingPinLink';
 import { DecisionControls } from '@/components/review/DecisionControls';
+import { ImplementedIndicator } from '@/components/ui/ImplementedIndicator';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import type { ComponentStateName, ProvenanceType, ReviewStatus } from '@/lib/types';
@@ -9,13 +11,17 @@ export type ComponentStateItem = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  implemented: boolean;
 };
 
 type ComponentStateListProps = {
   states: ComponentStateItem[];
+  /** Every state shares its parent Component's one pin — see lib/screenPins.ts. */
+  pinScreenId?: string | null;
+  pinKey?: `component:${string}`;
 };
 
-export function ComponentStateList({ states }: ComponentStateListProps) {
+export function ComponentStateList({ states, pinScreenId, pinKey }: ComponentStateListProps) {
   if (states.length === 0) {
     return <p className="text-[--color-text-muted]">No states reported.</p>;
   }
@@ -29,6 +35,8 @@ export function ComponentStateList({ states }: ComponentStateListProps) {
             <span className="text-[--color-text-secondary]">{state.description}</span>
             <ProvenanceBadge provenance={state.provenance} />
             <ReviewStatusBadge status={state.reviewStatus} />
+            {state.implemented && <ImplementedIndicator />}
+            {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
           </div>
           <DecisionControls
             findingType="ComponentState"

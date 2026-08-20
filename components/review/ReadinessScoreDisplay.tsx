@@ -7,6 +7,8 @@ type ReadinessScoreDisplayProps = {
   hasUnresolvedCritical: boolean;
   unresolvedCriticalCount: number;
   algorithmVersion: number;
+  /** The single highest-impact issue to resolve next — see lib/readiness.ts's rankNextBestActions. */
+  topAction?: { issueId: string; projectedOverall: number; delta: number } | null;
   className?: string;
 };
 
@@ -22,6 +24,7 @@ export function ReadinessScoreDisplay({
   hasUnresolvedCritical,
   unresolvedCriticalCount,
   algorithmVersion,
+  topAction,
   className,
 }: ReadinessScoreDisplayProps) {
   const state = hasUnresolvedCritical ? 'blocked' : score === 100 ? 'ready' : 'in-review';
@@ -33,6 +36,12 @@ export function ReadinessScoreDisplay({
         ? 'text-[--color-success]'
         : 'text-[--color-text-secondary]';
 
+  // The number itself stays high-contrast for the common "in-review" case
+  // (a wash of muted gray would undersell the page's single most important
+  // metric) — only tinted when the state is genuinely alarming or
+  // rewarding. The label text still always carries the full state color.
+  const scoreColorClass = state === 'in-review' ? 'text-[--color-text-primary]' : colorClass;
+
   const Icon = state === 'blocked' ? AlertOctagon : state === 'ready' ? CheckCircle2 : Clock;
 
   const label =
@@ -43,15 +52,31 @@ export function ReadinessScoreDisplay({
         : 'Needs review';
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <span className="font-mono text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]">
-        {score}%
-      </span>
-      <span className={cn('flex items-center gap-1.5', colorClass)}>
-        <Icon aria-hidden="true" size={16} />
-        {label}
-      </span>
-      <span className="text-[--color-text-muted]">(v{algorithmVersion})</span>
+    <div className={cn('flex flex-col gap-1', className)}>
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'font-mono text-[length:var(--font-desktop-heading-1-bold-size)] font-bold',
+            scoreColorClass,
+          )}
+        >
+          {score}%
+        </span>
+        <span className={cn('flex items-center gap-1.5', colorClass)}>
+          <Icon aria-hidden="true" size={16} />
+          {label}
+        </span>
+        <span className="text-[--color-text-muted]">(v{algorithmVersion})</span>
+      </div>
+      {/* delta 0 is a legitimate outcome (a category can already be floored
+          by other issues) — only show the link when resolving the top issue
+          genuinely moves the number, never implying "nothing else matters"
+          about the hard gate. */}
+      {topAction && topAction.delta > 0 && (
+        <a href={`#issue-${topAction.issueId}`} className="text-[--color-primary] underline">
+          Resolving the top issue would raise this to {topAction.projectedOverall}%
+        </a>
+      )}
     </div>
   );
 }

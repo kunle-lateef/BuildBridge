@@ -1,3 +1,5 @@
+import { FindingPinLink } from '@/components/handoff/FindingPinLink';
+import { ImplementationMarkButton } from '@/components/handoff/ImplementationMarkButton';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import type { ComponentStateName, ProvenanceType, ReviewStatus } from '@/lib/types';
@@ -8,10 +10,12 @@ type ComponentState = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
+  implemented: boolean;
 };
 
 type StatesSectionProps = {
-  components: { id: string; name: string; states: ComponentState[] }[];
+  shareToken?: string;
+  components: { id: string; name: string; states: ComponentState[]; pinScreenId?: string | null }[];
 };
 
 // Content/lifecycle states, as opposed to InteractionsSection.tsx's
@@ -19,7 +23,7 @@ type StatesSectionProps = {
 // behind this split.
 const CONTENT_STATE_NAMES: ComponentStateName[] = ['Default', 'Empty', 'Error'];
 
-export function StatesSection({ components }: StatesSectionProps) {
+export function StatesSection({ shareToken, components }: StatesSectionProps) {
   const rows = components
     .map((component) => ({
       ...component,
@@ -40,11 +44,22 @@ export function StatesSection({ components }: StatesSectionProps) {
         <div key={component.id} className="flex flex-col gap-1.5">
           <h3 className="text-[--color-text-secondary]">{component.name}</h3>
           {component.states.map((state) => (
-            <div key={state.id} className="flex items-center gap-2 border-b border-[--color-border] py-2 last:border-b-0">
-              <span className="min-w-[8rem] text-[--color-text-body]">{state.name}</span>
-              <span className="text-[--color-text-secondary]">{state.description}</span>
-              <ProvenanceBadge provenance={state.provenance} />
-              <ReviewStatusBadge status={state.reviewStatus} />
+            <div key={state.id} className="flex flex-col gap-1 border-b border-[--color-border] py-2 last:border-b-0">
+              <div className="flex items-center gap-2">
+                <span className="min-w-[8rem] text-[--color-text-body]">{state.name}</span>
+                <span className="text-[--color-text-secondary]">{state.description}</span>
+                <ProvenanceBadge provenance={state.provenance} />
+                <ReviewStatusBadge status={state.reviewStatus} />
+                {component.pinScreenId && (
+                  <FindingPinLink screenId={component.pinScreenId} pinKey={`component:${component.id}`} />
+                )}
+              </div>
+              <ImplementationMarkButton
+                shareToken={shareToken}
+                findingType="ComponentState"
+                findingReference={state.id}
+                initialImplemented={state.implemented}
+              />
             </div>
           ))}
         </div>

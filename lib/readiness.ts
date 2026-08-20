@@ -1,6 +1,30 @@
-import type { IssueSeverity, IssueStatus, ReadinessCategory } from '@prisma/client';
+import type { HandoffStatus, IssueSeverity, IssueStatus, ReadinessCategory } from '@prisma/client';
 
 import { db } from '@/lib/db';
+
+// Analyzing/NeedsReview/Ready are the three statuses readiness recomputation
+// is allowed to move a handoff between — Draft (no analysis yet), Shared,
+// and Archived are left untouched, since re-analysis or a designer decision
+// on an already-shared handoff shouldn't silently pull its status backward.
+const REVIEW_DRIVEN_STATUSES: HandoffStatus[] = ['Analyzing', 'NeedsReview', 'Ready'];
+
+/**
+ * Derives Handoff.status from the readiness hard-gate per PRD Section 5.1's
+ * flow ("9. When acceptable → status → Ready") and 7.3's gate. Applied
+ * wherever readiness is recomputed (lib/ai/pipeline.ts on analysis
+ * completion, recordDesignerDecision on every decision) so Ready is a real,
+ * reachable state rather than a status value nothing ever sets.
+ */
+export function deriveHandoffStatus(
+  currentStatus: HandoffStatus,
+  hasUnresolvedCritical: boolean,
+): HandoffStatus {
+  if (!REVIEW_DRIVEN_STATUSES.includes(currentStatus)) {
+    return currentStatus;
+  }
+
+  return hasUnresolvedCritical ? 'NeedsReview' : 'Ready';
+}
 
 /**
  * Bump this whenever the formula below changes. Handoff.readinessAlgorithmVersion
@@ -10,7 +34,7 @@ import { db } from '@/lib/db';
  */
 export const READINESS_ALGORITHM_VERSION = 1;
 
-const CATEGORIES: ReadinessCategory[] = [
+export const READINESS_CATEGORIES: ReadinessCategory[] = [
   'VisualSpecifications',
   'Components',
   'ResponsiveBehavior',
@@ -55,7 +79,7 @@ type ReadinessInputIssue = {
  * ReadinessScore component spec).
  */
 export function calculateReadiness(issues: ReadinessInputIssue[]): ReadinessResult {
-  const categories = Object.fromEntries(CATEGORIES.map((category) => [category, 100])) as Record<
+  const categories = Object.fromEntries(READINESS_CATEGORIES.map((category) => [category, 100])) as Record<
     ReadinessCategory,
     number
   >;
@@ -78,10 +102,51 @@ export function calculateReadiness(issues: ReadinessInputIssue[]): ReadinessResu
   }
 
   const overall = Math.round(
-    CATEGORIES.reduce((sum, category) => sum + categories[category], 0) / CATEGORIES.length,
+    READINESS_CATEGORIES.reduce((sum, category) => sum + categories[category], 0) / READINESS_CATEGORIES.length,
   );
 
   return { version: READINESS_ALGORITHM_VERSION, overall, hasUnresolvedCritical, categories };
+}
+
+export type NextBestAction = {
+  issueId: string;
+  projectedOverall: number;
+  delta: number;
+  resolvesHardGate: boolean;
+};
+
+/**
+ * Ranks each still-open issue by how much resolving *just that one* would
+ * raise the overall score — "resolving this would take you from 62% to
+ * 79%." Simulates each issue individually against calculateReadiness rather
+ * than mutating shared state, so results are independent of iteration
+ * order. Category scores floor at 0, so a category already dragged to 0 by
+ * two Criticals can show delta 0 for resolving just one of them — that's
+ * correct, not a bug. Callers must never read delta 0 as "safe to ignore":
+ * `resolvesHardGate` is the actual signal for whether this issue is a real
+ * blocker, independent of how much the numeric delta happens to be.
+ */
+export function rankNextBestActions(
+  issues: (ReadinessInputIssue & { id: string })[],
+): NextBestAction[] {
+  const baseline = calculateReadiness(issues);
+  const openIssues = issues.filter((issue) => issue.status === 'Open' || issue.status === 'InReview');
+
+  return openIssues
+    .map((issue) => {
+      const hypothetical = issues.map((candidate) =>
+        candidate.id === issue.id ? { ...candidate, status: 'Resolved' as IssueStatus } : candidate,
+      );
+      const projected = calculateReadiness(hypothetical);
+
+      return {
+        issueId: issue.id,
+        projectedOverall: projected.overall,
+        delta: projected.overall - baseline.overall,
+        resolvesHardGate: baseline.hasUnresolvedCritical && !projected.hasUnresolvedCritical,
+      };
+    })
+    .sort((a, b) => b.delta - a.delta);
 }
 
 export async function computeReadiness(handoffId: string): Promise<ReadinessResult> {
@@ -91,4 +156,29 @@ export async function computeReadiness(handoffId: string): Promise<ReadinessResu
   });
 
   return calculateReadiness(issues);
+}
+
+/**
+ * Recomputes readiness and re-caches it on the Handoff, deriving status via
+ * deriveHandoffStatus — the one shared path every caller that changes a
+ * finding's status must go through, so recordDesignerDecision and
+ * bulkRecordDecision (app/(dashboard)/handoffs/[handoffId]/actions.ts) can't
+ * drift from each other.
+ */
+export async function recomputeHandoffReadiness(
+  handoffId: string,
+  currentStatus: HandoffStatus,
+): Promise<ReadinessResult> {
+  const readiness = await computeReadiness(handoffId);
+
+  await db.handoff.update({
+    where: { id: handoffId },
+    data: {
+      status: deriveHandoffStatus(currentStatus, readiness.hasUnresolvedCritical),
+      readinessScore: readiness.overall,
+      readinessAlgorithmVersion: readiness.version,
+    },
+  });
+
+  return readiness;
 }

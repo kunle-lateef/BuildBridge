@@ -3,6 +3,9 @@
 import { AlertCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/cn';
 
 type ChatMessage = {
@@ -80,7 +83,7 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-3 rounded-[--radius-lg] border border-[--color-border] p-4', className)}>
+    <Card className={cn('flex flex-col gap-3', className)}>
       <p className="text-[--color-text-muted]">
         Ask about this handoff&apos;s confirmed data. Scoped to this handoff only.
       </p>
@@ -110,27 +113,21 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
         </p>
       )}
 
-      <form onSubmit={(event) => void sendMessage(event)} className="flex gap-2">
-        <label htmlFor="assistant-input" className="sr-only">
-          Ask the assistant
-        </label>
-        <input
+      <form onSubmit={(event) => void sendMessage(event)} className="flex items-end gap-2">
+        <Input
           id="assistant-input"
+          label="Ask the assistant"
+          hideLabel
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="What happens to the sidebar on mobile?"
           disabled={isStreaming}
-          className="flex-1 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
+          className="flex-1"
         />
-        <button
-          type="submit"
-          disabled={isStreaming || !input.trim()}
-          aria-label="Send message"
-          className="rounded-[--radius-md] bg-[--color-primary] px-3 py-2 text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-50"
-        >
+        <Button type="submit" disabled={isStreaming || !input.trim()} aria-label="Send message">
           <Send aria-hidden="true" size={16} />
-        </button>
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }
