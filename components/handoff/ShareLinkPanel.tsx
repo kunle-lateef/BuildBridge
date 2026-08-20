@@ -2,13 +2,15 @@
 
 import { AlertCircle, Check, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useState } from 'react';
+import { useState } from 'react';
 
 import {
   createShareLink,
   revokeShareLink,
 } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
-import type { ActionResult } from '@/lib/types';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export type ShareLinkItem = {
   id: string;
@@ -22,23 +24,42 @@ type ShareLinkPanelProps = {
   shareLinks: ShareLinkItem[];
 };
 
-type CreateResult = ActionResult<{ shareLinkId: string; rawToken: string; expiresAt: string | null }> | null;
-
 export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
   const router = useRouter();
-  const [createState, createFormAction, isCreating] = useActionState<CreateResult>(
-    async (_prevState: CreateResult) => createShareLink({ handoffId }),
-    null,
-  );
+  const { toast } = useToast();
+  const [isCreateConfirmOpen, setIsCreateConfirmOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
 
-  const shareUrl =
-    createState?.ok && typeof window !== 'undefined'
-      ? `${window.location.origin}/share/${createState.data.rawToken}`
-      : null;
+  async function confirmCreate() {
+    setIsCreating(true);
+    setCreateError(null);
 
-  async function handleRevoke(shareLinkId: string) {
-    await revokeShareLink(shareLinkId);
+    const result = await createShareLink({ handoffId });
+
+    setIsCreating(false);
+    setIsCreateConfirmOpen(false);
+
+    if (!result.ok) {
+      setCreateError(result.error.message);
+      return;
+    }
+
+    setShareUrl(`${window.location.origin}/share/${result.data.rawToken}`);
+    router.refresh();
+  }
+
+  async function confirmRevoke() {
+    if (!revokeTarget) return;
+    setIsRevoking(true);
+    await revokeShareLink(revokeTarget);
+    setIsRevoking(false);
+    setRevokeTarget(null);
+    toast('Share link revoked.');
     router.refresh();
   }
 
@@ -51,20 +72,22 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <form action={createFormAction}>
-        <button
-          type="submit"
-          disabled={isCreating}
-          className="rounded-[--radius-md] bg-[--gradient-primary] px-4 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:opacity-60"
-        >
+      <div className="flex items-center gap-3">
+        <Button type="button" variant="cta" disabled={isCreating} onClick={() => setIsCreateConfirmOpen(true)}>
           {isCreating ? 'Creating…' : 'Share Handoff'}
-        </button>
-      </form>
+        </Button>
+        <a
+          href={`/api/handoffs/${handoffId}/export`}
+          className="text-[--color-primary] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+        >
+          Download as Markdown
+        </a>
+      </div>
 
-      {createState && !createState.ok && (
+      {createError && (
         <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={16} />
-          {createState.error.message}
+          {createError}
         </p>
       )}
 
@@ -77,14 +100,15 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
             <code className="flex-1 overflow-x-auto rounded-[--radius-sm] bg-[--color-background] px-2 py-1 font-mono text-[--color-text-body]">
               {shareUrl}
             </code>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => void copyLink()}
               aria-label="Copy share link"
-              className="rounded-[--radius-sm] border border-[--color-border] p-1.5 hover:bg-[--color-surface] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
             >
               {copied ? <Check aria-hidden="true" size={14} /> : <Copy aria-hidden="true" size={14} />}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -101,18 +125,35 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
                 {link.expiresAt && ` — expires ${new Date(link.expiresAt).toLocaleDateString()}`}
               </span>
               {link.status === 'Active' && (
-                <button
-                  type="button"
-                  onClick={() => void handleRevoke(link.id)}
-                  className="rounded-[--radius-sm] border border-[--color-border] px-2 py-1 text-[--color-text-body] hover:bg-[--color-surface] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-                >
+                <Button type="button" variant="secondary" size="sm" onClick={() => setRevokeTarget(link.id)}>
                   Revoke
-                </button>
+                </Button>
               )}
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={isCreateConfirmOpen}
+        onClose={() => setIsCreateConfirmOpen(false)}
+        onConfirm={() => void confirmCreate()}
+        title="Share this handoff?"
+        description="Anyone with the link can view the confirmed specs, components, and states — no BuildBridge account required. You can revoke it any time."
+        confirmLabel="Share"
+        isConfirming={isCreating}
+      />
+
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={() => void confirmRevoke()}
+        title="Revoke this share link?"
+        description="Anyone with this link will immediately lose access. This can't be undone — you can create a new link afterward."
+        confirmLabel="Revoke"
+        variant="danger"
+        isConfirming={isRevoking}
+      />
     </div>
   );
 }

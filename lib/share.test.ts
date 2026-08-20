@@ -8,6 +8,9 @@ const mockDb = {
   responsiveRule: { findMany: vi.fn() },
   handoffIssue: { findMany: vi.fn() },
   designerNote: { findMany: vi.fn() },
+  screenFlow: { findMany: vi.fn() },
+  analysisRunFinding: { findMany: vi.fn() },
+  implementationMark: { findMany: vi.fn() },
 };
 
 vi.mock('@/lib/db', () => ({ db: mockDb }));
@@ -113,6 +116,8 @@ describe('buildDeveloperProjection — never leaks designer-only data', () => {
         description: 'Primary CTA',
         provenance: 'Detected',
         reviewStatus: 'Confirmed',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        instances: [],
         specifications: [
           {
             id: 'spec-1',
@@ -154,6 +159,9 @@ describe('buildDeveloperProjection — never leaks designer-only data', () => {
     mockDb.designerNote.findMany.mockResolvedValue([
       { id: 'note-1', handoffId: 'handoff-1', content: 'Use existing button component', createdBy: 'user-secret-owner-id' },
     ]);
+    mockDb.screenFlow.findMany.mockResolvedValue([]);
+    mockDb.analysisRunFinding.findMany.mockResolvedValue([]);
+    mockDb.implementationMark.findMany.mockResolvedValue([]);
 
     const projection = await buildDeveloperProjection('handoff-1');
 
@@ -163,5 +171,80 @@ describe('buildDeveloperProjection — never leaks designer-only data', () => {
     expect(serialized).not.toContain('user-secret-owner-id');
     expect(serialized).not.toContain('createdBy');
     expect(serialized).not.toContain('handoffId');
+  });
+
+  it('queries recentUpdates for Created-kind findings only, and maps them to a public-safe shape', async () => {
+    mockDb.handoff.findUniqueOrThrow.mockResolvedValue({
+      name: 'Checkout redesign',
+      description: null,
+      readinessScore: 87,
+      readinessAlgorithmVersion: 1,
+    });
+    mockDb.screen.findMany.mockResolvedValue([]);
+    mockDb.component.findMany.mockResolvedValue([]);
+    mockDb.responsiveRule.findMany.mockResolvedValue([]);
+    mockDb.handoffIssue.findMany.mockResolvedValue([]);
+    mockDb.designerNote.findMany.mockResolvedValue([]);
+    mockDb.screenFlow.findMany.mockResolvedValue([]);
+    mockDb.analysisRunFinding.findMany.mockResolvedValue([
+      {
+        createdAt: new Date('2026-08-15T00:00:00Z'),
+        handoffIssue: { title: 'Missing empty state', category: 'InteractionStates' },
+      },
+    ]);
+    mockDb.implementationMark.findMany.mockResolvedValue([]);
+
+    const projection = await buildDeveloperProjection('handoff-1');
+
+    expect(mockDb.analysisRunFinding.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { kind: 'Created', analysisRun: { handoffId: 'handoff-1' } } }),
+    );
+    expect(projection.recentUpdates).toEqual([
+      { title: 'Missing empty state', category: 'InteractionStates', createdAt: '2026-08-15T00:00:00.000Z' },
+    ]);
+  });
+
+  it('marks a component/spec/state/rule as implemented only when a matching ImplementationMark row exists, by (findingType, findingReference)', async () => {
+    mockDb.handoff.findUniqueOrThrow.mockResolvedValue({
+      name: 'Checkout redesign',
+      description: null,
+      readinessScore: 87,
+      readinessAlgorithmVersion: 1,
+    });
+    mockDb.screen.findMany.mockResolvedValue([]);
+    mockDb.component.findMany.mockResolvedValue([
+      {
+        id: 'component-1',
+        name: 'Primary Button',
+        type: 'button',
+        description: null,
+        provenance: 'Detected',
+        reviewStatus: 'Confirmed',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        instances: [],
+        specifications: [
+          { id: 'spec-1', category: 'Dimensions', property: 'height', value: '48', unit: 'px', provenance: 'Detected', reviewStatus: 'Unreviewed' },
+          { id: 'spec-2', category: 'Dimensions', property: 'width', value: '120', unit: 'px', provenance: 'Detected', reviewStatus: 'Unreviewed' },
+        ],
+        states: [],
+      },
+    ]);
+    mockDb.responsiveRule.findMany.mockResolvedValue([]);
+    mockDb.handoffIssue.findMany.mockResolvedValue([]);
+    mockDb.designerNote.findMany.mockResolvedValue([]);
+    mockDb.screenFlow.findMany.mockResolvedValue([]);
+    mockDb.analysisRunFinding.findMany.mockResolvedValue([]);
+    // Marks component-1 and spec-1, but not spec-2 — confirms the flag is
+    // set per individual finding, not blanket-true for the whole handoff.
+    mockDb.implementationMark.findMany.mockResolvedValue([
+      { findingType: 'Component', findingReference: 'component-1' },
+      { findingType: 'Specification', findingReference: 'spec-1' },
+    ]);
+
+    const projection = await buildDeveloperProjection('handoff-1');
+
+    expect(projection.components[0]?.implemented).toBe(true);
+    expect(projection.components[0]?.specifications[0]?.implemented).toBe(true);
+    expect(projection.components[0]?.specifications[1]?.implemented).toBe(false);
   });
 });

@@ -3,14 +3,19 @@ import { notFound } from 'next/navigation';
 
 
 import { ComponentsSection } from '@/components/handoff/ComponentsSection';
+import { DeveloperFlagForm } from '@/components/handoff/DeveloperFlagForm';
 import { EdgeCasesSection } from '@/components/handoff/EdgeCasesSection';
 import { ImplementationNotesSection } from '@/components/handoff/ImplementationNotesSection';
 import { InteractionsSection } from '@/components/handoff/InteractionsSection';
 import { OverviewSection } from '@/components/handoff/OverviewSection';
+import { RecentUpdatesSection } from '@/components/handoff/RecentUpdatesSection';
 import { ResponsiveSection } from '@/components/handoff/ResponsiveSection';
+import { ScreenFlowsSection } from '@/components/handoff/ScreenFlowsSection';
+import { ScreenPinProvider } from '@/components/handoff/ScreenPinProvider';
 import { ScreensSection } from '@/components/handoff/ScreensSection';
 import { SpecificationsSection } from '@/components/handoff/SpecificationsSection';
 import { StatesSection } from '@/components/handoff/StatesSection';
+import { WhatsChangedBanner } from '@/components/handoff/WhatsChangedBanner';
 import { db } from '@/lib/db';
 import { buildDeveloperProjection, resolveShareLink } from '@/lib/share';
 import { shareTokenSchema } from '@/lib/validators/share';
@@ -66,24 +71,42 @@ export default async function SharePage({ params }: SharePageProps) {
   const unresolvedCriticalCount = projection.issues.filter(
     (issue) => issue.severity === 'Critical' && (issue.status === 'Open' || issue.status === 'InReview'),
   ).length;
+  const openIssueCount = projection.issues.filter(
+    (issue) => issue.status === 'Open' || issue.status === 'InReview',
+  ).length;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-12">
-      <OverviewSection
-        name={projection.name}
-        description={projection.description}
-        readinessScore={projection.readinessScore}
-        readinessAlgorithmVersion={projection.readinessAlgorithmVersion}
-        unresolvedCriticalCount={unresolvedCriticalCount}
-      />
-      <ScreensSection screens={projection.screens} />
-      <ComponentsSection components={projection.components} />
-      <SpecificationsSection components={projection.components} />
-      <InteractionsSection components={projection.components} />
-      <ResponsiveSection rules={projection.responsiveRules} />
-      <StatesSection components={projection.components} />
-      <EdgeCasesSection issues={projection.issues} />
-      <ImplementationNotesSection notes={projection.notes} />
-    </main>
+    <ScreenPinProvider>
+      <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-12">
+        <a
+          href={`/api/share/${token}/export`}
+          className="self-end text-[--color-primary] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+        >
+          Download as Markdown
+        </a>
+        <WhatsChangedBanner
+          shareToken={token}
+          current={{ readinessScore: projection.readinessScore, issueCount: openIssueCount }}
+        />
+        <OverviewSection
+          name={projection.name}
+          description={projection.description}
+          readinessScore={projection.readinessScore}
+          readinessAlgorithmVersion={projection.readinessAlgorithmVersion}
+          unresolvedCriticalCount={unresolvedCriticalCount}
+        />
+        <ScreensSection screens={projection.screens} />
+        <ScreenFlowsSection flows={projection.screenFlows} />
+        <ComponentsSection shareToken={token} components={projection.components} />
+        <SpecificationsSection shareToken={token} components={projection.components} />
+        <InteractionsSection shareToken={token} components={projection.components} />
+        <ResponsiveSection shareToken={token} rules={projection.responsiveRules} />
+        <StatesSection shareToken={token} components={projection.components} />
+        <EdgeCasesSection issues={projection.issues} />
+        <ImplementationNotesSection notes={projection.notes} />
+        <RecentUpdatesSection updates={projection.recentUpdates} />
+        <DeveloperFlagForm shareToken={token} />
+      </main>
+    </ScreenPinProvider>
   );
 }
