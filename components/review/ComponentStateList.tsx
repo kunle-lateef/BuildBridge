@@ -27,9 +27,9 @@ export function ComponentStateList({ states, pinScreenId, pinKey }: ComponentSta
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       {states.map((state) => (
-        <div key={state.id} className="flex flex-col gap-1.5 border-b border-[--color-border] py-2 last:border-b-0">
+        <div key={state.id} className="flex flex-col gap-2 border-b border-[--color-border] py-3 last:border-b-0">
           <div className="flex items-center gap-2">
             <span className="min-w-[8rem] text-[--color-text-body]">{state.name}</span>
             <span className="text-[--color-text-secondary]">{state.description}</span>

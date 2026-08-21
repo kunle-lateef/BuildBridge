@@ -35,6 +35,7 @@ export function ForgotPasswordForm() {
         autoComplete="email"
         required
         label="Email"
+        placeholder="you@company.com"
         {...fieldProps('email')}
       />
 

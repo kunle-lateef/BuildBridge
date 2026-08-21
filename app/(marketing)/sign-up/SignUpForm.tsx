@@ -29,7 +29,16 @@ export function SignUpForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
-      <Input id="name" name="name" type="text" autoComplete="name" required label="Name" {...fieldProps('name')} />
+      <Input
+        id="name"
+        name="name"
+        type="text"
+        autoComplete="name"
+        required
+        label="Name"
+        placeholder="Jane Doe"
+        {...fieldProps('name')}
+      />
 
       <Input
         id="email"
@@ -38,6 +47,7 @@ export function SignUpForm() {
         autoComplete="email"
         required
         label="Email"
+        placeholder="you@company.com"
         {...fieldProps('email')}
       />
 
@@ -49,6 +59,7 @@ export function SignUpForm() {
         required
         minLength={8}
         label="Password"
+        placeholder="At least 8 characters"
         {...fieldProps('password')}
       />
 
@@ -60,6 +71,7 @@ export function SignUpForm() {
         required
         minLength={8}
         label="Confirm password"
+        placeholder="Re-enter your password"
         {...fieldProps('confirmPassword')}
       />
 

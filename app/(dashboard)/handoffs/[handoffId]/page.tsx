@@ -6,7 +6,6 @@ import {
   MessageSquareWarning,
   Share2,
   Smartphone,
-  Sparkles,
   StickyNote,
   Zap,
 } from 'lucide-react';
@@ -14,9 +13,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArchiveHandoffButton } from '@/components/handoff/ArchiveHandoffButton';
-import { DeleteHandoffButton } from '@/components/handoff/DeleteHandoffButton';
-import { DuplicateHandoffButton } from '@/components/handoff/DuplicateHandoffButton';
+import { HandoffActionsMenu } from '@/components/handoff/HandoffActionsMenu';
+import { HandoffSectionNav } from '@/components/handoff/HandoffSectionNav';
 import { ScreenFlowList } from '@/components/handoff/ScreenFlowList';
 import { ScreenPinProvider } from '@/components/handoff/ScreenPinProvider';
 import { ScreenThumbnail } from '@/components/handoff/ScreenThumbnail';
@@ -28,9 +26,9 @@ import {
   AnalysisProgressPanel,
   type StageProgress,
 } from '@/components/review/AnalysisProgressPanel';
-import { AssistantPanel } from '@/components/review/AssistantPanel';
+import { AskBuildBridgeFab } from '@/components/review/AskBuildBridgeFab';
 import { BulkDecisionBar } from '@/components/review/BulkDecisionBar';
-import { ComponentReviewCard } from '@/components/review/ComponentReviewCard';
+import { ComponentsList } from '@/components/review/ComponentsList';
 import { DesignerNoteThread } from '@/components/review/DesignerNoteThread';
 import { DeveloperFlagPanel, type DeveloperFlagItem } from '@/components/review/DeveloperFlagPanel';
 import { IssuePanel, type HandoffIssueItem } from '@/components/review/IssuePanel';
@@ -258,6 +256,20 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
   });
   const pinKeyFor = (componentId: string) => `component:${componentId}` as const;
 
+  // Mirrors the same conditionals each section below already renders under —
+  // never lists a section the page didn't actually render.
+  const sectionNavItems = [
+    { id: 'screens', label: 'Screens' },
+    processedScreens.length > 0 && { id: 'analysis', label: 'Analysis' },
+    components.length > 0 && { id: 'components', label: 'Components' },
+    responsiveRules.length > 0 && { id: 'responsive', label: 'Responsive' },
+    issues.length > 0 && { id: 'issues', label: 'Issues' },
+    changelogEntries.length > 0 && { id: 'history', label: 'History' },
+    developerFlags.length > 0 && { id: 'developer-feedback', label: 'Developer feedback' },
+    { id: 'notes', label: 'Notes' },
+    components.length > 0 && { id: 'share', label: 'Share' },
+  ].filter((item): item is { id: string; label: string } => Boolean(item));
+
   return (
     <ScreenPinProvider>
       <div className="flex flex-col gap-8">
@@ -277,12 +289,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <HandoffStatusBadge status={handoff.status} />
-            <ArchiveHandoffButton
-              handoffId={handoff.id}
-              isArchived={handoff.status === 'Archived'}
-            />
-            <DuplicateHandoffButton handoffId={handoff.id} />
-            <DeleteHandoffButton handoffId={handoff.id} />
+            <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />
           </div>
           {handoff.readinessScore !== null && handoff.readinessAlgorithmVersion !== null && (
             <ReadinessScoreDisplay
@@ -301,7 +308,9 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
           )}
         </div>
 
-        <section className="flex flex-col gap-3">
+        <HandoffSectionNav sections={sectionNavItems} />
+
+        <section id="screens" className="flex flex-col gap-3 scroll-mt-32">
           <h2 className="flex items-center gap-2 text-[--color-text-primary]">
             <ImageIcon aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
             Screens
@@ -336,7 +345,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         </section>
 
         {processedScreens.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="analysis" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <Zap aria-hidden="true" size={18} className="text-[--color-primary]" />
               Analysis
@@ -349,7 +358,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         )}
 
         {components.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="components" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <Boxes aria-hidden="true" size={18} className="text-[--color-detected]" />
               Components
@@ -408,34 +417,31 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                 />
               );
             })}
-            <div className="flex flex-col gap-4">
-              {components.map((component) => (
-                <ComponentReviewCard
-                  key={component.id}
-                  id={component.id}
-                  name={component.name}
-                  type={component.type}
-                  description={component.description}
-                  provenance={component.provenance}
-                  reviewStatus={component.reviewStatus}
-                  implemented={isImplemented('Component', component.id)}
-                  specifications={component.specifications.map((spec) => ({
-                    ...spec,
-                    implemented: isImplemented('Specification', spec.id),
-                  }))}
-                  states={component.states.map((state) => ({
-                    ...state,
-                    implemented: isImplemented('ComponentState', state.id),
-                  }))}
-                  pinScreenId={pinScreenIdByComponentId.get(component.id) ?? null}
-                />
-              ))}
-            </div>
+            <ComponentsList
+              components={components.map((component) => ({
+                id: component.id,
+                name: component.name,
+                type: component.type,
+                description: component.description,
+                provenance: component.provenance,
+                reviewStatus: component.reviewStatus,
+                implemented: isImplemented('Component', component.id),
+                specifications: component.specifications.map((spec) => ({
+                  ...spec,
+                  implemented: isImplemented('Specification', spec.id),
+                })),
+                states: component.states.map((state) => ({
+                  ...state,
+                  implemented: isImplemented('ComponentState', state.id),
+                })),
+                pinScreenId: pinScreenIdByComponentId.get(component.id) ?? null,
+              }))}
+            />
           </section>
         )}
 
         {responsiveRules.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="responsive" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <Smartphone aria-hidden="true" size={18} className="text-[--color-inferred]" />
               Responsive behavior
@@ -470,7 +476,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         )}
 
         {issues.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="issues" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <AlertTriangle aria-hidden="true" size={18} className="text-[--color-warning]" />
               Issues
@@ -490,7 +496,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         )}
 
         {changelogEntries.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="history" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <History aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
               Re-analysis history
@@ -500,7 +506,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         )}
 
         {developerFlags.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="developer-feedback" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <MessageSquareWarning
                 aria-hidden="true"
@@ -523,7 +529,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
           </section>
         )}
 
-        <section className="flex flex-col gap-3">
+        <section id="notes" className="flex flex-col gap-3 scroll-mt-32">
           <h2 className="flex items-center gap-2 text-[--color-text-primary]">
             <StickyNote aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
             Notes
@@ -539,7 +545,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         </section>
 
         {components.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="share" className="flex flex-col gap-3 scroll-mt-32">
             <h2 className="flex items-center gap-2 text-[--color-text-primary]">
               <Share2 aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
               Share
@@ -555,15 +561,8 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
             />
           </section>
         )}
-
-        <section className="flex flex-col gap-3">
-          <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-            <Sparkles aria-hidden="true" size={18} className="text-[--color-ai-suggested]" />
-            Ask BuildBridge
-          </h2>
-          <AssistantPanel handoffId={handoff.id} />
-        </section>
       </div>
+      <AskBuildBridgeFab handoffId={handoff.id} />
     </ScreenPinProvider>
   );
 }

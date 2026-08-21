@@ -15,15 +15,17 @@ export type NotificationItem = {
 type NotificationListProps = {
   notifications: NotificationItem[];
   onItemClick: (id: string) => void;
+  /** The dropdown caps its own height and scrolls internally; a dedicated page has no such constraint. */
+  scrollable?: boolean;
 };
 
-export function NotificationList({ notifications, onItemClick }: NotificationListProps) {
+export function NotificationList({ notifications, onItemClick, scrollable = true }: NotificationListProps) {
   if (notifications.length === 0) {
     return <p className="p-4 text-[--color-text-muted]">No notifications yet.</p>;
   }
 
   return (
-    <ul className="flex max-h-96 flex-col overflow-y-auto">
+    <ul className={scrollable ? 'flex max-h-96 flex-col overflow-y-auto' : 'flex flex-col'}>
       {notifications.map((notification) => {
         const content = (
           <div className="flex flex-col gap-0.5 px-4 py-3">

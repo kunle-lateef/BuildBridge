@@ -30,6 +30,10 @@ type ComponentReviewCardProps = {
   states: ComponentStateItem[];
   /** The screen to open when "show on screen" is clicked — null/undefined when this component has no derivable pin. */
   pinScreenId?: string | null;
+  /** False when the Unreviewed filter has already decided this component — its own row still shows for context, just without a redundant already-answered decision. */
+  showDecisionControls?: boolean;
+  /** True when the Unreviewed filter emptied the states list by filtering, not because the component genuinely has none — "No states reported" would be misleading in that case. */
+  hideEmptyStates?: boolean;
 };
 
 /**
@@ -51,11 +55,13 @@ export function ComponentReviewCard({
   specifications,
   states,
   pinScreenId,
+  showDecisionControls = true,
+  hideEmptyStates = false,
 }: ComponentReviewCardProps) {
   const pinKey = `component:${id}` as const;
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-4">
       <ComponentInstanceCard
         name={name}
         type={type}
@@ -65,10 +71,12 @@ export function ComponentReviewCard({
         actions={pinScreenId ? <FindingPinLink screenId={pinScreenId} pinKey={pinKey} /> : undefined}
       />
       {implemented && <ImplementedIndicator />}
-      <DecisionControls findingType="Component" findingReference={id} currentValue={description ?? ''} />
+      {showDecisionControls && (
+        <DecisionControls findingType="Component" findingReference={id} currentValue={description ?? ''} />
+      )}
 
       {specifications.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <h3 className="text-[--color-text-secondary]">Specifications</h3>
           {specifications.map((spec) => (
             <SpecificationRow key={spec.id} {...spec} pinScreenId={pinScreenId} pinKey={pinKey} />
@@ -76,10 +84,12 @@ export function ComponentReviewCard({
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <h3 className="text-[--color-text-secondary]">States</h3>
-        <ComponentStateList states={states} pinScreenId={pinScreenId} pinKey={pinKey} />
-      </div>
+      {(states.length > 0 || !hideEmptyStates) && (
+        <div className="flex flex-col gap-2 border-t border-[--color-border] pt-4">
+          <h3 className="text-[--color-text-secondary]">States</h3>
+          <ComponentStateList states={states} pinScreenId={pinScreenId} pinKey={pinKey} />
+        </div>
+      )}
     </Card>
   );
 }

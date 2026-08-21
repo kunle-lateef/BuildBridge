@@ -29,8 +29,7 @@ export default async function DriftPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="flex items-center gap-3 text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-          <GitCompare aria-hidden="true" size={26} className="text-[--color-primary]" />
+        <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
           Drift
         </h1>
         <p className="text-[--color-text-secondary]">

@@ -35,7 +35,7 @@ export function SpecificationRow({
   pinKey,
 }: SpecificationRowProps) {
   return (
-    <div className="flex flex-col gap-1.5 border-b border-[--color-border] py-2 last:border-b-0">
+    <div className="flex flex-col gap-2 border-b border-[--color-border] py-3 last:border-b-0">
       <div className="flex items-center gap-2">
         <span className="min-w-[10rem] text-[--color-text-body]">{property}</span>
         <span className="font-mono text-[--color-text-body]">

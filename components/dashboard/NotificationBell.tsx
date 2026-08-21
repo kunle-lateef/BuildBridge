@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -79,6 +80,13 @@ export function NotificationBell({ notifications }: NotificationBellProps) {
             )}
           </div>
           <NotificationList notifications={notifications} onItemClick={(id) => void handleItemClick(id)} />
+          <Link
+            href="/notifications"
+            onClick={() => setIsOpen(false)}
+            className="block border-t border-[--color-border] px-4 py-2.5 text-center text-[--color-primary] hover:bg-[--color-surface] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          >
+            View all notifications
+          </Link>
         </div>
       )}
     </div>

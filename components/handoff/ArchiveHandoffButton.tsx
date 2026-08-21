@@ -11,13 +11,15 @@ import {
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastProvider';
+import { cn } from '@/lib/cn';
 
 type ArchiveHandoffButtonProps = {
   handoffId: string;
   isArchived: boolean;
+  className?: string;
 };
 
-export function ArchiveHandoffButton({ handoffId, isArchived }: ArchiveHandoffButtonProps) {
+export function ArchiveHandoffButton({ handoffId, isArchived, className }: ArchiveHandoffButtonProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
@@ -60,7 +62,7 @@ export function ArchiveHandoffButton({ handoffId, isArchived }: ArchiveHandoffBu
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={cn('flex flex-col gap-1.5', className)}>
       <Button
         type="button"
         variant="secondary"

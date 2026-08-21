@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { HeroBackground } from '@/components/marketing/HeroBackground';
+import { HeroGridLens } from '@/components/marketing/HeroGridLens';
+import { HeroIntro } from '@/components/marketing/HeroIntro';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { ReadinessScoreDisplay } from '@/components/review/ReadinessScoreDisplay';
@@ -43,10 +45,10 @@ const WORKFLOW_STEPS: { title: string; description: string }[] = [
     title: 'Review',
     description: 'Confirm, modify, reject, or override every AI finding — nothing ships without your say.',
   },
-  { title: 'Resolve', description: 'Work through flagged issues until the handoff clears your readiness bar.' },
   {
-    title: 'Readiness',
-    description: 'A readiness score reflects exactly what’s confirmed — never a false green light.',
+    title: 'Resolve',
+    description:
+      'Work through flagged issues until your readiness score clears — it only reflects what’s actually confirmed, never a false green light.',
   },
   {
     title: 'Handoff',
@@ -54,7 +56,11 @@ const WORKFLOW_STEPS: { title: string; description: string }[] = [
   },
 ];
 
-const AUDIENCE_SECTIONS: { title: string; items: { icon: LucideIcon; title: string; description: string }[] }[] = [
+const AUDIENCE_SECTIONS: {
+  title: string;
+  note?: string;
+  items: { icon: LucideIcon; title: string; description: string }[];
+}[] = [
   {
     title: 'For Designers',
     items: [
@@ -77,6 +83,7 @@ const AUDIENCE_SECTIONS: { title: string; items: { icon: LucideIcon; title: stri
   },
   {
     title: 'For Developers',
+    note: 'No account needed — just the link',
     items: [
       {
         icon: FileText,
@@ -164,28 +171,8 @@ export default async function MarketingHomePage() {
 
       <main className="flex flex-1 flex-col">
         <section className="relative isolate overflow-hidden">
-          <HeroBackground />
-          <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6 px-4 py-20 text-center sm:py-28">
-            <span className="rounded-[--radius-full] bg-[--color-primary-light] px-4 py-1.5 text-[length:var(--font-desktop-label-semi-bold-size)] font-semibold text-[--color-primary-dark]">
-              AI-powered design handoff
-            </span>
-            <h1 className="max-w-3xl text-[length:var(--font-mobile-display-semi-bold-size)] font-semibold leading-tight tracking-tight sm:text-[length:var(--font-tablet-display-semi-bold-size)] lg:text-[length:var(--font-desktop-display-xl-semi-bold-size)]">
-              <span className="text-[--color-text-primary]">Handoffs your developers</span>{' '}
-              <span className="text-[--color-primary]">can actually trust.</span>
-            </h1>
-            <p className="max-w-2xl text-[length:var(--font-desktop-heading-4-regular-size)] text-[--color-text-secondary]">
-              BuildBridge reads a finished design and tells you what it detected, what it inferred, and what
-              it&apos;s only suggesting — so a designer can confirm the gaps before a developer ever sees them.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
-              <Link href="/sign-up" className={buttonVariants({ variant: 'primary', size: 'lg' })}>
-                Create account
-              </Link>
-              <Link href="/sign-in" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
-                Sign in
-              </Link>
-            </div>
-          </div>
+          <HeroGridLens />
+          <HeroIntro />
         </section>
 
         <section id="who-its-for" className="scroll-mt-20 border-t border-[--color-border]">
@@ -203,7 +190,15 @@ export default async function MarketingHomePage() {
                 key={audience.title}
                 className="flex flex-col gap-6 rounded-[--radius-lg] bg-[--color-surface] px-4 py-8"
               >
-                <h3 className="font-semibold text-[--color-text-primary]">{audience.title}</h3>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="font-semibold text-[--color-text-primary]">{audience.title}</h3>
+                  {audience.note && (
+                    <span className="inline-flex items-center gap-1.5 rounded-[--radius-full] bg-[--color-success-light] px-3 py-1 text-[--color-success]">
+                      <CheckCircle2 aria-hidden="true" size={14} />
+                      {audience.note}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {audience.items.map((item) => (
                     <Card key={item.title} className="flex flex-col gap-3">
@@ -313,7 +308,7 @@ export default async function MarketingHomePage() {
           </div>
         </section>
 
-        <section id="trust" className="scroll-mt-20 border-t border-[--color-border]">
+        <section id="trust" className="scroll-mt-20 border-t border-[--color-border] bg-[--color-surface]">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-20">
             <div className="flex flex-col gap-3">
               <span className="text-[length:var(--font-desktop-overline-semi-bold-size)] font-semibold uppercase tracking-[1.5px] text-[--color-text-muted]">

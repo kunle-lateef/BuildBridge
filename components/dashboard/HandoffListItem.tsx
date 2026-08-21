@@ -3,6 +3,8 @@ import Link from 'next/link';
 
 import { ArchiveHandoffButton } from '@/components/handoff/ArchiveHandoffButton';
 import { HandoffStatusBadge } from '@/components/ui/HandoffStatusBadge';
+import { formatRelativeTime } from '@/lib/relativeTime';
+import { scoreColorClass } from '@/lib/scoreColor';
 import type { HandoffStatus } from '@/lib/types';
 
 type HandoffListItemProps = {
@@ -34,7 +36,7 @@ export function HandoffListItem({
         <div className="flex flex-col gap-0.5">
           <span className="font-medium text-[--color-text-body] group-hover:text-[--color-primary-dark]">{name}</span>
           <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            Updated {new Date(updatedAt).toLocaleDateString()}
+            Updated {formatRelativeTime(updatedAt)}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -56,11 +58,17 @@ export function HandoffListItem({
               {openFlagCount}
             </span>
           )}
-          {readinessScore !== null && <span className="font-mono text-[--color-text-secondary]">{readinessScore}%</span>}
+          {readinessScore !== null && (
+            <span className={`font-mono ${scoreColorClass(readinessScore)}`}>{readinessScore}%</span>
+          )}
           <HandoffStatusBadge status={status} />
         </div>
       </Link>
-      <ArchiveHandoffButton handoffId={id} isArchived={status === 'Archived'} />
+      <ArchiveHandoffButton
+        handoffId={id}
+        isArchived={status === 'Archived'}
+        className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      />
     </div>
   );
 }

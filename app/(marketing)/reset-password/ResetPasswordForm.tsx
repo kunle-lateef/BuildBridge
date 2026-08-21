@@ -42,6 +42,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         required
         minLength={8}
         label="New password"
+        placeholder="At least 8 characters"
         {...fieldProps('password')}
       />
 
@@ -53,6 +54,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         required
         minLength={8}
         label="Confirm new password"
+        placeholder="Re-enter your password"
         {...fieldProps('confirmPassword')}
       />
 

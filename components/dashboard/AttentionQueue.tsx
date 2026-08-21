@@ -21,15 +21,15 @@ type AttentionQueueProps = {
 export function AttentionQueue({ items }: AttentionQueueProps) {
   if (items.length === 0) {
     return (
-      <Card className="flex items-center gap-2 text-[--color-text-secondary]">
+      <div className="flex items-center gap-2 p-3 text-[--color-text-secondary]">
         <CheckCircle2 aria-hidden="true" size={16} className="text-[--color-success]" />
         Nothing needs your attention right now.
-      </Card>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 p-3">
       {items.map((item) => (
         <Card key={`${item.kind}-${item.id}`} className="flex items-center gap-3 p-3">
           {item.kind === 'CriticalIssue' ? (

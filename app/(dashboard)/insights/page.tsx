@@ -47,10 +47,15 @@ export default async function InsightsPage() {
   if (insights.handoffCount === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="flex items-center gap-3 text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-          <LineChart aria-hidden="true" size={26} className="text-[--color-primary]" />
-          Insights
-        </h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
+            Insights
+          </h1>
+          <p className="text-[--color-text-secondary]">
+            How your readiness score is trending across every handoff, broken down by category so you
+            can see exactly what&apos;s dragging it down.
+          </p>
+        </div>
         <Card className="flex flex-col items-center gap-2 py-12 text-center">
           <LineChart aria-hidden="true" size={32} className="text-[--color-text-muted]" />
           <p className="text-[--color-text-secondary]">Create and analyze a handoff to see readiness trends across your work.</p>
@@ -86,10 +91,15 @@ export default async function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="flex items-center gap-3 text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-        <LineChart aria-hidden="true" size={26} className="text-[--color-primary]" />
-        Insights
-      </h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
+          Insights
+        </h1>
+        <p className="text-[--color-text-secondary]">
+          How your readiness score is trending across every handoff, broken down by category so you
+          can see exactly what&apos;s dragging it down.
+        </p>
+      </div>
 
       <Card className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between">

@@ -36,10 +36,14 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="flex items-center gap-3 text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-        <SettingsIcon aria-hidden="true" size={26} className="text-[--color-primary]" />
-        Settings
-      </h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
+          Settings
+        </h1>
+        <p className="text-[--color-text-secondary]">
+          Manage your profile, notification preferences, and account security.
+        </p>
+      </div>
 
       <SettingsTabs
         tabs={[

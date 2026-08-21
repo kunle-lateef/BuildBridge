@@ -143,16 +143,14 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[--radius-lg] bg-[--color-primary-light]">
-            <Layers aria-hidden="true" size={20} className="text-[--color-primary-dark]" />
-          </span>
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
             Handoffs
           </h1>
+          <CreateHandoffButton />
         </div>
-        <CreateHandoffButton />
+        <p className="text-[--color-text-secondary]">Every handoff you&apos;ve uploaded, reviewed, or shared.</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -194,14 +192,19 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-          <AlertTriangle aria-hidden="true" size={18} className="text-[--color-warning]" />
-          Needs your attention
-        </h2>
-        <AttentionQueue items={attentionItems} />
+        <Card className="flex flex-col overflow-hidden p-0">
+          <h2 className="flex items-center gap-2 border-b border-[--color-border] p-3 text-[--color-text-primary]">
+            <AlertTriangle aria-hidden="true" size={18} className="text-[--color-warning]" />
+            Needs your attention
+          </h2>
+          <AttentionQueue items={attentionItems} />
+        </Card>
       </section>
 
-      <div className="flex flex-col gap-4">
+      <Card className="flex flex-col gap-4">
+        <p className="text-[--color-text-secondary]">
+          {handoffs.length} {handoffs.length === 1 ? 'handoff' : 'handoffs'}
+        </p>
         <HandoffStatusFilter
           currentStatus={statusFilter ?? 'All'}
           currentSort={sort ?? 'updated'}
@@ -224,14 +227,16 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
             }))}
           />
         )}
-      </div>
+      </Card>
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-          <History aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-          Recent activity
-        </h2>
-        <ActivityFeed events={activity} />
+        <Card className="flex flex-col overflow-hidden p-0">
+          <h2 className="flex items-center gap-2 border-b border-[--color-border] p-3 text-[--color-text-primary]">
+            <History aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
+            Recent activity
+          </h2>
+          <ActivityFeed events={activity} />
+        </Card>
       </section>
     </div>
   );

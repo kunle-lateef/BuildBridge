@@ -23,7 +23,12 @@ export function Input({ label, error, labelAction, hideLabel, id, className, typ
   const isPassword = type === 'password';
 
   return (
-    <div className="flex flex-col gap-1.5">
+    // w-full here (not on the inner <input>'s own className) is what makes
+    // this actually stretch in a flex-row context like AssistantPanel's
+    // message-input row — this outer div is the real flex item; a caller
+    // passing className="flex-1" needs it to land here, not on the input
+    // three levels down, or the grow has nothing to act on.
+    <div className={cn('flex w-full flex-col gap-1.5', className)}>
       <div className={cn('flex items-center justify-between', hideLabel && 'sr-only')}>
         <label htmlFor={id} className="text-[--color-text-body]">
           {label}
@@ -40,7 +45,6 @@ export function Input({ label, error, labelAction, hideLabel, id, className, typ
             'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]',
             isPassword && 'pr-10',
             error && 'border-[--color-error]',
-            className,
           )}
           {...props}
         />

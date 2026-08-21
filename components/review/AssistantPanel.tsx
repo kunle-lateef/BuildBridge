@@ -83,37 +83,52 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
   }
 
   return (
-    <Card className={cn('flex flex-col gap-3', className)}>
-      <p className="text-[--color-text-muted]">
-        Ask about this handoff&apos;s confirmed data. Scoped to this handoff only.
-      </p>
-
-      {messages.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                'rounded-[--radius-md] px-3 py-2',
-                message.role === 'User'
-                  ? 'self-end bg-[--color-primary-light] text-[--color-primary-dark]'
-                  : 'self-start bg-[--color-surface] text-[--color-text-body]',
-              )}
-            >
-              {message.content || (isStreaming && message.role === 'Assistant' ? '…' : '')}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
-          <AlertCircle aria-hidden="true" size={14} />
-          {error}
+    <Card className={cn('flex h-full flex-col overflow-hidden', className)}>
+      {/* min-h-0 is required for a flex child to actually shrink and scroll
+          instead of stretching its flex-1 parent — without it this grows to
+          fit every message, and the drawer's own overflow-y-auto is what
+          would scroll instead of just this list. Padded on its own — the
+          form below deliberately isn't, so it can span edge-to-edge. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <p className="shrink-0 text-[--color-text-muted]">
+          Ask about this handoff&apos;s confirmed data. Scoped to this handoff only.
         </p>
-      )}
 
-      <form onSubmit={(event) => void sendMessage(event)} className="flex items-end gap-2">
+        {messages.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={cn(
+                  'rounded-[--radius-md] px-3 py-2',
+                  message.role === 'User'
+                    ? 'self-end bg-[--color-primary-light] text-[--color-primary-dark]'
+                    : 'self-start bg-[--color-surface] text-[--color-text-body]',
+                )}
+              >
+                {message.content || (isStreaming && message.role === 'Assistant' ? '…' : '')}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="flex shrink-0 items-center gap-1.5 text-[--color-error]">
+            <AlertCircle aria-hidden="true" size={14} />
+            {error}
+          </p>
+        )}
+      </div>
+
+      {/* Its own band with generous vertical padding and the same
+          horizontal inset on both sides as the message area above it —
+          previously this shared the message area's p-4 wrapper directly,
+          which squeezed it vertically; now it's independent so the
+          vertical rhythm can differ while the horizontal one still matches. */}
+      <form
+        onSubmit={(event) => void sendMessage(event)}
+        className="flex shrink-0 items-center gap-3 border-t border-[--color-border] px-4 py-5"
+      >
         <Input
           id="assistant-input"
           label="Ask the assistant"

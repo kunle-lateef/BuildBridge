@@ -45,6 +45,7 @@ export function SignInForm() {
         autoComplete="email"
         required
         label="Email"
+        placeholder="you@company.com"
         {...fieldProps('email')}
       />
 
@@ -55,6 +56,7 @@ export function SignInForm() {
         autoComplete="current-password"
         required
         label="Password"
+        placeholder="Your password"
         labelAction={
           <Link href="/forgot-password" className="text-[--color-primary] underline">
             Forgot password?
