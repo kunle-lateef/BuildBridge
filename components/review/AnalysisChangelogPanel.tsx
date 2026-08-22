@@ -69,15 +69,20 @@ function ChangelogGroup({
         {label}
       </h3>
       {refs.map((ref) => (
-        <Card key={ref.issueId} className="flex items-center gap-2 p-2">
+        <Card
+          key={ref.issueId}
+          className="flex flex-col items-start gap-1.5 p-2 sm:flex-row sm:items-center sm:gap-2"
+        >
           <SeverityBadge severity={ref.severity} />
           <a href={`#issue-${ref.issueId}`} className="font-medium text-[--color-text-primary] hover:underline">
             {ref.title}
           </a>
-          <ReviewStatusBadge status={ref.status} />
-          <span className="ml-auto text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            {ref.category}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <ReviewStatusBadge status={ref.status} />
+            <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
+              {ref.category}
+            </span>
+          </div>
         </Card>
       ))}
     </div>
