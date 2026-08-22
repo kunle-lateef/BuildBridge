@@ -159,14 +159,16 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-            Handoffs
-          </h1>
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-x-4 sm:gap-y-1">
+        <h1 className="order-1 sm:order-none sm:col-start-1 sm:row-start-1 text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
+          Handoffs
+        </h1>
+        <p className="order-2 sm:order-none sm:col-start-1 sm:row-start-2 text-[--color-text-secondary]">
+          Every handoff you&apos;ve uploaded, reviewed, or shared.
+        </p>
+        <div className="order-3 sm:order-none mt-3 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:mt-0 sm:self-start">
           <CreateHandoffButton />
         </div>
-        <p className="text-[--color-text-secondary]">Every handoff you&apos;ve uploaded, reviewed, or shared.</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

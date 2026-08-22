@@ -28,7 +28,7 @@ export function HandoffListItem({
   openFlagCount,
 }: HandoffListItemProps) {
   return (
-    <div className="group flex items-center gap-3 rounded-[--radius-md] border border-[--color-border] px-4 py-3 transition-colors hover:border-[--color-primary] hover:bg-[--color-surface]">
+    <div className="group flex flex-col gap-3 rounded-[--radius-md] border border-[--color-border] px-4 py-3 transition-colors hover:border-[--color-primary] hover:bg-[--color-surface] sm:flex-row sm:items-center">
       <Link
         href={`/handoffs/${id}`}
         className="flex flex-1 items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
@@ -67,7 +67,7 @@ export function HandoffListItem({
       <ArchiveHandoffButton
         handoffId={id}
         isArchived={status === 'Archived'}
-        className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+        className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
       />
     </div>
   );
