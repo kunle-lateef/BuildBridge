@@ -18,11 +18,10 @@ import { HeroIntro } from '@/components/marketing/HeroIntro';
 import { HowItWorksInteractive } from '@/components/marketing/HowItWorksInteractive';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { TrustCards } from '@/components/marketing/TrustCards';
 import { buttonVariants } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { auth } from '@/lib/auth';
-import { cn } from '@/lib/cn';
 import type { ProvenanceType } from '@/lib/types';
 
 export const metadata: Metadata = {
@@ -133,6 +132,10 @@ const PROVENANCE_COPY: {
   value: string;
   description: string;
   borderStyle: string;
+  // A hint of tone reinforcing the badge color, not a second signal
+  // competing with borderStyle's solid/dashed/dotted certainty metaphor —
+  // deliberately this light (16%) so it stays a whisper, not a colored card.
+  tintClass: string;
 }[] = [
   {
     type: 'Detected',
@@ -140,6 +143,8 @@ const PROVENANCE_COPY: {
     value: '8px',
     description: 'Read directly from the design.',
     borderStyle: 'border-solid',
+    tintClass:
+      'bg-[color-mix(in_srgb,var(--color-detected-light)_16%,var(--color-background))] border-[color-mix(in_srgb,var(--color-detected)_18%,var(--color-border))]',
   },
   {
     type: 'Inferred',
@@ -147,6 +152,8 @@ const PROVENANCE_COPY: {
     value: 'Darkens 8%',
     description: 'Reasoned from visual evidence, not explicitly shown.',
     borderStyle: 'border-dashed',
+    tintClass:
+      'bg-[color-mix(in_srgb,var(--color-inferred-light)_16%,var(--color-background))] border-[color-mix(in_srgb,var(--color-inferred)_18%,var(--color-border))]',
   },
   {
     type: 'Suggested',
@@ -154,6 +161,8 @@ const PROVENANCE_COPY: {
     value: 'Spinner, centered',
     description: 'The AI’s best guess where evidence runs out.',
     borderStyle: 'border-dotted',
+    tintClass:
+      'bg-[color-mix(in_srgb,var(--color-ai-suggested-light)_16%,var(--color-background))] border-[color-mix(in_srgb,var(--color-ai-suggested)_18%,var(--color-border))]',
   },
 ];
 
@@ -239,20 +248,7 @@ export default async function MarketingHomePage() {
                 <span className="font-medium text-[--color-text-primary]">Primary Button</span> above.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {PROVENANCE_COPY.map(({ type, property, value, description, borderStyle }) => (
-                <Card key={type} className={cn('flex flex-col gap-4 border-2', borderStyle)}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[--color-text-secondary]">{property}</span>
-                    <ProvenanceBadge provenance={type} />
-                  </div>
-                  <span className="font-mono text-[--color-text-primary]">{value}</span>
-                  <p className="border-t border-[--color-border] pt-4 text-[--color-text-secondary]">
-                    {description}
-                  </p>
-                </Card>
-              ))}
-            </div>
+            <TrustCards items={PROVENANCE_COPY} />
           </div>
         </section>
 
