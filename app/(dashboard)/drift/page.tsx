@@ -28,6 +28,7 @@ export default async function DriftPage() {
   }
 
   const findings = await getPortfolioDrift(session.user.id);
+  const affectedHandoffCount = new Set(findings.map((finding) => finding.handoffId)).size;
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,7 +55,7 @@ export default async function DriftPage() {
           <Card className="flex flex-col gap-4">
             <div className="flex flex-col gap-0.5">
               <span className="text-[--color-text-secondary]">
-                Drift findings across {new Set(findings.map((finding) => finding.handoffId)).size} handoffs
+                Drift findings across {affectedHandoffCount} {affectedHandoffCount === 1 ? 'handoff' : 'handoffs'}
               </span>
               <span className="font-mono text-[length:var(--font-desktop-heading-1-bold-size)] font-bold text-[--color-text-primary]">
                 {findings.length}
