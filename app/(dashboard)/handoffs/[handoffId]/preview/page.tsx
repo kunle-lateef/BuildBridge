@@ -51,7 +51,7 @@ export default async function HandoffPreviewPage({ params }: PreviewPageProps) {
   return (
     <ScreenPinProvider>
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4 rounded-[--radius-lg] border border-[--color-primary] bg-[--color-primary-light] px-4 py-3">
+        <div className="flex flex-col items-start gap-2 rounded-[--radius-lg] border border-[--color-primary] bg-[--color-primary-light] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <p className="text-[--color-primary-dark]">
             Preview only — this is what a developer sees on a share link, not a live one.
           </p>
