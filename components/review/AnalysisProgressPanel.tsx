@@ -69,10 +69,15 @@ export function AnalysisProgressPanel({ runStatus, stages, className }: Analysis
       )}
       <ul className="flex flex-col gap-1.5">
         {stages.map((stage) => (
-          <li key={stage.key} className="flex items-center gap-2 py-1">
-            <StageIcon status={stage.status} />
-            <span className="text-[--color-text-body]">{stage.label}</span>
-            <span className="ml-auto flex items-center gap-2 text-[--color-text-secondary]">
+          <li
+            key={stage.key}
+            className="flex flex-col items-start gap-1 py-2 sm:flex-row sm:items-center sm:gap-2 sm:py-1"
+          >
+            <div className="flex items-center gap-2">
+              <StageIcon status={stage.status} />
+              <span className="text-[--color-text-body]">{stage.label}</span>
+            </div>
+            <span className="flex flex-col items-start gap-0.5 pl-6 text-[--color-text-secondary] sm:ml-auto sm:flex-row sm:items-center sm:gap-2 sm:pl-0">
               <span>{stage.countLabel}</span>
               {stage.provenanceSplit && (
                 <span className="font-mono text-[--color-text-muted]">
