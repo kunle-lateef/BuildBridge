@@ -15,13 +15,12 @@ import { redirect } from 'next/navigation';
 import { HeroBackground } from '@/components/marketing/HeroBackground';
 import { HeroGridLens } from '@/components/marketing/HeroGridLens';
 import { HeroIntro } from '@/components/marketing/HeroIntro';
+import { HowItWorksInteractive } from '@/components/marketing/HowItWorksInteractive';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
-import { ReadinessScoreDisplay } from '@/components/review/ReadinessScoreDisplay';
 import { buttonVariants } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
-import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { auth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import type { ProvenanceType } from '@/lib/types';
@@ -217,94 +216,7 @@ export default async function MarketingHomePage() {
 
         <section id="how-it-works" className="scroll-mt-20 border-t border-[--color-border]">
           <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-10 px-4 py-20 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
-            <div className="flex flex-col gap-10">
-              <div className="flex flex-col gap-3">
-                <span className="text-[length:var(--font-desktop-overline-semi-bold-size)] font-semibold uppercase tracking-[1.5px] text-[--color-text-muted]">
-                  How it works
-                </span>
-                <h2 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-                  From upload to handoff
-                </h2>
-              </div>
-              <ol className="relative flex max-w-2xl flex-col gap-10">
-                <div aria-hidden="true" className="absolute bottom-6 left-6 top-6 w-px bg-[--color-primary-light]" />
-                {WORKFLOW_STEPS.map((step, index) => (
-                  <li key={step.title} className="relative flex gap-6">
-                    <span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[--color-primary] font-mono font-medium text-white">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <div className="flex flex-col gap-1 pt-2">
-                      <span className="text-[length:var(--font-desktop-heading-4-medium-size)] font-semibold text-[--color-text-primary]">
-                        {step.title}
-                      </span>
-                      <span className="text-[--color-text-secondary]">{step.description}</span>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="lg:sticky lg:top-24 lg:self-start">
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[length:var(--font-desktop-overline-semi-bold-size)] font-semibold uppercase tracking-[1.5px] text-[--color-text-muted]">
-                    Example handoff
-                  </span>
-                  <span className="font-semibold text-[--color-text-primary]">Checkout Redesign</span>
-                </div>
-
-                <div className="flex flex-col">
-                  <Card className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3">
-                      <span aria-hidden="true" className="h-8 w-14 shrink-0 rounded-[--radius-md] bg-[--color-primary]" />
-                      <span className="font-medium text-[--color-text-primary]">Primary Button</span>
-                      <ProvenanceBadge provenance="Detected" className="ml-auto" />
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-[--color-border] pt-4">
-                      <span className="text-[--color-text-secondary]">Hover state</span>
-                      <ProvenanceBadge provenance="Inferred" />
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-[--color-border] pt-4">
-                      <span className="text-[--color-text-secondary]">Missing tablet breakpoint</span>
-                      <SeverityBadge severity="Medium" />
-                    </div>
-
-                    <div className="border-t border-[--color-border] pt-4">
-                      <ReadinessScoreDisplay
-                        score={82}
-                        hasUnresolvedCritical={false}
-                        unresolvedCriticalCount={0}
-                        algorithmVersion={1}
-                      />
-                    </div>
-                  </Card>
-
-                  <div aria-hidden="true" className="ml-6 h-4 w-px bg-[--color-primary-light]" />
-
-                  <Card className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3">
-                      <span aria-hidden="true" className="h-8 w-3 shrink-0 rounded-[--radius-md] bg-[--color-primary]" />
-                      <span className="font-medium text-[--color-text-primary]">Sidebar</span>
-                      <ProvenanceBadge provenance="Suggested" className="ml-auto" />
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-[--color-border] pt-4">
-                      <span className="text-[--color-text-secondary]">No tablet breakpoint shown</span>
-                      <SeverityBadge severity="Critical" />
-                    </div>
-
-                    <div className="border-t border-[--color-border] pt-4">
-                      <div className="flex items-center gap-2 rounded-[--radius-md] bg-[--color-success-light] px-3 py-2 text-[--color-success]">
-                        <CheckCircle2 aria-hidden="true" size={16} />
-                        <span className="font-medium">Designer reviewed — Confirmed</span>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            </div>
+            <HowItWorksInteractive steps={WORKFLOW_STEPS} />
           </div>
         </section>
 
