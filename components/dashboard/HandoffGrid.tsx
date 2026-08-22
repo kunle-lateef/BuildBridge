@@ -54,8 +54,10 @@ export function HandoffGrid({ handoffs, isFiltered }: HandoffGridProps) {
             )}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-[--color-text-body]">{handoff.name}</span>
-            <HandoffStatusBadge status={handoff.status} />
+            <span title={handoff.name} className="min-w-0 flex-1 truncate text-[--color-text-body]">
+              {handoff.name}
+            </span>
+            <HandoffStatusBadge status={handoff.status} className="flex-shrink-0 whitespace-nowrap" />
           </div>
           {handoff.readinessScore !== null && (
             <span className="font-mono text-[--color-text-secondary]">{handoff.readinessScore}%</span>
