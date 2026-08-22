@@ -22,8 +22,8 @@ export function CreateHandoffButton() {
         New handoff
       </Button>
 
-      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Create a handoff">
-        <CreateHandoffForm />
+      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Create a handoff" className="max-w-lg">
+        <CreateHandoffForm onCancel={() => setIsOpen(false)} />
       </Modal>
     </>
   );

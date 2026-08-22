@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -77,14 +78,24 @@ export function Modal({ open, onClose, title, description, children, className }
           className,
         )}
       >
-        <div className="flex flex-col gap-1.5">
-          <h2
-            id={titleId}
-            className="text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]"
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1.5">
+            <h2
+              id={titleId}
+              className="text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]"
+            >
+              {title}
+            </h2>
+            {description && <p className="text-[--color-text-secondary]">{description}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex-shrink-0 rounded-[--radius-md] p-1 text-[--color-text-muted] hover:bg-[--color-surface] hover:text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
           >
-            {title}
-          </h2>
-          {description && <p className="text-[--color-text-secondary]">{description}</p>}
+            <X aria-hidden="true" size={20} />
+          </button>
         </div>
         {children}
       </div>

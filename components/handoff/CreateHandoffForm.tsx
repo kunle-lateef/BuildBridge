@@ -14,7 +14,11 @@ import { createHandoffSchema } from '@/lib/validators/handoff';
 
 const initialState: ActionResult<{ id: string }> | null = null;
 
-export function CreateHandoffForm() {
+type CreateHandoffFormProps = {
+  onCancel: () => void;
+};
+
+export function CreateHandoffForm({ onCancel }: CreateHandoffFormProps) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(createHandoff, initialState);
   const { fieldProps } = useFieldErrors(createHandoffSchema);
@@ -40,7 +44,7 @@ export function CreateHandoffForm() {
       <Textarea
         id="handoff-description"
         name="description"
-        rows={2}
+        rows={4}
         label={
           <>
             Description <span className="text-[--color-text-muted]">(optional)</span>
@@ -56,9 +60,14 @@ export function CreateHandoffForm() {
         </p>
       )}
 
-      <Button type="submit" variant="cta" disabled={isPending} className="self-start">
-        {isPending ? 'Creating…' : 'Create Handoff'}
-      </Button>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="cta" disabled={isPending}>
+          {isPending ? 'Creating…' : 'Create Handoff'}
+        </Button>
+      </div>
     </form>
   );
 }
