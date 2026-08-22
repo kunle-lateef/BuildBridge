@@ -11,5 +11,3 @@ export const createScreenFlowSchema = z
     message: 'A screen cannot lead to itself.',
     path: ['targetScreenId'],
   });
-
-export type CreateScreenFlowInput = z.infer<typeof createScreenFlowSchema>;

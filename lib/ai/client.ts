@@ -45,10 +45,24 @@ export type ImageInput = {
   mediaType: 'image/png' | 'image/jpeg' | 'image/webp';
 };
 
+// Without an explicit timeout, a hung Claude response blocks its pipeline
+// stage indefinitely — the SDK's own default is high enough (10 minutes)
+// that it doesn't function as a practical bound. 2 minutes comfortably
+// covers a real analysis call (including image input) while still failing
+// fast enough for the pipeline's per-stage try/catch to mark that stage
+// failed and move on, per Murphy's-Law-style resilience: a slow dependency
+// should fail loud, not hang silently.
+const ANTHROPIC_REQUEST_TIMEOUT_MS = 120_000;
+const ANTHROPIC_MAX_RETRIES = 2;
+
 let anthropicClient: Anthropic | null = null;
 
 function getClient(): Anthropic {
-  anthropicClient ??= new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  anthropicClient ??= new Anthropic({
+    apiKey: env.ANTHROPIC_API_KEY,
+    timeout: ANTHROPIC_REQUEST_TIMEOUT_MS,
+    maxRetries: ANTHROPIC_MAX_RETRIES,
+  });
   return anthropicClient;
 }
 

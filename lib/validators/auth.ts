@@ -17,8 +17,6 @@ export const signUpSchema = z
     path: ['confirmPassword'],
   });
 
-export type SignUpInput = z.infer<typeof signUpSchema>;
-
 export const signInSchema = z.object({
   email: z.string().trim().email('Enter a valid email address.'),
   // No length bound here beyond "present" — min(8) at sign-in would let an
@@ -27,13 +25,9 @@ export const signInSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
-export type SignInInput = z.infer<typeof signInSchema>;
-
 export const requestPasswordResetSchema = z.object({
   email: z.string().trim().email('Enter a valid email address.'),
 });
-
-export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
 
 export const resetPasswordSchema = z
   .object({
@@ -48,5 +42,3 @@ export const resetPasswordSchema = z
     message: 'Passwords do not match.',
     path: ['confirmPassword'],
   });
-
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

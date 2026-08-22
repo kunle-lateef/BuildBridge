@@ -51,6 +51,13 @@ export async function startAnalysisRun(
     };
   }
 
+  const inFlightRunId = await findInFlightRun(handoffId);
+
+  if (inFlightRunId) {
+    logger.info('analysis.already_in_flight', { handoffId, analysisRunId: inFlightRunId });
+    return { ok: true, data: { analysisRunId: inFlightRunId, reused: true } };
+  }
+
   const reusableRunId = await findReusableRun(handoffId);
 
   if (reusableRunId) {
@@ -93,6 +100,22 @@ export async function startAnalysisRun(
   logger.info('analysis.enqueued', { handoffId, analysisRunId: analysisRun.id });
 
   return { ok: true, data: { analysisRunId: analysisRun.id, reused: false } };
+}
+
+/**
+ * Guards against a double-click or a network-retried double-submit
+ * creating two AnalysisRuns (and charging quota twice) for the same
+ * handoff — findReusableRun below only recognizes a prior *Completed*
+ * run, so without this check a second "start analysis" call made while
+ * the first is still Queued/Processing would sail straight through.
+ */
+async function findInFlightRun(handoffId: string): Promise<string | null> {
+  const inFlightRun = await db.analysisRun.findFirst({
+    where: { handoffId, status: { in: ['Queued', 'Processing'] } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return inFlightRun?.id ?? null;
 }
 
 /**

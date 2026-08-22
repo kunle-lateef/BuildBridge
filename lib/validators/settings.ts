@@ -6,8 +6,6 @@ export const updateProfileSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(100),
 });
 
-export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
-
 // currentPassword has no length/complexity bound beyond "present" — same
 // reasoning as signInSchema's password field (see lib/validators/auth.ts):
 // a min-length check here would let an attacker distinguish "wrong length"
@@ -26,5 +24,3 @@ export const changePasswordSchema = z
     message: 'Passwords do not match.',
     path: ['confirmNewPassword'],
   });
-
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

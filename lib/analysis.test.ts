@@ -36,6 +36,19 @@ function mockNoReusableRun() {
   mockDb.analysisRun.findFirst.mockResolvedValue(null);
 }
 
+/**
+ * findInFlightRun and findReusableRun both call analysisRun.findFirst, kept
+ * apart only by their `where.status` shape (an array for in-flight, a bare
+ * string for a completed run) — tests that care about the completed-run
+ * branch specifically must mock no in-flight run, or the in-flight check
+ * (which runs first) would short-circuit before ever reaching it.
+ */
+function mockNoInFlightRunAndCompletedRun(completedRun: { id: string; completedAt: Date; createdAt: Date }) {
+  mockDb.analysisRun.findFirst.mockImplementation(({ where }: { where: { status: unknown } }) =>
+    Promise.resolve(Array.isArray((where.status as { in?: unknown[] })?.in) ? null : completedRun),
+  );
+}
+
 describe('startAnalysisRun', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,12 +86,25 @@ describe('startAnalysisRun', () => {
     expect(mockDb.analysisRun.findFirst).not.toHaveBeenCalled();
   });
 
+  it('returns the existing run instead of creating a second one when an AnalysisRun is already Queued or Processing for this handoff', async () => {
+    mockDb.handoff.findUnique.mockResolvedValue({ id: HANDOFF_ID, ownerId: USER_ID });
+    mockDb.designAsset.count.mockResolvedValue(1);
+    mockDb.analysisRun.findFirst.mockResolvedValue({ id: 'in-flight-run' });
+
+    const result = await startAnalysisRun(HANDOFF_ID, USER_ID);
+
+    expect(result).toEqual({ ok: true, data: { analysisRunId: 'in-flight-run', reused: true } });
+    expect(mockDb.user.findUniqueOrThrow).not.toHaveBeenCalled();
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+    expect(mockEnqueueAnalysisRun).not.toHaveBeenCalled();
+  });
+
   it('reuses a prior run when every processed asset matches a checksum from the last successful run, and never touches quota or the queue', async () => {
     mockDb.handoff.findUnique.mockResolvedValue({ id: HANDOFF_ID, ownerId: USER_ID });
     mockDb.designAsset.count.mockResolvedValue(1);
 
     const completedAt = subDays(new Date(), 1);
-    mockDb.analysisRun.findFirst.mockResolvedValue({ id: 'prior-run', completedAt, createdAt: completedAt });
+    mockNoInFlightRunAndCompletedRun({ id: 'prior-run', completedAt, createdAt: completedAt });
     mockDb.designAsset.findMany
       .mockResolvedValueOnce([{ checksum: 'abc123' }]) // prior assets
       .mockResolvedValueOnce([{ checksum: 'abc123' }]); // "new" assets — same checksum, so a duplicate
@@ -96,7 +122,7 @@ describe('startAnalysisRun', () => {
     mockDb.designAsset.count.mockResolvedValue(2);
 
     const completedAt = subDays(new Date(), 1);
-    mockDb.analysisRun.findFirst.mockResolvedValue({ id: 'prior-run', completedAt, createdAt: completedAt });
+    mockNoInFlightRunAndCompletedRun({ id: 'prior-run', completedAt, createdAt: completedAt });
     mockDb.designAsset.findMany
       .mockResolvedValueOnce([{ checksum: 'abc123' }]) // prior assets
       .mockResolvedValueOnce([{ checksum: 'a-genuinely-new-checksum' }]); // new, unmatched asset

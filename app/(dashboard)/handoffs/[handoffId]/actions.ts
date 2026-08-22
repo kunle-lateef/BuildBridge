@@ -26,6 +26,18 @@ import { createScreenFlowSchema } from '@/lib/validators/screenFlow';
 import { createShareLinkSchema, revokeShareLinkSchema, updateDeveloperFlagStatusSchema } from '@/lib/validators/share';
 import { ALLOWED_UPLOAD_MEDIA_TYPES, recordUploadSchema } from '@/lib/validators/upload';
 
+// These two error shapes are constructed identically at nearly every action
+// below — not to hide the ownership check itself (that stays explicit and
+// inline at each call site per security.md's "explicit, not implied by URL
+// shape"), just to stop retyping the same error literal by hand everywhere.
+function unauthenticatedError() {
+  return { ok: false as const, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+}
+
+function notFoundError(message: string) {
+  return { ok: false as const, error: { code: 'not_found', message } };
+}
+
 /**
  * Lives here (not app/(dashboard)/handoffs/actions.ts) per
  * architecture.md's directory layout and
@@ -40,7 +52,7 @@ export async function createHandoff(
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = createHandoffSchema.safeParse({
@@ -119,13 +131,13 @@ export async function duplicateHandoff(sourceHandoffId: string): Promise<ActionR
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const source = await db.handoff.findUnique({ where: { id: sourceHandoffId } });
 
   if (!source || source.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const user = await db.user.findUniqueOrThrow({
@@ -257,7 +269,7 @@ export async function recordUpload(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = recordUploadSchema.safeParse(input);
@@ -274,7 +286,7 @@ export async function recordUpload(input: {
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const asset = await db.designAsset.create({
@@ -365,7 +377,7 @@ export async function startAnalysis(handoffId: string): Promise<ActionResult<{ a
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const limit = await rateLimit(`analysis-run:${session.user.id}`, 10, 60 * 60 * 1000);
@@ -404,7 +416,7 @@ export async function recordDesignerDecision(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = recordDesignerDecisionSchema.safeParse(input);
@@ -421,13 +433,13 @@ export async function recordDesignerDecision(input: {
   const finding = await resolveFinding(findingType, findingReference);
 
   if (!finding) {
-    return { ok: false, error: { code: 'not_found', message: 'Finding not found.' } };
+    return notFoundError('Finding not found.');
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: finding.handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Finding not found.' } };
+    return notFoundError('Finding not found.');
   }
 
   let decisionId: string;
@@ -492,7 +504,7 @@ export async function bulkRecordDecision(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = bulkRecordDecisionSchema.safeParse(input);
@@ -509,7 +521,7 @@ export async function bulkRecordDecision(input: {
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const rows = await fetchFindingsForBulk(findingType, findingReferences);
@@ -519,7 +531,7 @@ export async function bulkRecordDecision(input: {
   }
 
   if (rows.some((row) => row.handoffId !== handoffId)) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   if (rows.some((row) => row.provenance !== provenance)) {
@@ -588,7 +600,7 @@ export async function createShareLink(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = createShareLinkSchema.safeParse(input);
@@ -605,7 +617,7 @@ export async function createShareLink(input: {
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   // A handoff that's never been analyzed has zero issues by definition, so
@@ -660,7 +672,7 @@ export async function revokeShareLink(shareLinkId: string): Promise<ActionResult
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = revokeShareLinkSchema.safeParse({ shareLinkId });
@@ -675,7 +687,7 @@ export async function revokeShareLink(shareLinkId: string): Promise<ActionResult
   });
 
   if (!shareLink || shareLink.handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Share link not found.' } };
+    return notFoundError('Share link not found.');
   }
 
   await db.shareLink.update({
@@ -706,7 +718,7 @@ export async function addDesignerNote(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = addDesignerNoteSchema.safeParse(input);
@@ -723,7 +735,7 @@ export async function addDesignerNote(input: {
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const note = await db.designerNote.create({
@@ -743,7 +755,7 @@ export async function editDesignerNote(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = editDesignerNoteSchema.safeParse(input);
@@ -761,7 +773,7 @@ export async function editDesignerNote(input: {
   });
 
   if (!note || note.handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Note not found.' } };
+    return notFoundError('Note not found.');
   }
 
   await db.designerNote.update({ where: { id: note.id }, data: { content: parsed.data.content } });
@@ -787,7 +799,7 @@ export async function createScreenFlow(input: {
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = createScreenFlowSchema.safeParse(input);
@@ -804,7 +816,7 @@ export async function createScreenFlow(input: {
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const screens = await db.screen.findMany({
@@ -813,7 +825,7 @@ export async function createScreenFlow(input: {
   });
 
   if (screens.length !== 2) {
-    return { ok: false, error: { code: 'not_found', message: 'One or both screens could not be found.' } };
+    return notFoundError('One or both screens could not be found.');
   }
 
   const flow = await db.screenFlow.create({
@@ -830,19 +842,19 @@ export async function deleteScreenFlow(screenFlowId: string): Promise<ActionResu
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const flow = await db.screenFlow.findUnique({ where: { id: screenFlowId } });
 
   if (!flow) {
-    return { ok: false, error: { code: 'not_found', message: 'Flow not found.' } };
+    return notFoundError('Flow not found.');
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: flow.handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Flow not found.' } };
+    return notFoundError('Flow not found.');
   }
 
   await db.screenFlow.delete({ where: { id: screenFlowId } });
@@ -863,13 +875,13 @@ export async function archiveHandoff(handoffId: string): Promise<ActionResult<{ 
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   await db.handoff.update({ where: { id: handoffId }, data: { status: 'Archived' } });
@@ -885,13 +897,13 @@ export async function unarchiveHandoff(handoffId: string): Promise<ActionResult<
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { planTier: true } });
@@ -938,13 +950,13 @@ export async function deleteHandoff(handoffId: string): Promise<ActionResult<{ d
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+    return notFoundError('Handoff not found.');
   }
 
   const assets = await db.designAsset.findMany({
@@ -1023,7 +1035,7 @@ export async function updateDeveloperFlagStatus(
   const session = await auth();
 
   if (!session?.user) {
-    return { ok: false, error: { code: 'unauthenticated', message: 'Sign in to continue.' } };
+    return unauthenticatedError();
   }
 
   const parsed = updateDeveloperFlagStatusSchema.safeParse(input);
@@ -1040,13 +1052,13 @@ export async function updateDeveloperFlagStatus(
   const flag = await db.developerFlag.findUnique({ where: { id: developerFlagId } });
 
   if (!flag) {
-    return { ok: false, error: { code: 'not_found', message: 'Flag not found.' } };
+    return notFoundError('Flag not found.');
   }
 
   const handoff = await db.handoff.findUnique({ where: { id: flag.handoffId } });
 
   if (!handoff || handoff.ownerId !== session.user.id) {
-    return { ok: false, error: { code: 'not_found', message: 'Flag not found.' } };
+    return notFoundError('Flag not found.');
   }
 
   await db.developerFlag.update({ where: { id: developerFlagId }, data: { status } });

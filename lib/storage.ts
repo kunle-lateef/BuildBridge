@@ -5,8 +5,15 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 import { env } from '@/lib/env';
+
+// Without an explicit timeout, a hung R2 connection blocks whichever
+// request called into it (e.g. recordUpload's synchronous getObjectBytes)
+// indefinitely — the SDK has no default request timeout of its own.
+const REQUEST_TIMEOUT_MS = 30_000;
+const CONNECTION_TIMEOUT_MS = 10_000;
 
 // Cloudflare R2, accessed through its S3-compatible API — see
 // .agents/rules/security.md's Secrets and Configuration section for why
@@ -24,6 +31,11 @@ const client = new S3Client({
     accessKeyId: env.STORAGE_ACCESS_KEY,
     secretAccessKey: env.STORAGE_SECRET_KEY,
   },
+  maxAttempts: 3,
+  requestHandler: new NodeHttpHandler({
+    requestTimeout: REQUEST_TIMEOUT_MS,
+    connectionTimeout: CONNECTION_TIMEOUT_MS,
+  }),
 });
 
 const UPLOAD_URL_EXPIRY_SECONDS = 5 * 60;

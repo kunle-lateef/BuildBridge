@@ -10,11 +10,7 @@ export const addDesignerNoteSchema = z.object({
   componentId: z.string().min(1).optional(),
 });
 
-export type AddDesignerNoteInput = z.infer<typeof addDesignerNoteSchema>;
-
 export const editDesignerNoteSchema = z.object({
   noteId: z.string().min(1),
   content: z.string().trim().min(1, 'Note cannot be empty.').max(2000),
 });
-
-export type EditDesignerNoteInput = z.infer<typeof editDesignerNoteSchema>;

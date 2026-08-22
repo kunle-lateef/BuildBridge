@@ -5,8 +5,6 @@ export const createShareLinkSchema = z.object({
   expiresInDays: z.number().int().positive().max(365).optional(),
 });
 
-export type CreateShareLinkInput = z.infer<typeof createShareLinkSchema>;
-
 export const revokeShareLinkSchema = z.object({
   shareLinkId: z.string().min(1),
 });
@@ -40,8 +38,6 @@ export const submitDeveloperFlagSchema = z
     message: 'findingType and findingReference must both be present or both be absent.',
   });
 
-export type SubmitDeveloperFlagInput = z.infer<typeof submitDeveloperFlagSchema>;
-
 /**
  * Submitted by the same anonymous, unauthenticated developer boundary as
  * submitDeveloperFlagSchema, but findingType/findingReference are REQUIRED
@@ -54,8 +50,6 @@ export const submitImplementationMarkSchema = z.object({
   findingReference: z.string().trim().min(1).max(200),
   markedByName: z.string().trim().min(1).max(100).optional(),
 });
-
-export type SubmitImplementationMarkInput = z.infer<typeof submitImplementationMarkSchema>;
 
 export const updateDeveloperFlagStatusSchema = z.object({
   developerFlagId: z.string().min(1),

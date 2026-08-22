@@ -8,8 +8,6 @@ export const recordDesignerDecisionSchema = z.object({
   note: z.string().trim().max(2000).optional(),
 });
 
-export type RecordDesignerDecisionInput = z.infer<typeof recordDesignerDecisionSchema>;
-
 // Confirm/Reject only — Modify/Override both need a per-item newValue and
 // aren't bulk-safe. One provenance tier per call, verified server-side
 // against each finding's real stored provenance, never trusted from the
@@ -21,5 +19,3 @@ export const bulkRecordDecisionSchema = z.object({
   action: z.enum(['Confirm', 'Reject']),
   findingReferences: z.array(z.string().min(1)).min(1).max(100),
 });
-
-export type BulkRecordDecisionInput = z.infer<typeof bulkRecordDecisionSchema>;

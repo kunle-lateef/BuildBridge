@@ -30,8 +30,6 @@ export const componentDetectionResultSchema = z.object({
   components: z.array(detectedComponentSchema),
 });
 
-export type ComponentDetectionResult = z.infer<typeof componentDetectionResultSchema>;
-
 // --- Stage 2: Specification extraction ----------------------------------
 
 export const specificationCategorySchema = z.enum([
@@ -56,8 +54,6 @@ export const extractedSpecificationSchema = z.object({
 export const specificationExtractionResultSchema = z.object({
   specifications: z.array(extractedSpecificationSchema),
 });
-
-export type SpecificationExtractionResult = z.infer<typeof specificationExtractionResultSchema>;
 
 // --- Stage 3: State & interaction analysis ------------------------------
 
@@ -85,8 +81,6 @@ export const stateAnalysisResultSchema = z.object({
   states: z.array(componentStateFindingSchema),
 });
 
-export type StateAnalysisResult = z.infer<typeof stateAnalysisResultSchema>;
-
 // --- Stage 4: Responsive analysis ---------------------------------------
 
 export const viewportCategorySchema = z.enum(['Desktop', 'Tablet', 'Mobile']);
@@ -101,8 +95,6 @@ export const responsiveRuleFindingSchema = z.object({
 export const responsiveAnalysisResultSchema = z.object({
   rules: z.array(responsiveRuleFindingSchema),
 });
-
-export type ResponsiveAnalysisResult = z.infer<typeof responsiveAnalysisResultSchema>;
 
 // --- Stage 5: Gap detection ----------------------------------------------
 
@@ -130,8 +122,6 @@ export const handoffIssueFindingSchema = z.object({
 export const gapDetectionResultSchema = z.object({
   issues: z.array(handoffIssueFindingSchema),
 });
-
-export type GapDetectionResult = z.infer<typeof gapDetectionResultSchema>;
 
 // --- Contextual assistant (Phase P2) --------------------------------------
 

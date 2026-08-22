@@ -22,8 +22,6 @@ export const requestUploadUrlSchema = z.object({
     .max(MAX_UPLOAD_SIZE_BYTES, 'File is larger than the 25MB limit.'),
 });
 
-export type RequestUploadUrlInput = z.infer<typeof requestUploadUrlSchema>;
-
 export const recordUploadSchema = z.object({
   handoffId: z.string().min(1),
   storageKey: z.string().min(1),
@@ -31,5 +29,3 @@ export const recordUploadSchema = z.object({
   mediaType: z.enum(ALLOWED_UPLOAD_MEDIA_TYPES),
   size: z.number().int().positive().max(MAX_UPLOAD_SIZE_BYTES),
 });
-
-export type RecordUploadInput = z.infer<typeof recordUploadSchema>;
