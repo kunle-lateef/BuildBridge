@@ -39,14 +39,16 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
       <div className="flex flex-col gap-3">
         {issues.map((issue) => (
           <div key={issue.id} className="flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
               <SeverityBadge severity={issue.severity} />
               <span className="font-medium text-[--color-text-primary]">{issue.title}</span>
-              <ProvenanceBadge provenance={issue.provenance} />
-              <ReviewStatusBadge status={issue.status} />
-              {issue.componentId && issue.pinScreenId && (
-                <FindingPinLink screenId={issue.pinScreenId} pinKey={`component:${issue.componentId}`} />
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <ProvenanceBadge provenance={issue.provenance} />
+                <ReviewStatusBadge status={issue.status} />
+                {issue.componentId && issue.pinScreenId && (
+                  <FindingPinLink screenId={issue.pinScreenId} pinKey={`component:${issue.componentId}`} />
+                )}
+              </div>
             </div>
             <p className="text-[--color-text-secondary]">{issue.description}</p>
             {issue.recommendation && (

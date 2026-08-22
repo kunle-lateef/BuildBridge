@@ -88,15 +88,19 @@ export function IssuePanel({ handoffId, issues, deltaById }: IssuePanelProps) {
 function IssueRow({ issue, delta }: { issue: HandoffIssueItem; delta?: number }) {
   return (
     <Card id={`issue-${issue.id}`} className="flex flex-col gap-2 scroll-mt-20 p-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
         <SeverityBadge severity={issue.severity} />
         <span className="font-medium text-[--color-text-primary]">{issue.title}</span>
-        <ProvenanceBadge provenance={issue.provenance} />
-        <ReviewStatusBadge status={issue.status} />
-        {issue.pinScreenId && issue.pinKey && <FindingPinLink screenId={issue.pinScreenId} pinKey={issue.pinKey} />}
-        {delta !== undefined && delta > 0 && (
-          <span className="ml-auto font-mono text-[--color-success]">+{delta}%</span>
-        )}
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <ProvenanceBadge provenance={issue.provenance} />
+          <ReviewStatusBadge status={issue.status} />
+          {issue.pinScreenId && issue.pinKey && (
+            <FindingPinLink screenId={issue.pinScreenId} pinKey={issue.pinKey} />
+          )}
+          {delta !== undefined && delta > 0 && (
+            <span className="font-mono text-[--color-success]">+{delta}%</span>
+          )}
+        </div>
       </div>
       <p className="text-[--color-text-secondary]">{issue.description}</p>
       {issue.recommendation && (
