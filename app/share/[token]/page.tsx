@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-
 
 import { ComponentsSection } from '@/components/handoff/ComponentsSection';
 import { DeveloperFlagForm } from '@/components/handoff/DeveloperFlagForm';
@@ -16,6 +16,7 @@ import { ScreensSection } from '@/components/handoff/ScreensSection';
 import { SpecificationsSection } from '@/components/handoff/SpecificationsSection';
 import { StatesSection } from '@/components/handoff/StatesSection';
 import { WhatsChangedBanner } from '@/components/handoff/WhatsChangedBanner';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { db } from '@/lib/db';
 import { buildDeveloperProjection, resolveShareLink } from '@/lib/share';
 import { shareTokenSchema } from '@/lib/validators/share';
@@ -78,12 +79,20 @@ export default async function SharePage({ params }: SharePageProps) {
   return (
     <ScreenPinProvider>
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-12">
-        <a
-          href={`/api/share/${token}/export`}
-          className="self-end text-[--color-primary] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-        >
-          Download as Markdown
-        </a>
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          >
+            <BrandMark alt="BuildBridge" size={24} />
+          </Link>
+          <a
+            href={`/api/share/${token}/export`}
+            className="text-[--color-primary] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          >
+            Download as Markdown
+          </a>
+        </div>
         <WhatsChangedBanner
           shareToken={token}
           current={{ readinessScore: projection.readinessScore, issueCount: openIssueCount }}
