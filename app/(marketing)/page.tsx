@@ -308,7 +308,7 @@ export default async function MarketingHomePage() {
           </div>
         </section>
 
-        <section id="trust" className="scroll-mt-20 border-t border-[--color-border] bg-[--color-surface]">
+        <section id="trust" className="scroll-mt-20 bg-[--color-surface]">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-20">
             <div className="flex flex-col gap-3">
               <span className="text-[length:var(--font-desktop-overline-semi-bold-size)] font-semibold uppercase tracking-[1.5px] text-[--color-text-muted]">
