@@ -3,8 +3,9 @@
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
+import { PasswordRequirementsChecklist } from '@/components/marketing/PasswordRequirementsChecklist';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
@@ -19,6 +20,9 @@ export function SignUpForm() {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(signUp, initialState);
   const { fieldProps } = useFieldErrors(signUpSchema);
+  const [password, setPassword] = useState('');
+  const [hasFocusedPassword, setHasFocusedPassword] = useState(false);
+  const passwordFieldProps = fieldProps('password');
 
   useEffect(() => {
     if (state?.ok) {
@@ -28,7 +32,7 @@ export function SignUpForm() {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" noValidate>
+    <form action={formAction} className="flex flex-col gap-5" noValidate>
       <Input
         id="name"
         name="name"
@@ -60,8 +64,16 @@ export function SignUpForm() {
         minLength={8}
         label="Password"
         placeholder="At least 8 characters"
-        {...fieldProps('password')}
+        {...passwordFieldProps}
+        value={password}
+        onChange={(event) => {
+          setPassword(event.currentTarget.value);
+          passwordFieldProps.onChange(event);
+        }}
+        onFocus={() => setHasFocusedPassword(true)}
       />
+
+      {hasFocusedPassword && <PasswordRequirementsChecklist password={password} />}
 
       <Input
         id="confirmPassword"

@@ -31,7 +31,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" noValidate>
+    <form action={formAction} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="token" value={token} />
 
       <Input

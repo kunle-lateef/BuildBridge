@@ -17,8 +17,8 @@ function formDataWith(overrides: Partial<Record<'name' | 'email' | 'password' | 
   const formData = new FormData();
   formData.set('name', overrides.name ?? 'Jane Designer');
   formData.set('email', overrides.email ?? 'jane@example.com');
-  formData.set('password', overrides.password ?? 'password123');
-  formData.set('confirmPassword', overrides.confirmPassword ?? 'password123');
+  formData.set('password', overrides.password ?? 'Password123!');
+  formData.set('confirmPassword', overrides.confirmPassword ?? 'Password123!');
   return formData;
 }
 
@@ -59,14 +59,14 @@ describe('signUp', () => {
   });
 
   it('creates the account and signs the user in on success', async () => {
-    const result = await signUp(null, formDataWith({ email: 'jane@example.com', password: 'password123' }));
+    const result = await signUp(null, formDataWith({ email: 'jane@example.com', password: 'Password123!' }));
 
     expect(mockUserCreate).toHaveBeenCalledWith({
       data: { name: 'Jane Designer', email: 'jane@example.com', passwordHash: expect.any(String) },
     });
     expect(mockSignIn).toHaveBeenCalledWith('credentials', {
       email: 'jane@example.com',
-      password: 'password123',
+      password: 'Password123!',
       redirect: false,
     });
     expect(result).toEqual({ ok: true, data: { success: true } });

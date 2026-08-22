@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+const PASSWORD_UPPERCASE_REGEX = /[A-Z]/;
+const PASSWORD_NUMBER_REGEX = /[0-9]/;
+const PASSWORD_SPECIAL_CHAR_REGEX = /[^A-Za-z0-9]/;
+
+/**
+ * The single source of truth for sign-up's password strength rules — shared
+ * between signUpSchema's own .regex() calls below and
+ * PasswordRequirementsChecklist's live per-keystroke UI, so the two can
+ * never silently drift apart.
+ */
+export const PASSWORD_REQUIREMENTS = [
+  { label: '8+ characters', test: (value: string) => value.length >= 8 },
+  { label: '1 uppercase letter', test: (value: string) => PASSWORD_UPPERCASE_REGEX.test(value) },
+  { label: '1 number', test: (value: string) => PASSWORD_NUMBER_REGEX.test(value) },
+  { label: '1 special character', test: (value: string) => PASSWORD_SPECIAL_CHAR_REGEX.test(value) },
+] as const;
+
 export const signUpSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required.').max(100),
@@ -9,7 +26,10 @@ export const signUpSchema = z
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters.')
-      .max(72, 'Password must be at most 72 characters.'),
+      .max(72, 'Password must be at most 72 characters.')
+      .regex(PASSWORD_UPPERCASE_REGEX, 'Password must include at least one uppercase letter.')
+      .regex(PASSWORD_NUMBER_REGEX, 'Password must include at least one number.')
+      .regex(PASSWORD_SPECIAL_CHAR_REGEX, 'Password must include at least one special character.'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

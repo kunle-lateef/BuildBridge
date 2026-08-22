@@ -30,7 +30,7 @@ export function SignInForm() {
   }, [state, router, searchParams]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" noValidate>
+    <form action={formAction} className="flex flex-col gap-5" noValidate>
       {passwordChanged && !state && (
         <p role="status" className="flex items-center gap-1.5 text-[--color-success]">
           <CheckCircle2 aria-hidden="true" size={16} />

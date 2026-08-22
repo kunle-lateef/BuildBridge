@@ -20,12 +20,21 @@ export function AuthLayout({ title, description, children }: AuthLayoutProps) {
   return (
     <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-12">
       <AuthBackground />
-      <div className="relative w-full max-w-md border border-[--color-border] bg-[--color-background] px-8 py-10 sm:px-10">
+      <div className="relative w-full max-w-lg border border-[--color-border] bg-[--color-background] px-5 py-12 sm:px-12">
         <Link
           href="/"
           className="mb-8 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
         >
-          <BrandMark alt="BuildBridge" size={28} />
+          {/* The lockup's own SVG has ~15% of its width as trailing empty
+              space to the right of the wordmark (measured via getBBox: the
+              icon+text content spans 0–459 of the 650-wide viewBox, not the
+              full box) — centering the box via flexbox therefore centers
+              that empty margin along with it, leaving the actual visible
+              icon+wordmark sitting left of true center. Nudging right by
+              the same 14.69% corrects for it without touching the shared
+              asset or BrandMark's other, non-centered usages (Sidebar,
+              MarketingHeader/Footer). */}
+          <BrandMark alt="BuildBridge" size={28} className="translate-x-[14.69%]" />
         </Link>
 
         <div className="flex flex-col items-center gap-1 pb-8 text-center">
