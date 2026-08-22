@@ -34,13 +34,17 @@ export function ResponsiveRuleList({ rules }: ResponsiveRuleListProps) {
     <div className="flex flex-col gap-1.5">
       {rules.map((rule) => (
         <div key={rule.id} className="flex flex-col gap-1.5 border-b border-[--color-border] py-2 last:border-b-0">
-          <div className="flex items-center gap-2">
-            <span className="min-w-[6rem] text-[--color-text-body]">{rule.viewportCategory}</span>
-            <span className="text-[--color-text-secondary]">{rule.behavior}</span>
-            <ProvenanceBadge provenance={rule.provenance} />
-            <ReviewStatusBadge status={rule.reviewStatus} />
-            {rule.implemented && <ImplementedIndicator />}
-            {rule.pinScreenId && rule.pinKey && <FindingPinLink screenId={rule.pinScreenId} pinKey={rule.pinKey} />}
+          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-[--color-text-body] sm:min-w-[6rem]">{rule.viewportCategory}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[--color-text-secondary]">{rule.behavior}</span>
+              <ProvenanceBadge provenance={rule.provenance} />
+              <ReviewStatusBadge status={rule.reviewStatus} />
+              {rule.implemented && <ImplementedIndicator />}
+              {rule.pinScreenId && rule.pinKey && (
+                <FindingPinLink screenId={rule.pinScreenId} pinKey={rule.pinKey} />
+              )}
+            </div>
           </div>
           <DecisionControls
             findingType="ResponsiveRule"

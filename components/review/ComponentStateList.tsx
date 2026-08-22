@@ -30,13 +30,15 @@ export function ComponentStateList({ states, pinScreenId, pinKey }: ComponentSta
     <div className="flex flex-col gap-2">
       {states.map((state) => (
         <div key={state.id} className="flex flex-col gap-2 border-b border-[--color-border] py-3 last:border-b-0">
-          <div className="flex items-center gap-2">
-            <span className="min-w-[8rem] text-[--color-text-body]">{state.name}</span>
-            <span className="text-[--color-text-secondary]">{state.description}</span>
-            <ProvenanceBadge provenance={state.provenance} />
-            <ReviewStatusBadge status={state.reviewStatus} />
-            {state.implemented && <ImplementedIndicator />}
-            {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
+          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-[--color-text-body] sm:min-w-[8rem]">{state.name}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[--color-text-secondary]">{state.description}</span>
+              <ProvenanceBadge provenance={state.provenance} />
+              <ReviewStatusBadge status={state.reviewStatus} />
+              {state.implemented && <ImplementedIndicator />}
+              {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
+            </div>
           </div>
           <DecisionControls
             findingType="ComponentState"

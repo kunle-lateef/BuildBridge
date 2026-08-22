@@ -36,16 +36,18 @@ export function SpecificationRow({
 }: SpecificationRowProps) {
   return (
     <div className="flex flex-col gap-2 border-b border-[--color-border] py-3 last:border-b-0">
-      <div className="flex items-center gap-2">
-        <span className="min-w-[10rem] text-[--color-text-body]">{property}</span>
-        <span className="font-mono text-[--color-text-body]">
-          {value}
-          {unit ? ` ${unit}` : ''}
-        </span>
-        <ProvenanceBadge provenance={provenance} />
-        <ReviewStatusBadge status={reviewStatus} />
-        {implemented && <ImplementedIndicator />}
-        {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
+      <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <span className="text-[--color-text-body] sm:min-w-[10rem]">{property}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[--color-text-body]">
+            {value}
+            {unit ? ` ${unit}` : ''}
+          </span>
+          <ProvenanceBadge provenance={provenance} />
+          <ReviewStatusBadge status={reviewStatus} />
+          {implemented && <ImplementedIndicator />}
+          {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
+        </div>
       </div>
       <DecisionControls findingType="Specification" findingReference={id} currentValue={value} />
     </div>
