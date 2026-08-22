@@ -6,10 +6,13 @@ import { Card } from '@/components/ui/Card';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { auth } from '@/lib/auth';
 import { getPortfolioDrift } from '@/lib/drift';
+import type { IssueSeverity } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Drift — BuildBridge',
 };
+
+const SEVERITY_ORDER: IssueSeverity[] = ['Critical', 'High', 'Medium', 'Low', 'Recommendation'];
 
 /**
  * Cross-handoff design-system drift — the same outlier detection that runs
@@ -47,28 +50,53 @@ export default async function DriftPage() {
           </p>
         </Card>
       ) : (
-        <div className="flex flex-col gap-2">
-          {findings.map((finding, index) => (
-            <Card key={`${finding.handoffId}-${index}`} className="flex flex-col gap-1.5 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <SeverityBadge severity={finding.severity} />
-                <span className="font-medium text-[--color-text-primary]">{finding.title}</span>
-                <Link
-                  href={`/handoffs/${finding.handoffId}`}
-                  className="ml-auto text-[--color-primary] hover:underline"
-                >
-                  {finding.handoffName}
-                </Link>
-              </div>
-              <p className="text-[--color-text-secondary]">{finding.description}</p>
-              {finding.recommendation && (
-                <p className="text-[--color-text-secondary]">
-                  <span className="font-medium">Recommendation:</span> {finding.recommendation}
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
+        <>
+          <Card className="flex flex-col gap-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[--color-text-secondary]">
+                Drift findings across {new Set(findings.map((finding) => finding.handoffId)).size} handoffs
+              </span>
+              <span className="font-mono text-[length:var(--font-desktop-heading-1-bold-size)] font-bold text-[--color-text-primary]">
+                {findings.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SEVERITY_ORDER.map((severity) => {
+                const count = findings.filter((finding) => finding.severity === severity).length;
+                if (count === 0) return null;
+
+                return (
+                  <span key={severity} className="flex items-center gap-1.5">
+                    <SeverityBadge severity={severity} /> {count}
+                  </span>
+                );
+              })}
+            </div>
+          </Card>
+
+          <div className="flex flex-col gap-2">
+            {findings.map((finding, index) => (
+              <Card key={`${finding.handoffId}-${index}`} className="flex flex-col gap-1.5 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SeverityBadge severity={finding.severity} />
+                  <span className="font-medium text-[--color-text-primary]">{finding.title}</span>
+                  <Link
+                    href={`/handoffs/${finding.handoffId}`}
+                    className="ml-auto text-[--color-primary] hover:underline"
+                  >
+                    {finding.handoffName}
+                  </Link>
+                </div>
+                <p className="text-[--color-text-secondary]">{finding.description}</p>
+                {finding.recommendation && (
+                  <p className="text-[--color-text-secondary]">
+                    <span className="font-medium">Recommendation:</span> {finding.recommendation}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
