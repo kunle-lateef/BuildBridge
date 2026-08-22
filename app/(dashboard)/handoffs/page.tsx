@@ -120,25 +120,41 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
     .slice(0, ATTENTION_QUEUE_LIMIT);
 
   // Thumbnails are only worth fetching (and signing) when the grid view is
-  // actually being rendered — the list view has no use for them.
+  // actually being rendered — the list view has no use for them. One query
+  // for every visible handoff's processed screens (instead of a findFirst
+  // per handoff), reduced to the first per handoff in memory.
   const gridHandoffs = isGridView
-    ? await Promise.all(
-        handoffs.map(async (handoff) => {
-          const firstScreen = await db.screen.findFirst({
-            where: { handoffId: handoff.id, asset: { processingStatus: 'Processed' } },
-            orderBy: { order: 'asc' },
-            include: { asset: true },
-          });
+    ? await (async () => {
+        const candidateScreens = await db.screen.findMany({
+          where: {
+            handoffId: { in: handoffs.map((handoff) => handoff.id) },
+            asset: { processingStatus: 'Processed' },
+          },
+          orderBy: { order: 'asc' },
+          include: { asset: true },
+        });
 
-          return {
-            id: handoff.id,
-            name: handoff.name,
-            status: handoff.status,
-            readinessScore: handoff.readinessScore,
-            thumbnailUrl: firstScreen ? await createSignedReadUrl(firstScreen.asset.storageReference) : null,
-          };
-        }),
-      )
+        const firstScreenByHandoffId = new Map<string, (typeof candidateScreens)[number]>();
+        for (const screen of candidateScreens) {
+          if (!firstScreenByHandoffId.has(screen.handoffId)) {
+            firstScreenByHandoffId.set(screen.handoffId, screen);
+          }
+        }
+
+        return Promise.all(
+          handoffs.map(async (handoff) => {
+            const firstScreen = firstScreenByHandoffId.get(handoff.id);
+
+            return {
+              id: handoff.id,
+              name: handoff.name,
+              status: handoff.status,
+              readinessScore: handoff.readinessScore,
+              thumbnailUrl: firstScreen ? await createSignedReadUrl(firstScreen.asset.storageReference) : null,
+            };
+          }),
+        );
+      })()
     : [];
 
   return (

@@ -53,22 +53,22 @@ describe('getPortfolioInsights', () => {
     );
   });
 
-  it('averages per-category scores across handoffs by reusing computeReadiness, and identifies the weakest category', async () => {
+  it('averages per-category scores across handoffs from one batched issues query, and identifies the weakest category', async () => {
     mockDb.handoff.findMany.mockResolvedValue([{ id: 'handoff-1' }, { id: 'handoff-2' }]);
-    // computeReadiness itself queries handoffIssue.findMany per handoff.
-    mockDb.handoffIssue.findMany.mockImplementation(({ where }: { where: { handoffId: string } }) => {
-      if (where.handoffId === 'handoff-1') {
-        return Promise.resolve([
-          { severity: 'Critical', category: 'Accessibility', status: 'Open' }, // -40
-        ]);
-      }
-      return Promise.resolve([]); // handoff-2: perfect score everywhere
-    });
+    // One query for every handoff's issues, tagged with handoffId, rather than
+    // a separate handoffIssue.findMany per handoff.
+    mockDb.handoffIssue.findMany.mockResolvedValue([
+      { handoffId: 'handoff-1', severity: 'Critical', category: 'Accessibility', status: 'Open' }, // -40
+      // handoff-2: perfect score everywhere (no issues)
+    ]);
     mockDb.handoffIssue.groupBy.mockResolvedValue(emptyGroupByRows());
     mockDb.analysisRun.findMany.mockResolvedValue([]);
 
     const result = await getPortfolioInsights('user-a');
 
+    expect(mockDb.handoffIssue.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { handoffId: { in: ['handoff-1', 'handoff-2'] } } }),
+    );
     // handoff-1's Accessibility: 60, handoff-2's Accessibility: 100 -> average 80
     expect(result.categoryAverages.Accessibility).toBe(80);
     // every other category: 100 and 100 -> average 100

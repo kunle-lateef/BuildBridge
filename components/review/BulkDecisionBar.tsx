@@ -14,6 +14,8 @@ type BulkDecisionBarProps = {
   findingType: FindingType;
   provenance: ProvenanceType;
   findingReferences: string[];
+  /** Singular noun for what's being decided ("component", "specification", "state") — the Components section stacks several of these bars back-to-back, and "3 Detected findings" gives no way to tell which bar acts on which finding type. */
+  label: string;
 };
 
 /**
@@ -22,7 +24,7 @@ type BulkDecisionBarProps = {
  * already-filtered-by-provenance group, so there's no way to trigger it
  * across a mixed set from the UI; the server action re-verifies anyway.
  */
-export function BulkDecisionBar({ handoffId, findingType, provenance, findingReferences }: BulkDecisionBarProps) {
+export function BulkDecisionBar({ handoffId, findingType, provenance, findingReferences, label }: BulkDecisionBarProps) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<'Confirm' | 'Reject' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +59,8 @@ export function BulkDecisionBar({ handoffId, findingType, provenance, findingRef
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <span className="text-[--color-text-secondary]">
-          {findingReferences.length} {provenance} finding{findingReferences.length === 1 ? '' : 's'}
+          {findingReferences.length} {provenance} {label}
+          {findingReferences.length === 1 ? '' : 's'}
         </span>
         <Button type="button" variant="secondary" size="sm" onClick={() => setPendingAction('Confirm')}>
           Confirm all
@@ -76,7 +79,7 @@ export function BulkDecisionBar({ handoffId, findingType, provenance, findingRef
         open={pendingAction !== null}
         onClose={() => setPendingAction(null)}
         onConfirm={() => void handleConfirm()}
-        title={`${pendingAction ?? 'Confirm'} all ${findingReferences.length} ${provenance} finding${findingReferences.length === 1 ? '' : 's'}?`}
+        title={`${pendingAction ?? 'Confirm'} all ${findingReferences.length} ${provenance} ${label}${findingReferences.length === 1 ? '' : 's'}?`}
         description="This applies the same decision to every finding in this group at once. Each one still gets its own entry in the decision history."
         confirmLabel={pendingAction ?? 'Confirm'}
         variant={pendingAction === 'Reject' ? 'danger' : 'primary'}

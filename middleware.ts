@@ -46,6 +46,7 @@ export const config = {
     '/handoffs/:path*',
     '/insights/:path*',
     '/drift/:path*',
+    '/notifications/:path*',
     '/settings/:path*',
     '/share/:path*',
     '/api/share/:path*',

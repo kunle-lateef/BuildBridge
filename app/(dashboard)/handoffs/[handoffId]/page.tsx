@@ -191,28 +191,46 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
       }),
     ]);
 
-  const notes = await db.designerNote.findMany({
-    where: { handoffId },
-    orderBy: { createdAt: 'desc' },
-  });
+  const processedScreens = screens.filter(
+    (screen) => screen.asset.processingStatus === 'Processed',
+  );
 
-  const screenFlows = await db.screenFlow.findMany({
-    where: { handoffId },
-    include: { sourceScreen: true, targetScreen: true },
-    orderBy: { createdAt: 'asc' },
-  });
+  // None of these six depend on one another — previously each was awaited
+  // one at a time, turning every page load into a waterfall of round trips
+  // instead of one round-trip's worth of wall-clock time.
+  const [notes, screenFlows, changelogEntries, developerFlags, implementationMarks, screenThumbnails, stages, responsiveRules] =
+    await Promise.all([
+      db.designerNote.findMany({
+        where: { handoffId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      db.screenFlow.findMany({
+        where: { handoffId },
+        include: { sourceScreen: true, targetScreen: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      getAnalysisChangelog(handoffId),
+      db.developerFlag.findMany({
+        where: { handoffId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      db.implementationMark.findMany({
+        where: { handoffId },
+        select: { findingType: true, findingReference: true },
+      }),
+      Promise.all(
+        processedScreens.map(async (screen) => ({
+          screen,
+          imageUrl: await createSignedReadUrl(screen.asset.storageReference),
+        })),
+      ),
+      latestRun ? buildStageProgress(handoffId, latestRun.status) : Promise.resolve(null),
+      db.responsiveRule.findMany({
+        where: { screen: { handoffId } },
+        include: { screen: true },
+      }),
+    ]);
 
-  const changelogEntries = await getAnalysisChangelog(handoffId);
-
-  const developerFlags = await db.developerFlag.findMany({
-    where: { handoffId },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const implementationMarks = await db.implementationMark.findMany({
-    where: { handoffId },
-    select: { findingType: true, findingReference: true },
-  });
   const markedKeys = new Set(
     implementationMarks.map((mark) => `${mark.findingType}:${mark.findingReference}`),
   );
@@ -227,23 +245,6 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
     nextBestActions.map((action) => [action.issueId, action.delta]),
   );
   const topAction = nextBestActions[0] ?? null;
-
-  const processedScreens = screens.filter(
-    (screen) => screen.asset.processingStatus === 'Processed',
-  );
-  const screenThumbnails = await Promise.all(
-    processedScreens.map(async (screen) => ({
-      screen,
-      imageUrl: await createSignedReadUrl(screen.asset.storageReference),
-    })),
-  );
-
-  const stages = latestRun ? await buildStageProgress(handoffId, latestRun.status) : null;
-
-  const responsiveRules = await db.responsiveRule.findMany({
-    where: { screen: { handoffId } },
-    include: { screen: true },
-  });
 
   // See lib/screenPins.ts — the region data this derives from is already
   // fully persisted (ComponentInstance.dimensions), so this is pure
@@ -377,6 +378,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                   findingType="Component"
                   provenance={provenance}
                   findingReferences={group.map((component) => component.id)}
+                  label="component"
                 />
               );
             })}
@@ -398,6 +400,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                   findingType="Specification"
                   provenance={provenance}
                   findingReferences={group.map((spec) => spec.id)}
+                  label="specification"
                 />
               );
             })}
@@ -414,6 +417,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                   findingType="ComponentState"
                   provenance={provenance}
                   findingReferences={group.map((state) => state.id)}
+                  label="state"
                 />
               );
             })}
@@ -459,6 +463,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                   findingType="ResponsiveRule"
                   provenance={provenance}
                   findingReferences={group.map((rule) => rule.id)}
+                  label="responsive rule"
                 />
               );
             })}

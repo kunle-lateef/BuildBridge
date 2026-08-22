@@ -1,7 +1,7 @@
 import { Prisma, type ReadinessCategory } from '@prisma/client';
 
 import { db } from '@/lib/db';
-import { computeReadiness, READINESS_CATEGORIES } from '@/lib/readiness';
+import { calculateReadiness, READINESS_CATEGORIES } from '@/lib/readiness';
 
 // ---------------------------------------------------------------------------
 // Cross-handoff readiness insights
@@ -24,10 +24,30 @@ export type PortfolioInsights = {
 };
 
 export async function getPortfolioInsights(userId: string, trendRunLimit = 10): Promise<PortfolioInsights> {
-  const handoffs = await db.handoff.findMany({
-    where: { ownerId: userId, status: { not: 'Archived' } },
-    select: { id: true },
-  });
+  const [handoffs, criticalOrHighRows, recentRuns] = await Promise.all([
+    db.handoff.findMany({
+      where: { ownerId: userId, status: { not: 'Archived' } },
+      select: { id: true },
+    }),
+    db.handoffIssue.groupBy({
+      by: ['category'],
+      where: {
+        handoff: { ownerId: userId, status: { not: 'Archived' } },
+        severity: { in: ['Critical', 'High'] },
+        status: { in: ['Open', 'InReview'] },
+      },
+      _count: true,
+    }),
+    db.analysisRun.findMany({
+      where: {
+        handoff: { ownerId: userId, status: { not: 'Archived' } },
+        readinessSnapshot: { not: Prisma.DbNull },
+      },
+      select: { id: true, createdAt: true, readinessSnapshot: true },
+      orderBy: { createdAt: 'desc' },
+      take: trendRunLimit,
+    }),
+  ]);
 
   const categoryAverages = Object.fromEntries(READINESS_CATEGORIES.map((category) => [category, 0])) as Record<
     ReadinessCategory,
@@ -35,23 +55,33 @@ export async function getPortfolioInsights(userId: string, trendRunLimit = 10): 
   >;
 
   if (handoffs.length > 0) {
-    const perHandoffReadiness = await Promise.all(handoffs.map((handoff) => computeReadiness(handoff.id)));
+    // One query for every handoff's issues, grouped in memory, rather than
+    // computeReadiness's one-query-per-handoff — calculateReadiness is the
+    // same pure function either way, so this can't drift from the
+    // single-handoff score.
+    const allIssues = await db.handoffIssue.findMany({
+      where: { handoffId: { in: handoffs.map((handoff) => handoff.id) } },
+      select: { handoffId: true, severity: true, category: true, status: true },
+    });
+    const issuesByHandoffId = new Map<string, typeof allIssues>();
+    for (const issue of allIssues) {
+      const bucket = issuesByHandoffId.get(issue.handoffId);
+      if (bucket) {
+        bucket.push(issue);
+      } else {
+        issuesByHandoffId.set(issue.handoffId, [issue]);
+      }
+    }
+
+    const perHandoffReadiness = handoffs.map((handoff) =>
+      calculateReadiness(issuesByHandoffId.get(handoff.id) ?? []),
+    );
 
     for (const category of READINESS_CATEGORIES) {
       const sum = perHandoffReadiness.reduce((total, readiness) => total + readiness.categories[category], 0);
       categoryAverages[category] = Math.round(sum / perHandoffReadiness.length);
     }
   }
-
-  const criticalOrHighRows = await db.handoffIssue.groupBy({
-    by: ['category'],
-    where: {
-      handoff: { ownerId: userId, status: { not: 'Archived' } },
-      severity: { in: ['Critical', 'High'] },
-      status: { in: ['Open', 'InReview'] },
-    },
-    _count: true,
-  });
 
   const criticalOrHighCountByCategory = Object.fromEntries(READINESS_CATEGORIES.map((category) => [category, 0])) as Record<
     ReadinessCategory,
@@ -60,16 +90,6 @@ export async function getPortfolioInsights(userId: string, trendRunLimit = 10): 
   for (const row of criticalOrHighRows) {
     criticalOrHighCountByCategory[row.category] = row._count;
   }
-
-  const recentRuns = await db.analysisRun.findMany({
-    where: {
-      handoff: { ownerId: userId, status: { not: 'Archived' } },
-      readinessSnapshot: { not: Prisma.DbNull },
-    },
-    select: { id: true, createdAt: true, readinessSnapshot: true },
-    orderBy: { createdAt: 'desc' },
-    take: trendRunLimit,
-  });
 
   const trend = Object.fromEntries(
     READINESS_CATEGORIES.map((category) => [category, [] as CategoryTrendPoint[]]),

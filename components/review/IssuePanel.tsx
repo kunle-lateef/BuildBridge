@@ -57,6 +57,7 @@ export function IssuePanel({ handoffId, issues, deltaById }: IssuePanelProps) {
             findingType="HandoffIssue"
             provenance={provenance}
             findingReferences={group.map((issue) => issue.id)}
+            label="issue"
           />
         );
       })}
