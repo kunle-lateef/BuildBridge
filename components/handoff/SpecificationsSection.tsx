@@ -43,17 +43,21 @@ export function SpecificationsSection({ shareToken, components }: Specifications
           <h3 className="text-[--color-text-secondary]">{component.name}</h3>
           {component.specifications.map((spec) => (
             <div key={spec.id} className="flex flex-col gap-1 border-b border-[--color-border] py-2 last:border-b-0">
-              <div className="flex items-center gap-2">
-                <span className="min-w-[10rem] text-[--color-text-body]">{spec.property}</span>
-                <span className="font-mono text-[--color-text-body]">
-                  {spec.value}
-                  {spec.unit ? ` ${spec.unit}` : ''}
-                </span>
-                <ProvenanceBadge provenance={spec.provenance} />
-                <ReviewStatusBadge status={spec.reviewStatus} />
-                {component.pinScreenId && (
-                  <FindingPinLink screenId={component.pinScreenId} pinKey={`component:${component.id}`} />
-                )}
+              <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[--color-text-body] sm:min-w-[10rem]">{spec.property}</span>
+                  <span className="font-mono text-[--color-text-body]">
+                    {spec.value}
+                    {spec.unit ? ` ${spec.unit}` : ''}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ProvenanceBadge provenance={spec.provenance} />
+                  <ReviewStatusBadge status={spec.reviewStatus} />
+                  {component.pinScreenId && (
+                    <FindingPinLink screenId={component.pinScreenId} pinKey={`component:${component.id}`} />
+                  )}
+                </div>
               </div>
               <ImplementationMarkButton
                 shareToken={shareToken}

@@ -32,15 +32,19 @@ export function ResponsiveSection({ shareToken, rules }: ResponsiveSectionProps)
       <div className="flex flex-col gap-1.5">
         {rules.map((rule) => (
           <div key={rule.id} className="flex flex-col gap-1 border-b border-[--color-border] py-2 last:border-b-0">
-            <div className="flex items-center gap-2">
-              <span className="min-w-[6rem] text-[--color-text-body]">{rule.viewportCategory}</span>
-              {rule.screenName && <span className="text-[--color-text-muted]">{rule.screenName}</span>}
-              <span className="text-[--color-text-secondary]">{rule.behavior}</span>
-              <ProvenanceBadge provenance={rule.provenance} />
-              <ReviewStatusBadge status={rule.reviewStatus} />
-              {rule.componentId && rule.pinScreenId && (
-                <FindingPinLink screenId={rule.pinScreenId} pinKey={`component:${rule.componentId}`} />
-              )}
+            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[--color-text-body] sm:min-w-[6rem]">{rule.viewportCategory}</span>
+                {rule.screenName && <span className="text-[--color-text-muted]">{rule.screenName}</span>}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[--color-text-secondary]">{rule.behavior}</span>
+                <ProvenanceBadge provenance={rule.provenance} />
+                <ReviewStatusBadge status={rule.reviewStatus} />
+                {rule.componentId && rule.pinScreenId && (
+                  <FindingPinLink screenId={rule.pinScreenId} pinKey={`component:${rule.componentId}`} />
+                )}
+              </div>
             </div>
             <ImplementationMarkButton
               shareToken={shareToken}
