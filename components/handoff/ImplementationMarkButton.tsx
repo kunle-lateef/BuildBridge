@@ -58,7 +58,7 @@ export function ImplementationMarkButton({
 
   if (!shareToken) {
     return (
-      <span className="text-[length:var(--font-desktop-caption-medium-size)] text-[--color-text-muted]">
+      <span className="self-start text-left text-[length:var(--font-desktop-caption-medium-size)] text-[--color-text-muted]">
         Mark as implemented (available on a live share link)
       </span>
     );
@@ -69,7 +69,7 @@ export function ImplementationMarkButton({
       type="button"
       disabled={isPending}
       onClick={() => void handleMark()}
-      className="text-[length:var(--font-desktop-caption-medium-size)] text-[--color-primary] underline hover:no-underline disabled:opacity-50"
+      className="self-start text-left text-[length:var(--font-desktop-caption-medium-size)] text-[--color-primary] underline hover:no-underline disabled:opacity-50"
     >
       {isPending ? 'Marking…' : 'Mark as implemented'}
     </button>
