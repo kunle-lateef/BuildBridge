@@ -18,6 +18,18 @@ const config: Config = {
         sans: ['var(--font-sans)', 'Inter', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
       },
+      keyframes: {
+        // A one-shot expanding-and-fading ring around HeroDemoCard's finding
+        // pin, announcing "something landed here" the same instant the pin
+        // itself pops in — see that component's comment.
+        'pin-halo': {
+          '0%': { opacity: '0.55', transform: 'scale(0.6)' },
+          '100%': { opacity: '0', transform: 'scale(1.7)' },
+        },
+      },
+      animation: {
+        'pin-halo': 'pin-halo 1.6s ease-out 1',
+      },
     },
   },
   plugins: [],

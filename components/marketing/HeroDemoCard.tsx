@@ -10,6 +10,8 @@ import { cn } from '@/lib/cn';
 
 const CYCLE_MS = 9200;
 const TARGET_SCORE = 82;
+const RING_RADIUS = 32;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 type HeroDemoCardProps = {
   /** Delays only the very first cycle — lets the hero text finish its own
@@ -19,25 +21,33 @@ type HeroDemoCardProps = {
 };
 
 /**
- * A purely decorative, looping 3-beat demo — upload, analyze, confirm —
- * living in the marketing hero. Not the real review UI (no server action,
- * no real handoff), so every "button" here is a styled `<span>` via the
- * real buttonVariants classes, never an actual `<button>`: the whole card
- * is aria-hidden, and a real focusable-but-inert control inside an
- * aria-hidden subtree is a genuine keyboard-trap bug (aria-hidden removes
- * it from the accessibility tree but not from Tab order), not just a
- * theoretical one. ProvenanceBadge/ReviewStatusBadge are the real
- * components, reused as-is for visual fidelity with the actual product.
+ * A purely decorative, looping demo — upload, analyze, confirm — living in
+ * the marketing hero. Not the real review UI (no server action, no real
+ * handoff), so every "button" here is a styled `<span>` via the real
+ * buttonVariants classes, never an actual `<button>`: the whole card is
+ * aria-hidden, and a real focusable-but-inert control inside an aria-hidden
+ * subtree is a genuine keyboard-trap bug (aria-hidden removes it from the
+ * accessibility tree but not from Tab order), not just a theoretical one.
+ * ProvenanceBadge/ReviewStatusBadge are the real components, reused as-is
+ * for visual fidelity with the actual product.
+ *
+ * The screen mockup stays visible the whole cycle (rather than being
+ * swapped out for a findings list) specifically so the numbered pin has
+ * something to stay anchored to — this mirrors the real review page's
+ * Finding Pins (lib/screenPins.ts), giving the hero a concrete product
+ * behavior to preview instead of an abstract "upload, then a list appears"
+ * mockup. The score is an SVG ring for the same reason ComponentReviewCard's
+ * readiness display favors visual encoding over a bare number wherever the
+ * design system allows it.
  */
 export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [stage, setStage] = useState<'upload' | 'findings'>('upload');
-  const [screenVisible, setScreenVisible] = useState(false);
   const [isFirstReveal, setIsFirstReveal] = useState(true);
   const [uploadDone, setUploadDone] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState(false);
-  const [findingsEntered, setFindingsEntered] = useState(false);
+  const [pinShown, setPinShown] = useState(false);
+  const [panelShown, setPanelShown] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<'Unreviewed' | 'Confirmed'>('Unreviewed');
   const [confirmPulse, setConfirmPulse] = useState(false);
   const [cardPulse, setCardPulse] = useState(false);
@@ -51,11 +61,10 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
 
   useEffect(() => {
     if (reducedMotion) {
-      setStage('findings');
-      setScreenVisible(true);
       setUploadDone(true);
       setFound(true);
-      setFindingsEntered(true);
+      setPinShown(true);
+      setPanelShown(true);
       setReviewStatus('Confirmed');
       setScoreVisible(true);
       return;
@@ -72,30 +81,25 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
     }
 
     function runCycle() {
-      setStage('upload');
-      setScreenVisible(false);
       setIsFirstReveal(!hasRunOnce.current);
       setUploadDone(false);
       setScanning(false);
       setFound(false);
-      setFindingsEntered(false);
+      setPinShown(false);
+      setPanelShown(false);
       setReviewStatus('Unreviewed');
       setConfirmPulse(false);
       setCardPulse(false);
       setScoreVisible(false);
 
-      requestAnimationFrame(() => {
-        if (!cancelled) setScreenVisible(true);
-      });
       schedule(() => setUploadDone(true), 100);
       schedule(() => setScanning(true), 1500);
-      schedule(() => setFound(true), 2350);
       schedule(() => {
-        setStage('findings');
-        requestAnimationFrame(() => {
-          if (!cancelled) setFindingsEntered(true);
-        });
-      }, 3100);
+        setScanning(false);
+        setFound(true);
+      }, 2350);
+      schedule(() => setPinShown(true), 2500);
+      schedule(() => setPanelShown(true), 2800);
       schedule(() => setConfirmPulse(true), 5300);
       schedule(() => {
         setConfirmPulse(false);
@@ -141,6 +145,8 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
     return () => cancelAnimationFrame(raf);
   }, [scoreVisible, reducedMotion]);
 
+  const ringOffset = RING_CIRCUMFERENCE * (1 - score / 100);
+
   return (
     <Card
       aria-hidden="true"
@@ -153,62 +159,78 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
         // content, and the rule's rationale (don't fake elevation on
         // regular UI) doesn't apply to a page that has no "regular UI" to
         // stay consistent with in the first place.
-        'relative h-[400px] overflow-hidden rounded-[--radius-xl] border-[--color-primary-light] bg-[image:radial-gradient(140%_100%_at_100%_0%,rgba(99,102,241,0.09),transparent_60%)] p-5 shadow-[0_20px_45px_-20px_rgba(79,70,229,0.35)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+        'relative flex h-[400px] flex-col gap-3 overflow-hidden rounded-[--radius-xl] border-[--color-primary-light] bg-[image:radial-gradient(140%_100%_at_100%_0%,rgba(99,102,241,0.09),transparent_60%)] p-5 shadow-[0_20px_45px_-20px_rgba(79,70,229,0.35)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
         cardPulse && 'scale-[1.018]',
       )}
     >
-      {/* Beat 1 + 2 — upload and scan */}
+      {/* Screen canvas — persists across the whole cycle so the pin has a
+          fixed anchor, rather than being swapped for a findings list. */}
       <div
         className={cn(
-          'absolute inset-5 flex flex-col gap-4 transition-opacity duration-300',
-          stage !== 'upload' && 'pointer-events-none opacity-0',
+          'relative flex flex-1 flex-col gap-2.5 overflow-visible rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-3.5 transition-all',
+          isFirstReveal ? 'duration-[550ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]' : 'duration-500 ease-out',
+          found && 'border-[--color-primary-light]',
         )}
       >
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[image:var(--gradient-primary)]" />
+          <div className="h-2 w-[55%] rounded-[--radius-sm] bg-[--color-border]" />
+        </div>
+        <div className="h-2 w-[42%] rounded-[--radius-sm] bg-[--color-border]" />
+        <div className="mt-1 flex gap-2">
+          <div className="relative h-8 flex-1 overflow-hidden rounded-[--radius-sm] border border-[--color-border] bg-[--color-background]">
+            <span className="absolute left-1.5 right-2.5 top-2 h-1 rounded-[--radius-sm] bg-[--color-border]" />
+          </div>
+          <div className="relative h-8 flex-1 overflow-hidden rounded-[--radius-sm] border border-[--color-border] bg-[--color-background]">
+            <span className="absolute left-1.5 right-2.5 top-2 h-1 rounded-[--radius-sm] bg-[--color-border]" />
+          </div>
+        </div>
+
         <div
           className={cn(
-            'relative flex flex-1 flex-col gap-2.5 overflow-hidden rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-3.5 transition-all',
-            isFirstReveal
-              ? 'duration-[550ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]'
-              : 'duration-500 ease-out',
-            found && 'border-[--color-primary-light]',
-            screenVisible ? 'scale-100 opacity-100' : 'scale-[0.97] opacity-0',
+            'relative mt-auto h-[26px] w-[84px] rounded-[--radius-sm] bg-[image:var(--gradient-primary)] transition-opacity duration-500',
+            found ? 'opacity-100' : 'opacity-35',
           )}
         >
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-[image:var(--gradient-primary)]" />
-            <div className="h-2 w-[55%] rounded-[--radius-sm] bg-[--color-border]" />
-          </div>
-          <div className="h-2 w-[42%] rounded-[--radius-sm] bg-[--color-border]" />
-          <div className="mt-1 flex gap-2">
-            <div className="relative h-8 flex-1 overflow-hidden rounded-[--radius-sm] border border-[--color-border] bg-[--color-background]">
-              <span className="absolute left-1.5 right-2.5 top-2 h-1 rounded-[--radius-sm] bg-[--color-border]" />
-            </div>
-            <div className="relative h-8 flex-1 overflow-hidden rounded-[--radius-sm] border border-[--color-border] bg-[--color-background]">
-              <span className="absolute left-1.5 right-2.5 top-2 h-1 rounded-[--radius-sm] bg-[--color-border]" />
-            </div>
-          </div>
-          <div
+          <span
             className={cn(
-              'relative mt-auto h-[26px] w-[84px] rounded-[--radius-sm] bg-[image:var(--gradient-primary)] transition-opacity duration-500',
-              found ? 'opacity-100' : 'opacity-35',
+              'absolute -right-3 -top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[--color-primary] text-[11px] font-bold text-white shadow-[0_3px_10px_-2px_rgba(79,70,229,0.6)] transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+              pinShown ? 'scale-100' : 'scale-0',
             )}
           >
-            <span
-              className={cn(
-                'absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[--color-primary] text-[10px] font-bold text-white shadow-[0_0_0_3px_var(--color-primary-light)] transition-transform duration-200',
-                found ? 'scale-100' : 'scale-0',
-              )}
-            >
-              1
-            </span>
-          </div>
-          <div
-            className={cn(
-              'absolute left-3.5 right-3.5 h-0.5 bg-[linear-gradient(90deg,transparent,var(--color-primary),transparent)] transition-[top] duration-[1200ms] ease-linear',
-              scanning ? 'top-[calc(100%-16px)] opacity-100' : 'top-3.5 opacity-0',
+            {pinShown && (
+              <span className="absolute -inset-2 rounded-full border-2 border-[--color-primary] motion-safe:animate-pin-halo" />
             )}
-          />
+            1
+          </span>
         </div>
+
+        <div
+          className={cn(
+            'absolute left-3.5 right-3.5 h-0.5 bg-[linear-gradient(90deg,transparent,var(--color-primary),transparent)] transition-[top] duration-[1200ms] ease-linear',
+            scanning ? 'top-[calc(100%-16px)] opacity-100' : 'top-3.5 opacity-0',
+          )}
+        />
+
+        {/* Connector down to the finding panel below */}
+        <svg
+          aria-hidden="true"
+          className={cn(
+            'pointer-events-none absolute -bottom-3 right-[38px] h-3 w-px overflow-visible transition-opacity duration-200',
+            panelShown ? 'opacity-55' : 'opacity-0',
+          )}
+        >
+          <line x1="0" y1="0" x2="0" y2="12" stroke="var(--color-primary)" strokeWidth="1.5" strokeDasharray="3 3" />
+        </svg>
+      </div>
+
+      {/* Upload/scan status — fades out once the finding is found */}
+      <div
+        className={cn(
+          'flex h-[30px] flex-col gap-1.5 transition-opacity duration-300',
+          found && 'pointer-events-none absolute opacity-0',
+        )}
+      >
         <div className="flex h-[18px] items-center gap-2 text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-secondary]">
           <span
             className={cn(
@@ -228,47 +250,38 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
         </div>
       </div>
 
-      {/* Beat 3 — findings */}
+      {/* Finding panel — replaces the upload status once the pin lands */}
       <div
         className={cn(
-          'absolute inset-5 flex flex-col gap-3.5 transition-opacity duration-300',
-          stage !== 'findings' && 'pointer-events-none opacity-0',
+          'flex flex-col gap-2.5 transition-all duration-300',
+          !found && 'pointer-events-none absolute opacity-0',
         )}
       >
         <div
           className={cn(
-            'flex items-center gap-2.5 transition-all duration-[400ms] ease-out',
-            findingsEntered ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
-          )}
-        >
-          <span className="relative h-6 w-8 shrink-0 rounded-[--radius-sm] border border-[--color-border] bg-[--color-surface] after:absolute after:bottom-1 after:left-1 after:right-1 after:h-1.5 after:rounded-[--radius-sm] after:bg-[--color-primary] after:opacity-60 after:content-['']" />
-          <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-secondary]">
-            Checkout Redesign — Screen 1
-          </span>
-        </div>
-        <div
-          className={cn(
-            'flex items-center gap-3 transition-all delay-100 duration-[400ms] ease-out',
-            findingsEntered ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
+            'flex items-center gap-3 transition-all duration-[400ms] ease-out',
+            panelShown ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
           )}
         >
           <span className="h-[26px] w-12 shrink-0 rounded-[--radius-sm] bg-[image:var(--gradient-primary)]" />
           <span className="font-medium text-[--color-text-primary]">Primary Button</span>
           <ProvenanceBadge provenance="Detected" className="ml-auto" />
         </div>
+
         <div
           className={cn(
-            'flex items-center justify-between border-t border-[--color-border] pt-3.5 transition-all delay-200 duration-[400ms] ease-out',
-            findingsEntered ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
+            'flex items-center justify-between transition-all delay-100 duration-[400ms] ease-out',
+            panelShown ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
           )}
         >
           <span className="text-[--color-text-secondary]">Review status</span>
           <ReviewStatusBadge status={reviewStatus} />
         </div>
+
         <div
           className={cn(
             'flex gap-2 overflow-hidden transition-all duration-300',
-            reviewStatus === 'Confirmed' ? 'max-h-0 -mt-3.5 opacity-0' : 'max-h-11 opacity-100',
+            reviewStatus === 'Confirmed' ? 'max-h-0 opacity-0' : 'max-h-11 opacity-100',
           )}
         >
           <span
@@ -292,16 +305,44 @@ export function HeroDemoCard({ startDelayMs = 0 }: HeroDemoCardProps) {
             Reject
           </span>
         </div>
-        <div
-          className={cn(
-            'mt-auto flex items-baseline gap-2 border-t border-[--color-border] pt-3.5 transition-all duration-500',
-            scoreVisible ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
-          )}
-        >
-          <span className="font-mono text-[length:var(--font-desktop-heading-1-bold-size)] font-bold text-[--color-text-primary]">
+      </div>
+
+      {/* Score ring */}
+      <div
+        className={cn(
+          'mt-auto flex items-center gap-4 border-t border-[--color-border] pt-3.5 transition-all duration-500',
+          scoreVisible ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0',
+        )}
+      >
+        <div className="relative h-[68px] w-[68px] shrink-0">
+          <svg width="68" height="68" viewBox="0 0 76 76" aria-hidden="true">
+            <circle cx="38" cy="38" r={RING_RADIUS} fill="none" stroke="var(--color-border)" strokeWidth="6" />
+            <circle
+              cx="38"
+              cy="38"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="url(#hero-score-gradient)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={RING_CIRCUMFERENCE}
+              strokeDashoffset={ringOffset}
+              transform="rotate(-90 38 38)"
+            />
+            <defs>
+              <linearGradient id="hero-score-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#433bca" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center font-mono text-[length:var(--font-desktop-heading-4-semi-bold-size)] font-bold text-[--color-text-primary]">
             {score}%
-          </span>
-          <span className="text-[--color-text-secondary]">Readiness score</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-[--color-text-primary]">Readiness score</span>
+          <span className="text-[--color-text-secondary]">1 of 1 findings confirmed</span>
         </div>
       </div>
     </Card>
