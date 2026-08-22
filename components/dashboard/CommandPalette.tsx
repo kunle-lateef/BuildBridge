@@ -41,7 +41,7 @@ export function CommandPalette({ handoffs, open, onOpenChange }: CommandPaletteP
       contentClassName="fixed left-1/2 top-24 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-[--radius-lg] border border-[--color-border] bg-[--color-background] shadow-lg"
     >
       <Command.Input
-        placeholder="Jump to a handoff or page…"
+        placeholder="Find a handoff or page…"
         className="w-full border-b border-[--color-border] bg-transparent px-4 py-3 text-[--color-text-body] focus-visible:outline-none"
       />
       <Command.List className="max-h-80 overflow-y-auto p-2">
