@@ -33,7 +33,7 @@ export function ResponsiveRuleList({ rules }: ResponsiveRuleListProps) {
   return (
     <div className="flex flex-col gap-1.5">
       {rules.map((rule) => (
-        <div key={rule.id} className="flex flex-col gap-1.5 border-b border-[--color-border] py-2 last:border-b-0">
+        <div key={rule.id} className="flex flex-col gap-2 border-b border-[--color-border] py-2 last:border-b-0">
           <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             <span className="text-[--color-text-body] sm:min-w-[6rem]">{rule.viewportCategory}</span>
             <div className="flex flex-wrap items-center gap-2">
@@ -50,6 +50,7 @@ export function ResponsiveRuleList({ rules }: ResponsiveRuleListProps) {
             findingType="ResponsiveRule"
             findingReference={rule.id}
             currentValue={rule.behavior}
+            className="mt-4"
           />
         </div>
       ))}

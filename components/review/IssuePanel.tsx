@@ -111,7 +111,12 @@ function IssueRow({ issue, delta }: { issue: HandoffIssueItem; delta?: number })
       <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
         Category: {issue.category}
       </span>
-      <DecisionControls findingType="HandoffIssue" findingReference={issue.id} currentValue={issue.description} />
+      <DecisionControls
+        findingType="HandoffIssue"
+        findingReference={issue.id}
+        currentValue={issue.description}
+        className="mt-4"
+      />
     </Card>
   );
 }

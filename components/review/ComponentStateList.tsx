@@ -44,6 +44,7 @@ export function ComponentStateList({ states, pinScreenId, pinKey }: ComponentSta
             findingType="ComponentState"
             findingReference={state.id}
             currentValue={state.description ?? ''}
+            className="mt-4"
           />
         </div>
       ))}

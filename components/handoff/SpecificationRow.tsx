@@ -49,7 +49,7 @@ export function SpecificationRow({
           {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
         </div>
       </div>
-      <DecisionControls findingType="Specification" findingReference={id} currentValue={value} />
+      <DecisionControls findingType="Specification" findingReference={id} currentValue={value} className="mt-4" />
     </div>
   );
 }

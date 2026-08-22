@@ -72,7 +72,12 @@ export function ComponentReviewCard({
       />
       {implemented && <ImplementedIndicator />}
       {showDecisionControls && (
-        <DecisionControls findingType="Component" findingReference={id} currentValue={description ?? ''} />
+        <DecisionControls
+          findingType="Component"
+          findingReference={id}
+          currentValue={description ?? ''}
+          className="mt-2"
+        />
       )}
 
       {specifications.length > 0 && (
