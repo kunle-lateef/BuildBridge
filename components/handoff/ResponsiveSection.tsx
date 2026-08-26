@@ -14,7 +14,7 @@ type ResponsiveSectionProps = {
     behavior: string;
     provenance: ProvenanceType;
     reviewStatus: ReviewStatus;
-    implemented: boolean;
+    isImplemented: boolean;
     pinScreenId?: string | null;
   }[];
 };
@@ -50,7 +50,7 @@ export function ResponsiveSection({ shareToken, rules }: ResponsiveSectionProps)
               shareToken={shareToken}
               findingType="ResponsiveRule"
               findingReference={rule.id}
-              initialImplemented={rule.implemented}
+              initialImplemented={rule.isImplemented}
             />
           </div>
         ))}

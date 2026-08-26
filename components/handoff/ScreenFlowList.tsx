@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/ToastProvider';
 
-export type ScreenFlowItem = {
+type ScreenFlowItem = {
   id: string;
   sourceScreenName: string;
   targetScreenName: string;

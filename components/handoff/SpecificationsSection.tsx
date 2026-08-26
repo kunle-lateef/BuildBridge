@@ -12,7 +12,7 @@ type Specification = {
   unit: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
 };
 
 type SpecificationsSectionProps = {
@@ -63,7 +63,7 @@ export function SpecificationsSection({ shareToken, components }: Specifications
                 shareToken={shareToken}
                 findingType="Specification"
                 findingReference={spec.id}
-                initialImplemented={spec.implemented}
+                initialImplemented={spec.isImplemented}
               />
             </div>
           ))}

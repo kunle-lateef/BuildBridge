@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 
-export type RateLimitResult = {
+type RateLimitResult = {
   success: boolean;
   limit: number;
   remaining: number;

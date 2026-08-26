@@ -48,7 +48,7 @@ export function detectConsistencyOutliers(specs: ConsistencySpecInput[]): NewIss
  * does, to attribute each outlier back to the right handoff/component. See
  * lib/drift.ts.
  */
-export type ConsistencyOutlier = { finding: NewIssueFinding; source: ConsistencySpecInput };
+type ConsistencyOutlier = { finding: NewIssueFinding; source: ConsistencySpecInput };
 
 export function detectConsistencyOutliersWithSource(specs: ConsistencySpecInput[]): ConsistencyOutlier[] {
   const groups = new Map<string, ConsistencySpecInput[]>();

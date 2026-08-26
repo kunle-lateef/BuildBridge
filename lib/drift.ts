@@ -17,7 +17,7 @@ import type { IssueSeverity, ProvenanceType, ReadinessCategory } from '@/lib/typ
 // The distinct type name signals that at a glance.
 // ---------------------------------------------------------------------------
 
-export type PortfolioDriftFinding = {
+type PortfolioDriftFinding = {
   title: string;
   description: string;
   severity: IssueSeverity;

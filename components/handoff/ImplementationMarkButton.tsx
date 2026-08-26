@@ -33,7 +33,7 @@ export function ImplementationMarkButton({
   findingReference,
   initialImplemented,
 }: ImplementationMarkButtonProps) {
-  const [implemented, setImplemented] = useState(initialImplemented);
+  const [isImplemented, setIsImplemented] = useState(initialImplemented);
   const [isPending, setIsPending] = useState(false);
 
   async function handleMark() {
@@ -45,14 +45,14 @@ export function ImplementationMarkButton({
         body: JSON.stringify({ findingType, findingReference }),
       });
       if (response.ok) {
-        setImplemented(true);
+        setIsImplemented(true);
       }
     } finally {
       setIsPending(false);
     }
   }
 
-  if (implemented) {
+  if (isImplemented) {
     return <ImplementedIndicator />;
   }
 

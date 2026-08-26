@@ -15,7 +15,7 @@ export type SpecificationItem = {
   unit: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
 };
 
 type ComponentReviewCardProps = {
@@ -25,7 +25,7 @@ type ComponentReviewCardProps = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
   specifications: SpecificationItem[];
   states: ComponentStateItem[];
   /** The screen to open when "show on screen" is clicked — null/undefined when this component has no derivable pin. */
@@ -51,7 +51,7 @@ export function ComponentReviewCard({
   description,
   provenance,
   reviewStatus,
-  implemented,
+  isImplemented,
   specifications,
   states,
   pinScreenId,
@@ -70,7 +70,7 @@ export function ComponentReviewCard({
         reviewStatus={reviewStatus}
         actions={pinScreenId ? <FindingPinLink screenId={pinScreenId} pinKey={pinKey} /> : undefined}
       />
-      {implemented && <ImplementedIndicator />}
+      {isImplemented && <ImplementedIndicator />}
       {showDecisionControls && (
         <DecisionControls
           findingType="Component"

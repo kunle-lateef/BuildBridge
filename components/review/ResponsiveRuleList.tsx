@@ -5,13 +5,13 @@ import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import type { ProvenanceType, ReviewStatus, ViewportCategory } from '@/lib/types';
 
-export type ResponsiveRuleItem = {
+type ResponsiveRuleItem = {
   id: string;
   viewportCategory: ViewportCategory;
   behavior: string;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
   /** Both set only when this rule is anchored to a Component with a derivable pin — see lib/screenPins.ts. */
   pinScreenId?: string | null;
   pinKey?: `component:${string}`;
@@ -40,7 +40,7 @@ export function ResponsiveRuleList({ rules }: ResponsiveRuleListProps) {
               <span className="text-[--color-text-secondary]">{rule.behavior}</span>
               <ProvenanceBadge provenance={rule.provenance} />
               <ReviewStatusBadge status={rule.reviewStatus} />
-              {rule.implemented && <ImplementedIndicator />}
+              {rule.isImplemented && <ImplementedIndicator />}
               {rule.pinScreenId && rule.pinKey && (
                 <FindingPinLink screenId={rule.pinScreenId} pinKey={rule.pinKey} />
               )}

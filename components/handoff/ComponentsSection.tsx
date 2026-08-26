@@ -12,7 +12,7 @@ type ComponentsSectionProps = {
     description: string | null;
     provenance: ProvenanceType;
     reviewStatus: ReviewStatus;
-    implemented: boolean;
+    isImplemented: boolean;
     /** Optional so the designer review page's own Components rendering (which uses ComponentReviewCard, not this) isn't forced through this type. */
     pinScreenId?: string | null;
   }[];
@@ -47,7 +47,7 @@ export function ComponentsSection({ shareToken, components }: ComponentsSectionP
               shareToken={shareToken}
               findingType="Component"
               findingReference={component.id}
-              initialImplemented={component.implemented}
+              initialImplemented={component.isImplemented}
             />
           </div>
         ))}

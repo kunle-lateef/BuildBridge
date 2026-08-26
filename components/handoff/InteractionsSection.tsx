@@ -10,7 +10,7 @@ type ComponentState = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
 };
 
 type InteractionsSectionProps = {
@@ -67,7 +67,7 @@ export function InteractionsSection({ shareToken, components }: InteractionsSect
                 shareToken={shareToken}
                 findingType="ComponentState"
                 findingReference={state.id}
-                initialImplemented={state.implemented}
+                initialImplemented={state.isImplemented}
               />
             </div>
           ))}

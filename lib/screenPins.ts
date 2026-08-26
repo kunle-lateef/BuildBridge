@@ -1,7 +1,7 @@
 import { isValidRegion, type Region } from '@/lib/geometry';
 import type { FindingType, ProvenanceType } from '@/lib/types';
 
-export type PinFinding = {
+type PinFinding = {
   findingType: FindingType;
   findingId: string;
   label: string;
@@ -57,9 +57,9 @@ export type HandoffIssueInput = {
   provenance: ProvenanceType;
 };
 
-export type ScreenOrderInput = { id: string; order: number };
+type ScreenOrderInput = { id: string; order: number };
 
-export type BuildScreenPinsResult = {
+type BuildScreenPinsResult = {
   pinsByScreen: Map<string, ScreenPin[]>;
   /** Which screen a "show on screen" link for this component should open — the first by screen order when a component has instances on several screens. */
   pinScreenIdByComponentId: Map<string, string>;

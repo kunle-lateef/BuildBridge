@@ -80,7 +80,7 @@ export type DeveloperHandoffProjection = {
     description: string | null;
     provenance: ProvenanceType;
     reviewStatus: ReviewStatus;
-    implemented: boolean;
+    isImplemented: boolean;
     /** Which screen a "show on screen" link for this component (or any of its specs/states) should open — null when it has no derivable region. */
     pinScreenId: string | null;
     specifications: {
@@ -91,7 +91,7 @@ export type DeveloperHandoffProjection = {
       unit: string | null;
       provenance: ProvenanceType;
       reviewStatus: ReviewStatus;
-      implemented: boolean;
+      isImplemented: boolean;
     }[];
     states: {
       id: string;
@@ -99,7 +99,7 @@ export type DeveloperHandoffProjection = {
       description: string | null;
       provenance: ProvenanceType;
       reviewStatus: ReviewStatus;
-      implemented: boolean;
+      isImplemented: boolean;
     }[];
   }[];
   responsiveRules: {
@@ -110,7 +110,7 @@ export type DeveloperHandoffProjection = {
     behavior: string;
     provenance: ProvenanceType;
     reviewStatus: ReviewStatus;
-    implemented: boolean;
+    isImplemented: boolean;
     pinScreenId: string | null;
   }[];
   issues: {
@@ -230,7 +230,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
       description: component.description,
       provenance: component.provenance,
       reviewStatus: component.reviewStatus,
-      implemented: isMarked('Component', component.id),
+      isImplemented: isMarked('Component', component.id),
       pinScreenId: pinScreenIdByComponentId.get(component.id) ?? null,
       specifications: component.specifications.map((spec) => ({
         id: spec.id,
@@ -240,7 +240,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
         unit: spec.unit,
         provenance: spec.provenance,
         reviewStatus: spec.reviewStatus,
-        implemented: isMarked('Specification', spec.id),
+        isImplemented: isMarked('Specification', spec.id),
       })),
       states: component.states.map((state) => ({
         id: state.id,
@@ -248,7 +248,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
         description: state.description,
         provenance: state.provenance,
         reviewStatus: state.reviewStatus,
-        implemented: isMarked('ComponentState', state.id),
+        isImplemented: isMarked('ComponentState', state.id),
       })),
     })),
     responsiveRules: responsiveRules.map((rule) => ({
@@ -259,7 +259,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
       behavior: rule.behavior,
       provenance: rule.provenance,
       reviewStatus: rule.reviewStatus,
-      implemented: isMarked('ResponsiveRule', rule.id),
+      isImplemented: isMarked('ResponsiveRule', rule.id),
       pinScreenId: rule.componentId ? (pinScreenIdByComponentId.get(rule.componentId) ?? null) : null,
     })),
     issues: issues.map((issue) => ({

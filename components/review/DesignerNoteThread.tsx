@@ -22,7 +22,7 @@ import { addDesignerNoteSchema } from '@/lib/validators/note';
 // never sees.
 const addNoteFieldSchema = addDesignerNoteSchema.pick({ content: true });
 
-export type DesignerNoteItem = {
+type DesignerNoteItem = {
   id: string;
   content: string;
   createdAt: string;

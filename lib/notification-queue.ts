@@ -7,7 +7,7 @@ const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
 export const NOTIFICATION_QUEUE_NAME = 'notification';
 
-export const notificationQueue = new Queue(NOTIFICATION_QUEUE_NAME, { connection });
+const notificationQueue = new Queue(NOTIFICATION_QUEUE_NAME, { connection });
 
 // A separate queue from lib/queue.ts's analysis queue, not a second job
 // type merged into it — keeps the analysis queue single-purpose and lets

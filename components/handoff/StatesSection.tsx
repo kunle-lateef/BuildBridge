@@ -10,7 +10,7 @@ type ComponentState = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
 };
 
 type StatesSectionProps = {
@@ -60,7 +60,7 @@ export function StatesSection({ shareToken, components }: StatesSectionProps) {
                 shareToken={shareToken}
                 findingType="ComponentState"
                 findingReference={state.id}
-                initialImplemented={state.implemented}
+                initialImplemented={state.isImplemented}
               />
             </div>
           ))}

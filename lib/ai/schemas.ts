@@ -4,12 +4,12 @@ import { z } from 'zod';
  * Every AI-generated finding carries provenance and confidence — see
  * AGENTS.md's Non-Negotiables. No schema below may make either optional.
  */
-export const provenanceSchema = z.enum(['Detected', 'Inferred', 'Suggested']);
-export const confidenceSchema = z.number().min(0).max(1);
+const provenanceSchema = z.enum(['Detected', 'Inferred', 'Suggested']);
+const confidenceSchema = z.number().min(0).max(1);
 
 // --- Stage 1: Component detection -------------------------------------
 
-export const detectedComponentSchema = z.object({
+const detectedComponentSchema = z.object({
   name: z.string().min(1),
   // Free text, not a fixed enum — architecture.md's stage-1 list
   // (Navigation/Cards/Forms/Buttons/Inputs/Tables/"Other meaningful UI
@@ -32,7 +32,7 @@ export const componentDetectionResultSchema = z.object({
 
 // --- Stage 2: Specification extraction ----------------------------------
 
-export const specificationCategorySchema = z.enum([
+const specificationCategorySchema = z.enum([
   'Spacing',
   'Typography',
   'Color',
@@ -42,7 +42,7 @@ export const specificationCategorySchema = z.enum([
   'Shadow',
 ]);
 
-export const extractedSpecificationSchema = z.object({
+const extractedSpecificationSchema = z.object({
   category: specificationCategorySchema,
   property: z.string().min(1),
   value: z.string().min(1),
@@ -57,7 +57,7 @@ export const specificationExtractionResultSchema = z.object({
 
 // --- Stage 3: State & interaction analysis ------------------------------
 
-export const componentStateNameSchema = z.enum([
+const componentStateNameSchema = z.enum([
   'Default',
   'Hover',
   'Focus',
@@ -67,7 +67,7 @@ export const componentStateNameSchema = z.enum([
   'Empty',
 ]);
 
-export const componentStateFindingSchema = z.object({
+const componentStateFindingSchema = z.object({
   name: componentStateNameSchema,
   description: z.string().min(1),
   // Suggested by default absent strong visual evidence — see
@@ -83,9 +83,9 @@ export const stateAnalysisResultSchema = z.object({
 
 // --- Stage 4: Responsive analysis ---------------------------------------
 
-export const viewportCategorySchema = z.enum(['Desktop', 'Tablet', 'Mobile']);
+const viewportCategorySchema = z.enum(['Desktop', 'Tablet', 'Mobile']);
 
-export const responsiveRuleFindingSchema = z.object({
+const responsiveRuleFindingSchema = z.object({
   viewportCategory: viewportCategorySchema,
   behavior: z.string().min(1),
   provenance: provenanceSchema,
@@ -98,9 +98,9 @@ export const responsiveAnalysisResultSchema = z.object({
 
 // --- Stage 5: Gap detection ----------------------------------------------
 
-export const issueSeveritySchema = z.enum(['Critical', 'High', 'Medium', 'Low', 'Recommendation']);
+const issueSeveritySchema = z.enum(['Critical', 'High', 'Medium', 'Low', 'Recommendation']);
 
-export const readinessCategorySchema = z.enum([
+const readinessCategorySchema = z.enum([
   'VisualSpecifications',
   'Components',
   'ResponsiveBehavior',
@@ -109,7 +109,7 @@ export const readinessCategorySchema = z.enum([
   'Accessibility',
 ]);
 
-export const handoffIssueFindingSchema = z.object({
+const handoffIssueFindingSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   severity: issueSeveritySchema,

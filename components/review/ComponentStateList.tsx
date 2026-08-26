@@ -11,7 +11,7 @@ export type ComponentStateItem = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
 };
 
 type ComponentStateListProps = {
@@ -36,7 +36,7 @@ export function ComponentStateList({ states, pinScreenId, pinKey }: ComponentSta
               <span className="text-[--color-text-secondary]">{state.description}</span>
               <ProvenanceBadge provenance={state.provenance} />
               <ReviewStatusBadge status={state.reviewStatus} />
-              {state.implemented && <ImplementedIndicator />}
+              {state.isImplemented && <ImplementedIndicator />}
               {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
             </div>
           </div>

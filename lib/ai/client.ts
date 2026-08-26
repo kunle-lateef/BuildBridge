@@ -21,7 +21,7 @@ export class AiOutputError extends Error {
   }
 }
 
-export type ModelTier = 'fast' | 'reasoning';
+type ModelTier = 'fast' | 'reasoning';
 
 // Relative, not a fixed model identifier — see architecture.md's "Model
 // tier guidance is relative... the developer's call to set and change."
@@ -146,7 +146,7 @@ export async function callStructured<T extends z.ZodTypeAny>({
   return parsed.data;
 }
 
-export type ConversationTurn = {
+type ConversationTurn = {
   role: 'User' | 'Assistant';
   content: string;
 };

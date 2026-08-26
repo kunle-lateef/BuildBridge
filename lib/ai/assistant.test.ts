@@ -21,7 +21,7 @@ const baseProjection: DeveloperHandoffProjection = {
       description: 'Primary CTA',
       provenance: 'Detected',
       reviewStatus: 'Confirmed',
-      implemented: false,
+      isImplemented: false,
       pinScreenId: null,
       specifications: [
         {
@@ -32,7 +32,7 @@ const baseProjection: DeveloperHandoffProjection = {
           unit: 'px',
           provenance: 'Detected',
           reviewStatus: 'Unreviewed',
-          implemented: false,
+          isImplemented: false,
         },
       ],
       states: [
@@ -42,7 +42,7 @@ const baseProjection: DeveloperHandoffProjection = {
           description: 'Not confirmed by direct evidence',
           provenance: 'Suggested',
           reviewStatus: 'Unreviewed',
-          implemented: false,
+          isImplemented: false,
         },
       ],
     },

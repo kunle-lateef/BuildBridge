@@ -28,7 +28,7 @@ function isInteractiveType(type: string): boolean {
   return INTERACTIVE_TYPE_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
 
-export type TouchTargetInput = {
+type TouchTargetInput = {
   componentName: string;
   componentType: string;
   screenName: string;
@@ -93,7 +93,7 @@ const CONTRAST_FAIL_THRESHOLD = 2; // well under WCAG AA's 4.5:1 — only flags 
 const MIN_SAMPLE_REGION_PX = 8; // regions smaller than this can't be usefully split into edge/center samples
 const CONTRAST_CONFIDENCE = 0.65; // within the plan's documented ~0.6-0.8 range for this sampling method
 
-export type ContrastCheckInput = {
+type ContrastCheckInput = {
   componentName: string;
   componentType: string;
   screenName: string;

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastProvider';
 
-export type ShareLinkItem = {
+type ShareLinkItem = {
   id: string;
   status: 'Active' | 'Revoked';
   createdAt: string;

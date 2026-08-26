@@ -5,6 +5,7 @@ import type {
   IssueSeverity,
   ProvenanceType,
   ReadinessCategory,
+  ReviewStatus,
 } from '@prisma/client';
 
 type PrismaTransaction = Parameters<Parameters<typeof db.$transaction>[0]>[0];
@@ -38,7 +39,7 @@ export type NewIssueFinding = {
 
 type ExistingIssue = Pick<HandoffIssue, 'id' | 'title' | 'category' | 'status'>;
 
-export type IssueReconciliation = {
+type IssueReconciliation = {
   toCreate: NewIssueFinding[];
   /** Matched an existing Open/InReview issue — the AI found the same gap again, no duplicate needed. */
   reaffirmed: { existingIssueId: string; matchedFinding: NewIssueFinding }[];
@@ -151,58 +152,197 @@ export async function persistGapDetectionFindings(
 // flagged for the developer to confirm or adjust.
 // ---------------------------------------------------------------------------
 
-export type FindingLookup = {
+type FindingLookup = {
   handoffId: string;
   currentValue: string;
+};
+
+type BulkFindingRow = {
+  id: string;
+  handoffId: string;
+  provenance: ProvenanceType;
+  /** True if a designer has already acted on this finding — bulk actions skip these rather than re-deciding them. */
+  isAlreadyDecided: boolean;
+};
+
+type ParentedRow = { component?: { handoffId: string } | null; screen?: { handoffId: string } | null };
+
+/** Specification and ResponsiveRule both attach to either a Component or a Screen — never both, never neither. */
+function handoffIdFromParent(row: ParentedRow): string | undefined {
+  return row.component?.handoffId ?? row.screen?.handoffId;
+}
+
+/** Override has no dedicated ReviewStatus value distinct from Modify — both leave the finding "Modified"; the distinction lives in the DesignerDecision audit record's own `action` field. */
+function reviewStatusFor(action: DesignerDecisionAction): ReviewStatus {
+  return action === 'Confirm' ? 'Confirmed' : action === 'Reject' ? 'Rejected' : 'Modified';
+}
+
+/** Only Modify/Override ever write a new value, and never an empty one. */
+function valueToApply(action: DesignerDecisionAction, newValue: string | undefined): string | undefined {
+  return (action === 'Modify' || action === 'Override') && newValue ? newValue : undefined;
+}
+
+/**
+ * One adapter per FindingType, covering everything that varies by type
+ * across resolveFinding/applyDecisionToFinding/fetchFindingsForBulk below.
+ * Keying this off `Record<FindingType, ...>` rather than three separate
+ * switch statements means the compiler itself rejects a FindingType with no
+ * adapter — adding a sixth finding type is a compile error here until it's
+ * given one, instead of three switches that could each silently no-op or
+ * return empty for a case nobody remembered to add.
+ */
+type FindingAdapter = {
+  resolve: (findingReference: string) => Promise<FindingLookup | null>;
+  applyDecision: (
+    tx: PrismaTransaction,
+    findingReference: string,
+    action: DesignerDecisionAction,
+    newValue: string | undefined,
+  ) => Promise<void>;
+  fetchForBulk: (findingReferences: string[]) => Promise<BulkFindingRow[]>;
+};
+
+const FINDING_ADAPTERS: Record<FindingType, FindingAdapter> = {
+  Component: {
+    resolve: async (id) => {
+      const component = await db.component.findUnique({ where: { id } });
+      return component ? { handoffId: component.handoffId, currentValue: component.description ?? '' } : null;
+    },
+    applyDecision: async (tx, id, action, newValue) => {
+      const value = valueToApply(action, newValue);
+      await tx.component.update({
+        where: { id },
+        data: { reviewStatus: reviewStatusFor(action), ...(value !== undefined ? { description: value } : {}) },
+      });
+    },
+    fetchForBulk: async (ids) => {
+      const rows = await db.component.findMany({ where: { id: { in: ids } } });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.handoffId,
+        provenance: row.provenance,
+        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
+      }));
+    },
+  },
+  Specification: {
+    resolve: async (id) => {
+      const spec = await db.specification.findUnique({ where: { id }, include: { component: true, screen: true } });
+      if (!spec) return null;
+      const handoffId = handoffIdFromParent(spec);
+      return handoffId ? { handoffId, currentValue: spec.value } : null;
+    },
+    applyDecision: async (tx, id, action, newValue) => {
+      const value = valueToApply(action, newValue);
+      await tx.specification.update({
+        where: { id },
+        data: { reviewStatus: reviewStatusFor(action), ...(value !== undefined ? { value } : {}) },
+      });
+    },
+    fetchForBulk: async (ids) => {
+      const rows = await db.specification.findMany({
+        where: { id: { in: ids } },
+        include: { component: true, screen: true },
+      });
+      return rows.flatMap((row) => {
+        const handoffId = handoffIdFromParent(row);
+        return handoffId
+          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
+          : [];
+      });
+    },
+  },
+  ComponentState: {
+    resolve: async (id) => {
+      const state = await db.componentState.findUnique({ where: { id }, include: { component: true } });
+      return state ? { handoffId: state.component.handoffId, currentValue: state.description ?? '' } : null;
+    },
+    applyDecision: async (tx, id, action, newValue) => {
+      const value = valueToApply(action, newValue);
+      await tx.componentState.update({
+        where: { id },
+        data: { reviewStatus: reviewStatusFor(action), ...(value !== undefined ? { description: value } : {}) },
+      });
+    },
+    fetchForBulk: async (ids) => {
+      const rows = await db.componentState.findMany({ where: { id: { in: ids } }, include: { component: true } });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.component.handoffId,
+        provenance: row.provenance,
+        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
+      }));
+    },
+  },
+  ResponsiveRule: {
+    resolve: async (id) => {
+      const rule = await db.responsiveRule.findUnique({ where: { id }, include: { component: true, screen: true } });
+      if (!rule) return null;
+      const handoffId = handoffIdFromParent(rule);
+      return handoffId ? { handoffId, currentValue: rule.behavior } : null;
+    },
+    applyDecision: async (tx, id, action, newValue) => {
+      const value = valueToApply(action, newValue);
+      await tx.responsiveRule.update({
+        where: { id },
+        data: { reviewStatus: reviewStatusFor(action), ...(value !== undefined ? { behavior: value } : {}) },
+      });
+    },
+    fetchForBulk: async (ids) => {
+      const rows = await db.responsiveRule.findMany({
+        where: { id: { in: ids } },
+        include: { component: true, screen: true },
+      });
+      return rows.flatMap((row) => {
+        const handoffId = handoffIdFromParent(row);
+        return handoffId
+          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
+          : [];
+      });
+    },
+  },
+  HandoffIssue: {
+    resolve: async (id) => {
+      const issue = await db.handoffIssue.findUnique({ where: { id } });
+      return issue ? { handoffId: issue.handoffId, currentValue: issue.description } : null;
+    },
+    // HandoffIssue uses the distinct IssueStatus enum, not ReviewStatus — see
+    // the module comment above. Confirm: acknowledged as real, actively
+    // tracked. Modify: edited but still open work. Reject: not actually an
+    // issue. Override: the designer is asserting their own answer in place
+    // of the AI's flag, closing the loop themselves.
+    applyDecision: async (tx, id, action, newValue) => {
+      const status = action === 'Reject' ? 'Dismissed' : action === 'Override' ? 'Resolved' : 'InReview';
+      await tx.handoffIssue.update({
+        where: { id },
+        data: { status, ...(action === 'Modify' && newValue ? { description: newValue } : {}) },
+      });
+    },
+    fetchForBulk: async (ids) => {
+      const rows = await db.handoffIssue.findMany({ where: { id: { in: ids } } });
+      return rows.map((row) => ({
+        id: row.id,
+        handoffId: row.handoffId,
+        provenance: row.provenance,
+        // Only 'Open' is the untouched starting state — InReview/Resolved/
+        // Dismissed are all reachable only through a prior designer decision.
+        isAlreadyDecided: row.status !== 'Open',
+      }));
+    },
+  },
 };
 
 /**
  * Resolves a (findingType, findingReference) pair to its owning handoffId
  * and current value — the one field recordDesignerDecision's `newValue`
- * targets for that type (see the switch below for which field that is).
+ * targets for that type (see FINDING_ADAPTERS for which field that is).
  * Returns null if the finding doesn't exist.
  */
 export async function resolveFinding(
   findingType: FindingType,
   findingReference: string,
 ): Promise<FindingLookup | null> {
-  switch (findingType) {
-    case 'Component': {
-      const component = await db.component.findUnique({ where: { id: findingReference } });
-      return component ? { handoffId: component.handoffId, currentValue: component.description ?? '' } : null;
-    }
-    case 'Specification': {
-      const spec = await db.specification.findUnique({
-        where: { id: findingReference },
-        include: { component: true, screen: true },
-      });
-      if (!spec) return null;
-      const handoffId = spec.component?.handoffId ?? spec.screen?.handoffId;
-      return handoffId ? { handoffId, currentValue: spec.value } : null;
-    }
-    case 'ComponentState': {
-      const state = await db.componentState.findUnique({
-        where: { id: findingReference },
-        include: { component: true },
-      });
-      return state ? { handoffId: state.component.handoffId, currentValue: state.description ?? '' } : null;
-    }
-    case 'ResponsiveRule': {
-      const rule = await db.responsiveRule.findUnique({
-        where: { id: findingReference },
-        include: { component: true, screen: true },
-      });
-      if (!rule) return null;
-      const handoffId = rule.component?.handoffId ?? rule.screen?.handoffId;
-      return handoffId ? { handoffId, currentValue: rule.behavior } : null;
-    }
-    case 'HandoffIssue': {
-      const issue = await db.handoffIssue.findUnique({ where: { id: findingReference } });
-      return issue ? { handoffId: issue.handoffId, currentValue: issue.description } : null;
-    }
-    default:
-      return null;
-  }
+  return FINDING_ADAPTERS[findingType].resolve(findingReference);
 }
 
 /**
@@ -217,57 +357,7 @@ export async function applyDecisionToFinding(
   action: DesignerDecisionAction,
   newValue: string | undefined,
 ): Promise<void> {
-  if (findingType === 'HandoffIssue') {
-    // Confirm: acknowledged as real, actively tracked. Modify: edited but
-    // still open work. Reject: not actually an issue. Override: the
-    // designer is asserting their own answer in place of the AI's flag,
-    // closing the loop themselves.
-    const status =
-      action === 'Reject' ? 'Dismissed' : action === 'Override' ? 'Resolved' : 'InReview';
-
-    await tx.handoffIssue.update({
-      where: { id: findingReference },
-      data: {
-        status,
-        ...(action === 'Modify' && newValue ? { description: newValue } : {}),
-      },
-    });
-    return;
-  }
-
-  // Component / Specification / ComponentState / ResponsiveRule share
-  // ReviewStatus. Override has no dedicated ReviewStatus value distinct
-  // from Modify — both leave the finding "Modified"; the distinction lives
-  // in the DesignerDecision audit record's own `action` field.
-  const reviewStatus = action === 'Confirm' ? 'Confirmed' : action === 'Reject' ? 'Rejected' : 'Modified';
-  const applyValue = (action === 'Modify' || action === 'Override') && newValue;
-
-  switch (findingType) {
-    case 'Component':
-      await tx.component.update({
-        where: { id: findingReference },
-        data: { reviewStatus, ...(applyValue ? { description: newValue } : {}) },
-      });
-      break;
-    case 'Specification':
-      await tx.specification.update({
-        where: { id: findingReference },
-        data: { reviewStatus, ...(applyValue ? { value: newValue } : {}) },
-      });
-      break;
-    case 'ComponentState':
-      await tx.componentState.update({
-        where: { id: findingReference },
-        data: { reviewStatus, ...(applyValue ? { description: newValue } : {}) },
-      });
-      break;
-    case 'ResponsiveRule':
-      await tx.responsiveRule.update({
-        where: { id: findingReference },
-        data: { reviewStatus, ...(applyValue ? { behavior: newValue } : {}) },
-      });
-      break;
-  }
+  return FINDING_ADAPTERS[findingType].applyDecision(tx, findingReference, action, newValue);
 }
 
 // ---------------------------------------------------------------------------
@@ -281,14 +371,6 @@ export async function applyDecisionToFinding(
 // actions.ts actually mean something.
 // ---------------------------------------------------------------------------
 
-export type BulkFindingRow = {
-  id: string;
-  handoffId: string;
-  provenance: ProvenanceType;
-  /** True if a designer has already acted on this finding — bulk actions skip these rather than re-deciding them. */
-  isAlreadyDecided: boolean;
-};
-
 /**
  * Fetches the real, current state of every requested finding, scoped by id
  * only (never trusting a client-supplied handoffId/provenance) — the caller
@@ -300,65 +382,5 @@ export async function fetchFindingsForBulk(
   findingType: FindingType,
   findingReferences: string[],
 ): Promise<BulkFindingRow[]> {
-  switch (findingType) {
-    case 'Component': {
-      const rows = await db.component.findMany({ where: { id: { in: findingReferences } } });
-      return rows.map((row) => ({
-        id: row.id,
-        handoffId: row.handoffId,
-        provenance: row.provenance,
-        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
-      }));
-    }
-    case 'Specification': {
-      const rows = await db.specification.findMany({
-        where: { id: { in: findingReferences } },
-        include: { component: true, screen: true },
-      });
-      return rows.flatMap((row) => {
-        const handoffId = row.component?.handoffId ?? row.screen?.handoffId;
-        return handoffId
-          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
-          : [];
-      });
-    }
-    case 'ComponentState': {
-      const rows = await db.componentState.findMany({
-        where: { id: { in: findingReferences } },
-        include: { component: true },
-      });
-      return rows.map((row) => ({
-        id: row.id,
-        handoffId: row.component.handoffId,
-        provenance: row.provenance,
-        isAlreadyDecided: row.reviewStatus !== 'Unreviewed',
-      }));
-    }
-    case 'ResponsiveRule': {
-      const rows = await db.responsiveRule.findMany({
-        where: { id: { in: findingReferences } },
-        include: { component: true, screen: true },
-      });
-      return rows.flatMap((row) => {
-        const handoffId = row.component?.handoffId ?? row.screen?.handoffId;
-        return handoffId
-          ? [{ id: row.id, handoffId, provenance: row.provenance, isAlreadyDecided: row.reviewStatus !== 'Unreviewed' }]
-          : [];
-      });
-    }
-    case 'HandoffIssue': {
-      const rows = await db.handoffIssue.findMany({ where: { id: { in: findingReferences } } });
-      return rows.map((row) => ({
-        id: row.id,
-        handoffId: row.handoffId,
-        provenance: row.provenance,
-        // Only 'Open' is the untouched starting state — InReview/Resolved/
-        // Dismissed are all reachable only through a prior designer decision
-        // (see applyDecisionToFinding's HandoffIssue branch above).
-        isAlreadyDecided: row.status !== 'Open',
-      }));
-    }
-    default:
-      return [];
-  }
+  return FINDING_ADAPTERS[findingType].fetchForBulk(findingReferences);
 }

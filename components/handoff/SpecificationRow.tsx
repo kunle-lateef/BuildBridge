@@ -12,7 +12,7 @@ type SpecificationRowProps = {
   unit?: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
   /** Points at the parent Component's pin — a spec never has its own region, see lib/screenPins.ts. */
   pinScreenId?: string | null;
   pinKey?: `component:${string}`;
@@ -30,7 +30,7 @@ export function SpecificationRow({
   unit,
   provenance,
   reviewStatus,
-  implemented,
+  isImplemented,
   pinScreenId,
   pinKey,
 }: SpecificationRowProps) {
@@ -45,7 +45,7 @@ export function SpecificationRow({
           </span>
           <ProvenanceBadge provenance={provenance} />
           <ReviewStatusBadge status={reviewStatus} />
-          {implemented && <ImplementedIndicator />}
+          {isImplemented && <ImplementedIndicator />}
           {pinScreenId && pinKey && <FindingPinLink screenId={pinScreenId} pinKey={pinKey} />}
         </div>
       </div>

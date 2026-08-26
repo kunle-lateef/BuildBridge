@@ -429,14 +429,14 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
                 description: component.description,
                 provenance: component.provenance,
                 reviewStatus: component.reviewStatus,
-                implemented: isImplemented('Component', component.id),
+                isImplemented: isImplemented('Component', component.id),
                 specifications: component.specifications.map((spec) => ({
                   ...spec,
-                  implemented: isImplemented('Specification', spec.id),
+                  isImplemented: isImplemented('Specification', spec.id),
                 })),
                 states: component.states.map((state) => ({
                   ...state,
-                  implemented: isImplemented('ComponentState', state.id),
+                  isImplemented: isImplemented('ComponentState', state.id),
                 })),
                 pinScreenId: pinScreenIdByComponentId.get(component.id) ?? null,
               }))}
@@ -470,7 +470,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
             <ResponsiveRuleList
               rules={responsiveRules.map((rule) => ({
                 ...rule,
-                implemented: isImplemented('ResponsiveRule', rule.id),
+                isImplemented: isImplemented('ResponsiveRule', rule.id),
                 pinScreenId: rule.componentId
                   ? (pinScreenIdByComponentId.get(rule.componentId) ?? null)
                   : null,

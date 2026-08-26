@@ -32,7 +32,7 @@ export function deriveHandoffStatus(
  * score are never silently treated as comparable — see architecture.md's
  * Readiness Score section.
  */
-export const READINESS_ALGORITHM_VERSION = 1;
+const READINESS_ALGORITHM_VERSION = 1;
 
 export const READINESS_CATEGORIES: ReadinessCategory[] = [
   'VisualSpecifications',
@@ -51,7 +51,7 @@ const SEVERITY_DEDUCTIONS: Record<IssueSeverity, number> = {
   Recommendation: 0,
 };
 
-export type ReadinessResult = {
+type ReadinessResult = {
   version: number;
   overall: number;
   hasUnresolvedCritical: boolean;
@@ -108,7 +108,7 @@ export function calculateReadiness(issues: ReadinessInputIssue[]): ReadinessResu
   return { version: READINESS_ALGORITHM_VERSION, overall, hasUnresolvedCritical, categories };
 }
 
-export type NextBestAction = {
+type NextBestAction = {
   issueId: string;
   projectedOverall: number;
   delta: number;

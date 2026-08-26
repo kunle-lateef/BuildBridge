@@ -243,8 +243,8 @@ describe('buildDeveloperProjection — never leaks designer-only data', () => {
 
     const projection = await buildDeveloperProjection('handoff-1');
 
-    expect(projection.components[0]?.implemented).toBe(true);
-    expect(projection.components[0]?.specifications[0]?.implemented).toBe(true);
-    expect(projection.components[0]?.specifications[1]?.implemented).toBe(false);
+    expect(projection.components[0]?.isImplemented).toBe(true);
+    expect(projection.components[0]?.specifications[0]?.isImplemented).toBe(true);
+    expect(projection.components[0]?.specifications[1]?.isImplemented).toBe(false);
   });
 });

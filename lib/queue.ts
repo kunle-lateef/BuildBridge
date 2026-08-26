@@ -7,7 +7,7 @@ const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
 export const ANALYSIS_QUEUE_NAME = 'analysis';
 
-export const analysisQueue = new Queue(ANALYSIS_QUEUE_NAME, { connection });
+const analysisQueue = new Queue(ANALYSIS_QUEUE_NAME, { connection });
 
 export type AnalysisJobData = {
   analysisRunId: string;

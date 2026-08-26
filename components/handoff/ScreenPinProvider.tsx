@@ -52,7 +52,7 @@ export function ScreenPinProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useScreenPinState(): ScreenPinRequest | null {
+function useScreenPinState(): ScreenPinRequest | null {
   return useContext(ScreenPinStateContext);
 }
 

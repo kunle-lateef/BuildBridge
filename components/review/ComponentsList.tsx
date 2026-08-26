@@ -15,7 +15,7 @@ type ComponentListItem = {
   description: string | null;
   provenance: ProvenanceType;
   reviewStatus: ReviewStatus;
-  implemented: boolean;
+  isImplemented: boolean;
   specifications: SpecificationItem[];
   states: ComponentStateItem[];
   pinScreenId: string | null;
@@ -109,7 +109,7 @@ export function ComponentsList({ components }: ComponentsListProps) {
             description={component.description}
             provenance={component.provenance}
             reviewStatus={component.reviewStatus}
-            implemented={component.implemented}
+            isImplemented={component.isImplemented}
             specifications={component.specifications}
             states={component.states}
             pinScreenId={component.pinScreenId}

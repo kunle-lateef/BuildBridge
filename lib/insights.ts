@@ -13,9 +13,9 @@ import { calculateReadiness, READINESS_CATEGORIES } from '@/lib/readiness';
 // can never drift from the single-handoff score it's built from.
 // ---------------------------------------------------------------------------
 
-export type CategoryTrendPoint = { analysisRunId: string; runDate: Date; score: number };
+type CategoryTrendPoint = { analysisRunId: string; runDate: Date; score: number };
 
-export type PortfolioInsights = {
+type PortfolioInsights = {
   handoffCount: number;
   weakestCategory: { category: ReadinessCategory; averageScore: number } | null;
   categoryAverages: Record<ReadinessCategory, number>;
