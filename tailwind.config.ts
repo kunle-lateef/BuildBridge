@@ -19,16 +19,15 @@ const config: Config = {
         mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
       },
       keyframes: {
-        // A one-shot expanding-and-fading ring around HeroDemoCard's finding
-        // pin, announcing "something landed here" the same instant the pin
-        // itself pops in — see that component's comment.
-        'pin-halo': {
-          '0%': { opacity: '0.55', transform: 'scale(0.6)' },
+        // A one-shot ring that expands and fades off a HeroHandoffLoop action
+        // button the instant the demo cursor clicks it.
+        'confirm-ripple': {
+          '0%': { opacity: '0.55', transform: 'scale(0.4)' },
           '100%': { opacity: '0', transform: 'scale(1.7)' },
         },
       },
       animation: {
-        'pin-halo': 'pin-halo 1.6s ease-out 1',
+        'confirm-ripple': 'confirm-ripple 450ms ease-out 1 forwards',
       },
     },
   },

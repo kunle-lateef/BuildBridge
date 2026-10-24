@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { HeroDemoCard } from '@/components/marketing/HeroDemoCard';
+import { HeroHandoffLoop } from '@/components/marketing/HeroHandoffLoop';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 
@@ -15,7 +15,7 @@ const TEXT_ITEM_COUNT = 4;
  * Owns the hero's one-time landing entrance: the badge/heading/lede/CTAs
  * stagger in on first paint, the headline's accent phrase inks in a beat
  * after the rest of the line, and only once all of that has landed does
- * HeroDemoCard start its first cycle — so the whole hero reads as one
+ * HeroHandoffLoop start its first cycle — so the whole hero reads as one
  * sequence (read this, now watch it happen) instead of two animations
  * racing each other. Plays once; the card's own loop continues on its own
  * after that.
@@ -102,11 +102,18 @@ export function HeroIntro() {
 
       <div
         className={cn(
-          'transition-all duration-500 ease-out',
+          'min-w-0 transition-all duration-500 ease-out',
           cardIn ? 'translate-y-0 opacity-100' : 'translate-y-2.5 opacity-0',
         )}
       >
-        <HeroDemoCard startDelayMs={reducedMotion ? 0 : TEXT_ITEM_COUNT * STAGGER_MS} />
+        {/* From lg up the loop bleeds past the column's right edge, into the
+            page margin only (never past the 16px gutter), so the stage scales
+            to ~80% instead of ~60% and its text stays readable. The left
+            column's width is unaffected. */}
+        <HeroHandoffLoop
+          startDelayMs={reducedMotion ? 0 : TEXT_ITEM_COUNT * STAGGER_MS}
+          className="lg:w-[calc(100%_+_clamp(0px,_(100vw_-_1024px)_/_2,_170px))]"
+        />
       </div>
     </div>
   );
