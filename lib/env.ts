@@ -18,6 +18,10 @@ const envSchema = z.object({
   // Password-reset emails only — see lib/email.ts. Never exposed to the
   // client.
   RESEND_API_KEY: z.string().min(1),
+  // Authenticates app/api/cron/keep-warm's GET requests — Vercel sends
+  // this as a Bearer token automatically when a Cron Job hits a route on a
+  // project that has this var set. Optional locally; no cron runs in dev.
+  CRON_SECRET: z.string().optional(),
   // Dev-only switch: routes lib/ai/client.ts to canned fixture responses
   // instead of calling Anthropic — see the implementation plan's Fixture /
   // Mock Strategy section. Optional; defaults to off (real API calls).
