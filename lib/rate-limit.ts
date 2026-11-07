@@ -45,17 +45,30 @@ class RedisStore implements RateLimitStore {
   }
 
   async increment(key: string, windowMs: number) {
-    const windowSeconds = Math.ceil(windowMs / 1000);
-    const count = await this.client.incr(key);
+    try {
+      const windowSeconds = Math.ceil(windowMs / 1000);
+      const count = await this.client.incr(key);
 
-    if (count === 1) {
-      await this.client.expire(key, windowSeconds);
+      if (count === 1) {
+        await this.client.expire(key, windowSeconds);
+      }
+
+      const ttl = await this.client.ttl(key);
+      const resetAt = Date.now() + Math.max(ttl, 0) * 1000;
+
+      return { count, resetAt };
+    } catch (error) {
+      // Fail open: a Redis outage/hiccup should degrade to "not rate
+      // limited" rather than take down sign-up, sign-in, password reset,
+      // and every other caller that has no try/catch of its own around
+      // rateLimit(). An attacker briefly unthrottled during a real Redis
+      // outage is a far smaller risk than every auth path 500ing at once.
+      logger.error('rate_limit.increment_failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { count: 0, resetAt: Date.now() + windowMs };
     }
-
-    const ttl = await this.client.ttl(key);
-    const resetAt = Date.now() + Math.max(ttl, 0) * 1000;
-
-    return { count, resetAt };
   }
 }
 
