@@ -21,6 +21,7 @@
     "worker": "tsx watch workers/analysis-worker.ts",
     "worker:start": "tsx workers/analysis-worker.ts",
     "worker:notifications": "tsx watch workers/notification-worker.ts",
+    "queues:process": "tsx scripts/process-queues.ts",
     "worker:notifications:start": "tsx workers/notification-worker.ts"
   },
   "prisma": {

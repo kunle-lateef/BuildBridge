@@ -1,0 +1,46 @@
+name: Process analysis and notification queues
+
+# BuildBridge has no always-on host for the persistent BullMQ workers in
+# workers/ (see workers/Dockerfile's comment) without adding a card
+# somewhere, so this polls both queues on a schedule instead — see
+# scripts/process-queues.ts. GitHub disables scheduled workflows
+# automatically after 60 days with no repo activity (pushes/commits, not
+# workflow runs); if analysis stops completing after a long quiet period,
+# re-enable this workflow from the Actions tab first.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: process-queues
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - run: npm run queues:process
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          STORAGE_ACCESS_KEY: ${{ secrets.STORAGE_ACCESS_KEY }}
+          STORAGE_SECRET_KEY: ${{ secrets.STORAGE_SECRET_KEY }}
+          STORAGE_BUCKET: ${{ secrets.STORAGE_BUCKET }}
+          STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          USE_AI_FIXTURES: ${{ secrets.USE_AI_FIXTURES }}
