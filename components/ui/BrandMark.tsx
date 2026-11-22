@@ -4,63 +4,54 @@ import { cn } from '@/lib/cn';
 
 type BrandMarkProps = {
   variant?: 'default' | 'white';
-  /** Rendered height in px at the sm breakpoint and up; width follows the lockup's own 6.5:1 aspect ratio. */
+  /** Rendered height in px; width follows the lockup's 146:28 proportions. */
   size?: number;
-  /** Rendered height in px below sm. Defaults to `size` — set this explicitly wherever `size` would render too wide for a phone screen (the lockup is 6.5:1, so height scales up fast). */
+  /** Rendered height in px below sm. Defaults to `size`. */
   mobileSize?: number;
   /** Pass a real label when nothing else on the page names the product. Defaults to decorative. */
   alt?: string;
   className?: string;
 };
 
-// The full icon+wordmark lockup — viewBox 0 0 650 100, with "BuildBridge"
-// baked in as real SVG text. Not square: a 6.5:1 aspect ratio, so `size`
-// below sets height only and width is derived, rather than forcing it into
-// a square box (which crushes the wordmark to a sliver — see
-// design-system.md's Logo & Brand Assets section, and the icon-only
-// `buildbridge-icon*.svg` files kept there for contexts that want the mark
-// without the wordmark).
-const ASPECT_RATIO = 650 / 100;
+// Figma `10 — Logo` → Logo/Lockup (146 × 28), text outlined so it never
+// depends on a loaded font. One file per tone; it scales to any size.
+const ASPECT_RATIO = 146 / 28;
 
-const SRC: Record<'default' | 'white', { desktop: string; mobile: string }> = {
-  default: {
-    desktop: '/logo/buildbridge-logo (Desktop).svg',
-    mobile: '/logo/buildbridge-logo (Mobile).svg',
-  },
-  white: {
-    desktop: '/logo/buildbridge-logo-white (Desktop).svg',
-    mobile: '/logo/buildbridge-logo-white (Mobile).svg',
-  },
+const SRC: Record<'default' | 'white', string> = {
+  default: '/logo/buildbridge-logo.svg',
+  white: '/logo/buildbridge-logo-white.svg',
 };
 
 /**
  * The one place that should reference `public/logo/*` directly — see
- * design-system.md's Logo & Brand Assets section for the desktop/mobile
- * file pair per variant. Renders both cuts and toggles visibility with
- * Tailwind's `sm:` breakpoint rather than picking one in JS, so there's no
- * layout shift and no client component needed.
+ * design-system.md's Logo & Brand Assets section.
  */
 export function BrandMark({ variant = 'default', size = 28, mobileSize, alt = '', className }: BrandMarkProps) {
-  const { desktop, mobile } = SRC[variant];
-  const desktopWidth = Math.round(size * ASPECT_RATIO);
-  const mobileHeight = mobileSize ?? size;
-  const mobileWidth = Math.round(mobileHeight * ASPECT_RATIO);
+  const src = SRC[variant];
+
+  if (mobileSize === undefined || mobileSize === size) {
+    return (
+      <Image src={src} alt={alt} width={Math.round(size * ASPECT_RATIO)} height={size} className={className} unoptimized />
+    );
+  }
 
   return (
     <>
       <Image
-        src={desktop}
+        src={src}
         alt={alt}
-        width={desktopWidth}
+        width={Math.round(size * ASPECT_RATIO)}
         height={size}
         className={cn('hidden sm:block', className)}
+        unoptimized
       />
       <Image
-        src={mobile}
+        src={src}
         alt={alt}
-        width={mobileWidth}
-        height={mobileHeight}
+        width={Math.round(mobileSize * ASPECT_RATIO)}
+        height={mobileSize}
         className={cn('block sm:hidden', className)}
+        unoptimized
       />
     </>
   );

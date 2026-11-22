@@ -1,4 +1,5 @@
 import type { PlanTier } from '@prisma/client';
+import { addMonths, format, isBefore } from 'date-fns';
 
 /**
  * Hardcoded per the approved implementation plan (Phase 0) rather than a
@@ -39,4 +40,40 @@ export function projectCycleUsage(used: number, cycleStart: Date, cycleEnd: Date
   if (fractionElapsed < 0.03) return used;
 
   return Math.round(used / fractionElapsed);
+}
+
+export type UsageSummary = {
+  used: number;
+  quota: number;
+  planLabel: string;
+  /** Projected end-of-cycle use, only set when it would go over the quota. */
+  projectedOver: number | null;
+  resetsOn: string;
+  activeCount: number;
+  activeCap: number;
+};
+
+/**
+ * One reading of a user's plan usage, shared by the sidebar and Settings
+ * so they can never show different numbers. A cycle that has already
+ * rolled over (the reset job hasn't run yet) reads as zero used.
+ */
+export function summarizeUsage(
+  user: { planTier: PlanTier; analysisQuota: number; analysisUsageCount: number; billingCycleStart: Date },
+  activeCount: number,
+  now: Date = new Date(),
+): UsageSummary {
+  const cycleEnd = addMonths(user.billingCycleStart, 1);
+  const hasRolledOver = isBefore(cycleEnd, now);
+  const used = hasRolledOver ? 0 : user.analysisUsageCount;
+  const projected = hasRolledOver ? 0 : projectCycleUsage(used, user.billingCycleStart, cycleEnd, now);
+  return {
+    used,
+    quota: user.analysisQuota,
+    planLabel: user.planTier === 'Free' ? 'Free plan' : 'Paid plan',
+    projectedOver: projected > user.analysisQuota ? projected : null,
+    resetsOn: format(hasRolledOver ? addMonths(now, 1) : cycleEnd, 'MMM d'),
+    activeCount,
+    activeCap: ACTIVE_HANDOFF_CAP[user.planTier],
+  };
 }

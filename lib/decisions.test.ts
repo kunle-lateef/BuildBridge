@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { reconcileIssueFindings, type NewIssueFinding } from './decisions';
+import { reconcileIssueFindings, resolveFindingLinks, type NewIssueFinding } from './decisions';
 
 const baseFinding: NewIssueFinding = {
   title: 'Disabled state not defined',
@@ -90,5 +90,33 @@ describe('reconcileIssueFindings', () => {
 
     expect(result.toCreate).toHaveLength(1);
     expect(result.conflicts).toHaveLength(0);
+  });
+});
+
+describe('resolveFindingLinks', () => {
+  const targets = {
+    screens: [
+      { id: 's-cart', name: 'Cart' },
+      { id: 's-confirm', name: 'Confirmation' },
+    ],
+    components: [
+      { id: 'c-email-cart', name: 'Email Input', screenIds: ['s-cart'] },
+      { id: 'c-email-confirm', name: 'Email Input', screenIds: ['s-confirm'] },
+      { id: 'c-pay', name: 'Pay button', screenIds: ['s-cart'] },
+    ],
+  };
+
+  it('links a unique screen and component by name, ignoring case and spaces', () => {
+    expect(resolveFindingLinks({ screenName: ' cart ', componentName: 'PAY BUTTON' }, targets)).toEqual({ screenId: 's-cart', componentId: 'c-pay' });
+  });
+
+  it('uses the screen to pick between components with the same name', () => {
+    expect(resolveFindingLinks({ screenName: 'Confirmation', componentName: 'Email Input' }, targets)).toEqual({ screenId: 's-confirm', componentId: 'c-email-confirm' });
+  });
+
+  it('links nothing it cannot pin down: ambiguous or unknown names stay empty', () => {
+    expect(resolveFindingLinks({ componentName: 'Email Input' }, targets)).toEqual({ screenId: null, componentId: null });
+    expect(resolveFindingLinks({ screenName: 'Checkout', componentName: 'Promo field' }, targets)).toEqual({ screenId: null, componentId: null });
+    expect(resolveFindingLinks({}, targets)).toEqual({ screenId: null, componentId: null });
   });
 });

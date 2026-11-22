@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 
 export default function SignUpPage() {
   return (
-    <AuthLayout
-      title="See what's actually confirmed"
-      description="Review AI findings labeled by confidence, before a developer ever sees them."
-    >
+    <AuthLayout title="Create your account" description="Next, you’ll create your first handoff." panel="proof">
       <SignUpForm />
     </AuthLayout>
   );

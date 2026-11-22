@@ -9,11 +9,14 @@ vi.mock('@/lib/db', () => ({ db: mockDb }));
 const { getPortfolioDrift } = await import('./drift');
 
 function spec(overrides: Record<string, unknown> = {}) {
+  const value = String(overrides.value ?? '8');
+  const asNumber = Number(value);
   return {
     category: 'Radius',
     property: 'corner-radius',
-    value: '8',
+    value,
     unit: 'px',
+    numericValue: Number.isNaN(asNumber) ? null : asNumber,
     component: {
       name: 'Primary Button',
       handoff: { id: 'handoff-1', name: 'Checkout redesign' },

@@ -276,6 +276,10 @@ model Handoff {
   readinessScore            Int? @map("readiness_score")
   readinessAlgorithmVersion Int? @map("readiness_algorithm_version")
 
+  // The copied "Try it on an example" handoff. Never counts toward
+  // analysisQuota or ACTIVE_HANDOFF_CAP and can't be shared publicly.
+  isExample Boolean @default(false) @map("is_example")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -511,6 +515,10 @@ model Specification {
   property String
   value    String
   unit     String?
+  // A plain measurement's number (8 for "8px"), set by the AI only when the
+  // value is a single measurement. Drift compares this, grouped by unit,
+  // instead of parsing free text. Null for anything else ("darkens 8%").
+  numericValue Float? @map("numeric_value")
 
   confidence     Float
   provenance     ProvenanceType

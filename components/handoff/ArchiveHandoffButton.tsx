@@ -1,6 +1,5 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -10,6 +9,7 @@ import {
 } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { AlertCircle } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/cn';
 
@@ -40,7 +40,7 @@ export function ArchiveHandoffButton({ handoffId, isArchived, className }: Archi
       return;
     }
 
-    toast('Handoff archived.');
+    toast('Handoff archived', 'success', { action: { label: 'Undo', onClick: () => void handleUnarchive() } });
     router.refresh();
   }
 
@@ -57,12 +57,12 @@ export function ArchiveHandoffButton({ handoffId, isArchived, className }: Archi
       return;
     }
 
-    toast('Handoff unarchived.');
+    toast('Handoff unarchived');
     router.refresh();
   }
 
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
+    <div className={cn('flex flex-col gap-2', className)}>
       <Button
         type="button"
         variant="secondary"
@@ -74,7 +74,7 @@ export function ArchiveHandoffButton({ handoffId, isArchived, className }: Archi
         {isPending ? '…' : isArchived ? 'Unarchive' : 'Archive'}
       </Button>
       {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {error}
         </p>

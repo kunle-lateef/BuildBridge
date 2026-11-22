@@ -1,3 +1,4 @@
+import { Check } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 import type { DeveloperFlagStatus, IssueStatus, ReviewStatus } from '@/lib/types';
 
@@ -5,15 +6,19 @@ type StatusValue = ReviewStatus | IssueStatus | DeveloperFlagStatus;
 
 const STYLES: Record<StatusValue, string> = {
   Unreviewed: 'bg-[--color-surface] text-[--color-text-secondary]',
-  Confirmed: 'bg-[--color-success-light] text-[--color-success]',
+  // Done states are ink text with a check, no fill: in the Blueprint
+  // palette colour only means evidence or a problem (code-phase-plan.md).
+  Confirmed: 'gap-1 px-0 text-[--color-success]',
   Modified: 'bg-[--color-primary-light] text-[--color-primary-dark]',
   Rejected: 'bg-[--color-surface] text-[--color-text-dismissed] line-through',
-  Resolved: 'bg-[--color-success-light] text-[--color-success]',
+  Resolved: 'gap-1 px-0 text-[--color-success]',
   Open: 'bg-[--color-surface] text-[--color-text-secondary]',
   InReview: 'bg-[--color-surface] text-[--color-text-secondary]',
   Dismissed: 'bg-[--color-surface] text-[--color-text-dismissed] line-through',
   Acknowledged: 'bg-[--color-primary-light] text-[--color-primary-dark]',
 };
+
+const DONE_STATUSES = new Set<StatusValue>(['Confirmed', 'Resolved']);
 
 type ReviewStatusBadgeProps = {
   status: StatusValue;
@@ -34,12 +39,17 @@ export function ReviewStatusBadge({ status, className }: ReviewStatusBadgeProps)
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-[--radius-sm] px-2 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] font-medium',
+        'inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[--radius-sm] px-2 text-[12px] font-medium leading-4',
         STYLES[status],
         className,
       )}
       aria-label={`Status: ${status}`}
     >
+      {DONE_STATUSES.has(status) ? (
+        <Check aria-hidden="true" size={14} />
+      ) : (
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+      )}
       {status}
     </span>
   );

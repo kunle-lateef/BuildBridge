@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-[--radius-md] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] disabled:cursor-not-allowed disabled:opacity-60',
+  'inline-flex items-center justify-center gap-2 rounded-[--radius-md] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
   {
     variants: {
       variant: {
@@ -17,9 +17,12 @@ const buttonVariants = cva(
         // rejects a linear-gradient() value and renders fully transparent.
         cta: 'bg-[image:var(--gradient-primary)] text-white hover:opacity-90',
         primary: 'bg-[--color-primary] text-white hover:opacity-90',
-        secondary: 'bg-[--color-surface] text-[--color-text-body] border border-[--color-border] hover:bg-[--color-border]',
+        secondary: 'bg-white text-[--color-text-body] border border-[--color-border] hover:bg-[--color-surface]',
         ghost: 'bg-transparent text-[--color-text-body] hover:bg-[--color-surface]',
         danger: 'bg-[--color-error] text-white hover:opacity-90',
+        // Opens a destructive flow without being the final confirm (Figma
+        // Settings "Delete account"); the dialog's confirm is `danger`.
+        dangerOutline: 'bg-white text-[--color-error] border border-[--color-error] hover:bg-[--color-error-light]',
         // For a CTA placed on a colored/dark surface (e.g. --color-primary-dark
         // band) where the usual light-surface variants above would be
         // invisible or low-contrast. Not for use on the normal page background.
@@ -27,8 +30,10 @@ const buttonVariants = cva(
       },
       size: {
         sm: 'h-8 px-3 text-[length:var(--font-desktop-caption-medium-size)]',
-        md: 'h-10 px-4 text-base',
-        lg: 'h-12 px-6 text-lg',
+        // md and lg match Figma's Button component (Foundations): 14/20
+        // semibold, 40px / 44px tall.
+        md: 'h-10 px-4 text-[14px] leading-5',
+        lg: 'h-11 px-5 text-[14px] leading-5',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

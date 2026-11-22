@@ -1,9 +1,9 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useActionState } from 'react';
 
 import { Button } from '@/components/ui/Button';
+import { AlertCircle } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
@@ -27,7 +27,7 @@ export function ChangePasswordForm({ action }: ChangePasswordFormProps) {
   const { fieldProps } = useFieldErrors(changePasswordSchema);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-4">
       <Input
         id="current-password"
         name="currentPassword"
@@ -61,13 +61,13 @@ export function ChangePasswordForm({ action }: ChangePasswordFormProps) {
       />
 
       {state && !state.ok && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="m-0 flex items-center gap-2 text-[14px] text-[--color-error]">
           <AlertCircle aria-hidden="true" size={16} />
           {state.error.message}
         </p>
       )}
 
-      <Button type="submit" variant="secondary" size="sm" disabled={isPending} className="self-start">
+      <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? 'Changing…' : 'Change password'}
       </Button>
     </form>

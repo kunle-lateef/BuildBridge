@@ -1,210 +1,151 @@
-import {
-  LOOP_FINDINGS,
-  type LoopFinding,
-  type LoopFindingId,
-  type LoopState,
-} from '@/components/marketing/heroLoopTimeline';
-import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
-import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
-import { SeverityBadge } from '@/components/ui/SeverityBadge';
+import type { LoopRowId, LoopState } from '@/components/marketing/heroLoopTimeline';
 import { cn } from '@/lib/cn';
+import type { ProvenanceType } from '@/lib/types';
 
 type HeroLoopScreenProps = {
   state: LoopState;
 };
 
-// Pixel positions on HeroHandoffLoop's fixed 770×744 stage, which is scaled
-// as a whole to fit the column — so these are design coordinates, not
-// layout values, and arbitrary px is the honest unit for them.
-const BOX_POSITION: Record<LoopFindingId, string> = {
-  focus: 'left-[38px] top-[210px] h-[60px] w-[326px]',
-  button: 'left-[38px] top-[538px] h-[64px] w-[326px]',
-  loading: 'left-[38px] top-[638px] h-[58px] w-[326px]',
-  tablet: 'left-[4px] top-[42px] h-[684px] w-[394px] rounded-[--radius-2xl]',
+/** Pin outline by provenance: Detected solid, Inferred dashed, Suggested dotted. */
+export const PIN_STYLE: Record<ProvenanceType, string> = {
+  Detected: 'border-solid border-[--color-detected] text-[--color-detected]',
+  Inferred: 'border-dashed border-[--color-inferred] text-[--color-inferred]',
+  Suggested: 'border-dotted border-[--color-ai-suggested] text-[--color-ai-suggested]',
 };
 
+export const PIN_BASE =
+  'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 bg-white text-[12px] font-medium leading-4 tabular-nums';
+
+const SCREEN_PINS: { row: LoopRowId; label: string; provenance: ProvenanceType; position: string }[] = [
+  { row: 'r1', label: '1', provenance: 'Detected', position: 'left-[322px] top-[339px]' },
+  { row: 'r2', label: '2', provenance: 'Inferred', position: 'left-[320px] top-[108px]' },
+  { row: 'r3', label: '3', provenance: 'Suggested', position: 'left-[12px] top-[393px]' },
+  { row: 'r4', label: '4', provenance: 'Inferred', position: 'left-[12px] top-[190px]' },
+];
+
+const PIN_KEY: { label: string; className: string }[] = [
+  { label: 'Detected', className: 'border-solid border-[--color-detected]' },
+  { label: 'Inferred', className: 'border-dashed border-[--color-inferred]' },
+  { label: 'Suggested', className: 'border-dotted border-[--color-ai-suggested]' },
+  { label: 'Gap', className: 'border-solid border-[--color-error]' },
+];
+
+const MOTION = 'duration-[240ms] ease-[cubic-bezier(0.65,0,0.35,1)]';
+
+// The selected finding's outline on the screen, as on the Review page.
+const selected = (isOn: boolean) =>
+  cn(
+    'outline outline-[1.5px] outline-offset-4 transition-[outline-color]',
+    MOTION,
+    isOn ? 'outline-[--color-primary]' : 'outline-transparent',
+  );
+
 /**
- * The uploaded design the loop analyzes — a checkout screen, the scan sweep,
- * and one outline per finding. Outline colors reuse the provenance/severity
- * tokens (the same exception ScreenPinOverlay documents: an outline can't
- * literally be a badge), and every outline still carries the real badge in
- * its tag, so the meaning never rests on border color alone.
+ * The canvas column of the Review page: the screen switcher with the pin
+ * key, and the customer's own checkout screen. The screen itself never
+ * moves; only what BuildBridge adds on top of it (scan line, pins, the
+ * selection outline) does. The Pay button keeps the customer's own colour,
+ * not BuildBridge's.
  */
 export function HeroLoopScreen({ state }: HeroLoopScreenProps) {
   return (
-    <>
-      <div className="absolute left-[16px] top-[54px] z-[3] h-[660px] w-[370px] overflow-hidden rounded-[--radius-xl] border border-[--color-border] bg-[--color-background] shadow-[0_30px_60px_-30px_rgba(30,41,59,0.35)]">
-        <div
-          className={cn(
-            'absolute inset-0 transition-opacity ease-out',
-            state.isScreenDim ? 'opacity-30 duration-700' : 'opacity-100 duration-1000',
-          )}
-        >
-          <div className="flex h-9 items-center gap-[7px] border-b border-[--color-border] bg-[--color-surface] px-3.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[--color-text-muted] opacity-50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[--color-text-muted] opacity-50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[--color-text-muted] opacity-50" />
-            <span className="ml-2.5 font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-              checkout-redesign.png
-            </span>
-          </div>
-          <div className="absolute left-6 right-6 top-[58px] text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold tracking-tight text-[--color-text-primary]">
-            Checkout
-          </div>
-          <div className="absolute left-6 right-6 top-[96px] text-[length:var(--font-desktop-label-regular-size)] text-[--color-text-muted]">
-            Step 2 of 3 · Payment
-          </div>
-          <div className="absolute left-6 right-6 top-[140px] flex flex-col gap-2">
-            <FieldLabel>Card number</FieldLabel>
-            <FieldInput>4242 4242 4242 4242</FieldInput>
-          </div>
-          <div className="absolute left-6 right-6 top-[232px] grid grid-cols-2 gap-3.5">
-            <div className="flex flex-col gap-2">
-              <FieldLabel>Expiry</FieldLabel>
-              <FieldInput>MM / YY</FieldInput>
-            </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>CVC</FieldLabel>
-              <FieldInput>123</FieldInput>
-            </div>
-          </div>
-          <div className="absolute left-6 right-6 top-[330px] h-px bg-[--color-border]" />
-          <div className="absolute left-6 right-6 top-[350px] flex flex-col gap-3 text-[length:var(--font-desktop-body-regular-size)] text-[--color-text-secondary]">
-            <SummaryRow label="Wireless headphones" amount="$42.00" />
-            <SummaryRow label="Shipping" amount="$6.00" />
-            <SummaryRow
-              label="Total"
-              amount="$48.00"
-              className="pt-2 font-semibold text-[--color-text-primary]"
-            />
-          </div>
-          <div className="absolute left-6 right-6 top-[490px] flex h-[52px] items-center justify-center rounded-[--radius-md] bg-[image:var(--gradient-primary)] text-[length:var(--font-desktop-body-semi-bold-size)] font-semibold text-white">
-            Pay $48.00
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            'absolute left-1/2 top-1/2 flex w-[280px] -translate-x-1/2 -translate-y-1/2 flex-col gap-2.5 rounded-[--radius-lg] border border-[--color-border] bg-[--color-background] p-4 shadow-[0_12px_30px_-12px_rgba(30,41,59,0.25)] transition-opacity duration-300',
-            state.isUploadVisible ? 'opacity-100' : 'opacity-0',
-          )}
-        >
-          <span className="text-[length:var(--font-desktop-label-medium-size)] font-medium text-[--color-text-body]">
-            Uploading screen…
+    <div className="grid min-h-0 grid-rows-[53px_1fr]">
+      <div className="flex items-center gap-3 border-b border-[--color-border] bg-white px-4">
+        <span className="grid h-6 w-6 place-items-center rounded-[6px] border border-[--color-border] text-[12px] text-[--color-text-secondary]">
+          ‹
+        </span>
+        <span className="font-medium text-[--color-text-primary]">Checkout</span>
+        <span className="text-[12px] text-[--color-text-muted]">1 of 4</span>
+        <span className="grid h-6 w-6 place-items-center rounded-[6px] border border-[--color-border] text-[12px] text-[--color-text-secondary]">
+          ›
+        </span>
+        <span className="flex-1" />
+        {PIN_KEY.map((key) => (
+          <span key={key.label} className="flex items-center gap-2 text-[12px] text-[--color-text-secondary]">
+            <span className={cn('h-2 w-2 rounded-full border-[1.5px]', key.className)} />
+            {key.label}
           </span>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[--color-surface]">
-            <div
-              className={cn(
-                'h-full rounded-full bg-[image:var(--gradient-primary)]',
-                state.isUploadFilled ? 'w-full transition-[width] duration-1000 ease-out' : 'w-0',
-              )}
-            />
-          </div>
-          <span className="font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            checkout-redesign.png · 1 of 1
-          </span>
-        </div>
+        ))}
       </div>
 
-      <div
-        className={cn(
-          'pointer-events-none absolute left-[16px] z-[4] h-[120px] w-[370px] border-b-2 border-[--color-primary] bg-[linear-gradient(180deg,rgba(79,70,229,0)_0%,rgba(79,70,229,0.1)_100%)] shadow-[0_6px_18px_-2px_rgba(79,70,229,0.45)]',
-          state.scanPhase === 'idle' && 'top-[-30px] opacity-0',
-          state.scanPhase === 'sweeping' &&
-            'top-[594px] opacity-100 [transition:top_1600ms_cubic-bezier(0.65,0,0.35,1),opacity_150ms_ease-out]',
-          state.scanPhase === 'done' && 'top-[594px] opacity-0 transition-opacity duration-200',
-        )}
-      />
+      <div className="relative grid place-items-center overflow-hidden bg-[--color-surface]">
+        <div className="relative grid w-[360px] gap-4 rounded-[12px] border border-[--color-border] bg-white p-7">
+          <span
+            className={cn(
+              'absolute -inset-x-px z-[3] h-0.5 bg-[--color-primary] shadow-[0_0_12px_rgba(43,72,200,0.45)]',
+              state.scanPhase === 'idle' && 'top-0 opacity-0',
+              state.scanPhase === 'sweeping' &&
+                'top-full opacity-100 [transition:top_1300ms_cubic-bezier(0.65,0,0.35,1),opacity_150ms_ease-out]',
+              state.scanPhase === 'done' && 'top-full opacity-0 transition-opacity duration-150',
+            )}
+          />
+
+          <div>
+            <h3 className="m-0 text-[18px] font-semibold leading-6 text-[--color-text-primary]">Checkout</h3>
+            <div className="mt-0.5 text-[12px] leading-4 text-[--color-text-secondary]">Step 2 of 3 · Payment</div>
+          </div>
+          <Field label="Card number" placeholder="Enter card number" isSelected={state.screenSelection === 'cardField'} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Expiry" placeholder="MM / YY" />
+            <Field label="CVC" placeholder="123" />
+          </div>
+          <div className="grid gap-2 border-t border-[--color-border] pt-3 text-[--color-text-secondary] tabular-nums">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>$38.50</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping</span>
+              <span>$4.95</span>
+            </div>
+            <div className="flex justify-between font-medium text-[--color-text-primary]">
+              <span>Total</span>
+              <span>$43.45</span>
+            </div>
+          </div>
+          {/* The customer's own brand colour, deliberately not a BuildBridge token. */}
+          <div
+            className={cn(
+              'grid h-11 place-items-center rounded-[8px] bg-[#4F46E5] font-semibold text-white',
+              selected(state.screenSelection === 'payButton'),
+            )}
+          >
+            Pay $43.45
+          </div>
+
+          {SCREEN_PINS.map((pin) => (
+            <span
+              key={pin.row}
+              className={cn(
+                PIN_BASE,
+                PIN_STYLE[pin.provenance],
+                'absolute z-[2] transition-[opacity,transform]',
+                MOTION,
+                pin.position,
+                state.rowsShown[pin.row] ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0',
+              )}
+            >
+              {pin.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, placeholder, isSelected = false }: { label: string; placeholder: string; isSelected?: boolean }) {
+  return (
+    <div className="grid gap-2 text-[13px] font-medium leading-[18px] text-[--color-text-body]">
+      {label}
       <span
         className={cn(
-          'absolute left-[374px] top-[72px] z-[5] -translate-x-full -translate-y-1/2 whitespace-nowrap rounded-[--radius-md] bg-[--color-primary-light] px-2.5 py-1 font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-primary-dark] transition-opacity duration-200',
-          state.scanPhase === 'sweeping' ? 'opacity-100' : 'opacity-0',
+          'flex h-[42px] items-center rounded-[8px] border border-[--color-border] px-3 text-[14px] font-normal text-[--color-text-dismissed]',
+          selected(isSelected),
         )}
       >
-        Analyzing screen…
+        {placeholder}
       </span>
-
-      {LOOP_FINDINGS.map((finding) => (
-        <FindingOutline key={finding.id} finding={finding} state={state} />
-      ))}
-    </>
-  );
-}
-
-function FindingOutline({ finding, state }: { finding: LoopFinding; state: LoopState }) {
-  const { isShown, isDone } = state.findings[finding.id];
-
-  return (
-    <div
-      className={cn(
-        'pointer-events-none absolute z-[6] rounded-[--radius-lg] border-2 transition-[opacity,transform] ease-out',
-        BOX_POSITION[finding.id],
-        outlineColor(finding, isDone),
-        isShown ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-0',
-        state.isFadingOut ? 'duration-700' : 'duration-[350ms]',
-      )}
-    >
-      {finding.id === 'loading' && (
-        <div className="absolute inset-1 flex items-center justify-center gap-2.5 rounded-[--radius-md] bg-[--color-ai-suggested-light] text-[length:var(--font-desktop-label-medium-size)] font-medium text-[--color-ai-suggested]">
-          <span className="h-4 w-4 rounded-full border-2 border-[--color-ai-suggested] border-t-transparent motion-safe:animate-spin" />
-          Processing…
-        </div>
-      )}
-      <div className="absolute bottom-[calc(100%+6px)] right-[-2px] flex items-center gap-1.5 whitespace-nowrap">
-        {'provenance' in finding.label ? (
-          <ProvenanceBadge provenance={finding.label.provenance} />
-        ) : (
-          <SeverityBadge severity={finding.label.severity} />
-        )}
-        {isDone && <ReviewStatusBadge status={finding.doneStatus} />}
-      </div>
-    </div>
-  );
-}
-
-function outlineColor(finding: LoopFinding, isDone: boolean): string {
-  if ('severity' in finding.label) {
-    return cn('border-dashed', isDone ? 'border-[--color-success]' : 'border-[--color-error]');
-  }
-  switch (finding.label.provenance) {
-    case 'Detected':
-      return 'border-solid border-[--color-detected]';
-    case 'Inferred':
-      return 'border-dashed border-[--color-inferred]';
-    case 'Suggested':
-      return 'border-dashed border-[--color-ai-suggested]';
-  }
-}
-
-function FieldLabel({ children }: { children: string }) {
-  return (
-    <span className="text-[length:var(--font-desktop-label-medium-size)] font-medium text-[--color-text-secondary]">
-      {children}
-    </span>
-  );
-}
-
-function FieldInput({ children }: { children: string }) {
-  return (
-    <div className="flex h-12 items-center rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3.5 font-mono text-[length:var(--font-desktop-label-regular-size)] text-[--color-text-muted]">
-      {children}
-    </div>
-  );
-}
-
-function SummaryRow({
-  label,
-  amount,
-  className,
-}: {
-  label: string;
-  amount: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('flex justify-between', className)}>
-      <span>{label}</span>
-      <span>{amount}</span>
     </div>
   );
 }

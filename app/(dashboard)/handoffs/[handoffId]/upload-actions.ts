@@ -171,3 +171,103 @@ export async function startAnalysis(handoffId: string): Promise<ActionResult<{ a
     ? { ok: true, data: { analysisRunId: result.data.analysisRunId } }
     : result;
 }
+
+/**
+ * Removes one screen before analysis (Figma `04 — Handoff` → "Draft — Ready
+ * to analyze", the × on each row). Draft only: once a handoff has been
+ * analysed its screens carry findings, so they're never removed here.
+ * Deleting the asset cascades to its Screen (and that screen's flows);
+ * the stored file is removed after the rows are gone.
+ */
+export async function deleteDraftScreen(screenId: string): Promise<ActionResult<{ deleted: true }>> {
+  const session = await auth();
+
+  if (!session?.user) {
+    return unauthenticatedError();
+  }
+
+  const screen = await db.screen.findUnique({
+    where: { id: screenId },
+    include: { handoff: { select: { id: true, ownerId: true, status: true } }, asset: true },
+  });
+
+  if (!screen || screen.handoff.ownerId !== session.user.id) {
+    return notFoundError('Screen not found.');
+  }
+
+  if (screen.handoff.status !== 'Draft') {
+    return {
+      ok: false,
+      error: { code: 'not_draft', message: 'Screens can only be removed before the first analysis.' },
+    };
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.designAsset.delete({ where: { id: screen.assetId } });
+    const remaining = await tx.screen.findMany({
+      where: { handoffId: screen.handoff.id },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+    for (const [order, { id }] of remaining.entries()) {
+      await tx.screen.update({ where: { id }, data: { order } });
+    }
+  });
+
+  deleteObject(screen.asset.storageReference).catch((error) => {
+    logger.error('upload.delete_storage_object_failed', {
+      screenId,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  });
+
+  logger.info('upload.screen_removed', { handoffId: screen.handoff.id, screenId });
+  revalidatePath(`/handoffs/${screen.handoff.id}`);
+
+  return { ok: true, data: { deleted: true } };
+}
+
+/**
+ * Saves a new screen order from the draft list's drag-to-reorder. The order
+ * becomes the screen flow developers see. Draft only, and the list must be
+ * exactly this handoff's screens, so a stale or tampered list is refused.
+ */
+export async function reorderDraftScreens(
+  handoffId: string,
+  screenIds: string[],
+): Promise<ActionResult<{ reordered: true }>> {
+  const session = await auth();
+
+  if (!session?.user) {
+    return unauthenticatedError();
+  }
+
+  const handoff = await db.handoff.findUnique({
+    where: { id: handoffId },
+    select: { ownerId: true, status: true, screens: { select: { id: true } } },
+  });
+
+  if (!handoff || handoff.ownerId !== session.user.id) {
+    return notFoundError('Handoff not found.');
+  }
+
+  if (handoff.status !== 'Draft') {
+    return {
+      ok: false,
+      error: { code: 'not_draft', message: 'Screens can only be reordered before the first analysis.' },
+    };
+  }
+
+  const current = new Set(handoff.screens.map((screen) => screen.id));
+  const isSameSet = screenIds.length === current.size && screenIds.every((id) => current.has(id));
+
+  if (!isSameSet || new Set(screenIds).size !== screenIds.length) {
+    return { ok: false, error: { code: 'invalid_input', message: 'The screen list has changed. Refresh and try again.' } };
+  }
+
+  await db.$transaction(screenIds.map((id, order) => db.screen.update({ where: { id }, data: { order } })));
+
+  revalidatePath(`/handoffs/${handoffId}`);
+
+  return { ok: true, data: { reordered: true } };
+}

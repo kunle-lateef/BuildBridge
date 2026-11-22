@@ -1,6 +1,5 @@
 'use client';
 
-import { AlertCircle, Check, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -10,6 +9,7 @@ import {
 } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { AlertCircle, Check, Copy } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/ToastProvider';
 
 type ShareLinkItem = {
@@ -59,7 +59,7 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
     await revokeShareLink(revokeTarget);
     setIsRevoking(false);
     setRevokeTarget(null);
-    toast('Share link revoked.');
+    toast('Share link revoked');
     router.refresh();
   }
 
@@ -78,21 +78,21 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
         </Button>
         <a
           href={`/api/handoffs/${handoffId}/export`}
-          className="text-[--color-primary] underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          className="text-[--color-primary] underline"
         >
           Download as Markdown
         </a>
       </div>
 
       {createError && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={16} />
           {createError}
         </p>
       )}
 
       {shareUrl && (
-        <div className="flex flex-col gap-1.5 rounded-[--radius-lg] border border-[--color-primary] bg-[--color-primary-light] p-3">
+        <div className="flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-primary] bg-[--color-primary-light] p-3">
           <p className="text-[--color-primary-dark]">
             Copy this link now — it won&apos;t be shown again.
           </p>
@@ -114,7 +114,7 @@ export function ShareLinkPanel({ handoffId, shareLinks }: ShareLinkPanelProps) {
       )}
 
       {shareLinks.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-2">
           {shareLinks.map((link) => (
             <li
               key={link.id}

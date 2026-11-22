@@ -15,7 +15,7 @@ export function SignOutEverywhereButton({ action }: SignOutEverywhereButtonProps
 
   return (
     <>
-      <Button type="button" variant="secondary" size="sm" onClick={() => setIsOpen(true)} className="self-start">
+      <Button type="button" variant="secondary" onClick={() => setIsOpen(true)} className="self-start">
         Sign out everywhere
       </Button>
       <ConfirmDialog

@@ -11,6 +11,10 @@ type DeveloperFlagFormProps = {
   shareToken: string;
 };
 
+/** Fired by a row's "Flag this value" so the form opens about that one value. */
+export const FLAG_FINDING_EVENT = 'buildbridge:flag-finding';
+export type FlagFindingDetail = { findingType: string; findingReference: string; label: string };
+
 type SubmitState = 'idle' | 'submitting' | 'submitted' | 'error';
 
 type TrackedFlag = { id: string; trackingToken: string; message: string };
@@ -50,6 +54,19 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
   const [state, setState] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [trackedFlags, setTrackedFlags] = useState<TrackedFlag[]>([]);
+  const [target, setTarget] = useState<FlagFindingDetail | null>(null);
+
+  useEffect(() => {
+    function onFlag(event: Event) {
+      const detail = (event as CustomEvent<FlagFindingDetail>).detail;
+      setTarget(detail);
+      setState('idle');
+      document.getElementById('flag')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => document.getElementById('developer-flag-message')?.focus(), 300);
+    }
+    window.addEventListener(FLAG_FINDING_EVENT, onFlag);
+    return () => window.removeEventListener(FLAG_FINDING_EVENT, onFlag);
+  }, []);
 
   const messageError = messageTouched && message.trim().length === 0 ? 'Message cannot be empty.' : undefined;
 
@@ -70,6 +87,7 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
           kind,
           message,
           submittedByName: submittedByName.trim() || undefined,
+          ...(target ? { findingType: target.findingType, findingReference: target.findingReference } : {}),
         }),
       });
 
@@ -95,6 +113,7 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
 
       setState('submitted');
       setMessage('');
+      setTarget(null);
     } catch {
       setState('error');
       setError('Something went wrong. Please try again.');
@@ -117,7 +136,7 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-4">
+    <Card id="flag" className="flex scroll-mt-24 flex-col gap-4 p-4">
       <div>
         <h2 className="text-[--color-text-primary]">Flag something for the designer</h2>
         <p className="text-[--color-text-secondary]">
@@ -125,6 +144,16 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
         </p>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {target && (
+          <p className="m-0 flex items-center justify-between gap-2 rounded-[8px] bg-[--color-surface] px-3 py-2 text-[14px] leading-5 text-[--color-text-body]">
+            <span>
+              About: <span className="font-medium">{target.label}</span>
+            </span>
+            <button type="button" onClick={() => setTarget(null)} className="text-[--color-text-secondary] underline">
+              Clear
+            </button>
+          </p>
+        )}
         <fieldset className="flex gap-4">
           <legend className="sr-only">Flag type</legend>
           <label className="flex items-center gap-2 text-[--color-text-body]">

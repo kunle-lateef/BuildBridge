@@ -1,24 +1,13 @@
-import {
-  AlertTriangle,
-  Boxes,
-  History,
-  Image as ImageIcon,
-  MessageSquareWarning,
-  Share2,
-  Smartphone,
-  StickyNote,
-  Zap,
-} from 'lucide-react';
+import { addMonths, format, isBefore } from 'date-fns';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { DraftScreenList } from '@/components/handoff/DraftScreenList';
 import { HandoffActionsMenu } from '@/components/handoff/HandoffActionsMenu';
-import { HandoffSectionNav } from '@/components/handoff/HandoffSectionNav';
 import { ScreenFlowList } from '@/components/handoff/ScreenFlowList';
 import { ScreenPinProvider } from '@/components/handoff/ScreenPinProvider';
 import { ScreenThumbnail } from '@/components/handoff/ScreenThumbnail';
-import { ShareLinkPanel } from '@/components/handoff/ShareLinkPanel';
 import { StartAnalysisButton } from '@/components/handoff/StartAnalysisButton';
 import { UploadDropzone } from '@/components/handoff/UploadDropzone';
 import { AnalysisChangelogPanel } from '@/components/review/AnalysisChangelogPanel';
@@ -27,17 +16,22 @@ import {
   type StageProgress,
 } from '@/components/review/AnalysisProgressPanel';
 import { AskBuildBridgeFab } from '@/components/review/AskBuildBridgeFab';
-import { BulkDecisionBar } from '@/components/review/BulkDecisionBar';
-import { ComponentsList } from '@/components/review/ComponentsList';
 import { DesignerNoteThread } from '@/components/review/DesignerNoteThread';
 import { DeveloperFlagPanel, type DeveloperFlagItem } from '@/components/review/DeveloperFlagPanel';
-import { IssuePanel, type HandoffIssueItem } from '@/components/review/IssuePanel';
-import { ReadinessScoreDisplay } from '@/components/review/ReadinessScoreDisplay';
+import { FindingsPanel, type PanelComponent, type PanelGap } from '@/components/review/FindingsPanel';
+import type { GuidedItem } from '@/components/review/GuidedReview';
 import { ResponsiveRuleList } from '@/components/review/ResponsiveRuleList';
+import { ReviewCanvas } from '@/components/review/ReviewCanvas';
+import { ReviewHeader, ReviewTabs, type ReviewTab } from '@/components/review/ReviewHeader';
+import { ReviewWorkspace } from '@/components/review/ReviewWorkspace';
+import { RunBanner } from '@/components/review/RunBanner';
+import { ShareHandoffButton } from '@/components/review/ShareHandoffButton';
 import { buttonVariants } from '@/components/ui/Button';
-import { HandoffStatusBadge } from '@/components/ui/HandoffStatusBadge';
+import { Clock } from '@/components/ui/icons';
 import { getAnalysisChangelog } from '@/lib/changelog';
 import { db } from '@/lib/db';
+import { getGapAnswers } from '@/lib/gapAnswers';
+import { getLatestDecisions } from '@/lib/latestDecisions';
 import { rankNextBestActions } from '@/lib/readiness';
 import { buildScreenPins } from '@/lib/screenPins';
 import { createSignedReadUrl } from '@/lib/storage';
@@ -47,6 +41,7 @@ import { getOwnedHandoffOrNull } from './actions';
 
 type HandoffDetailPageProps = {
   params: Promise<{ handoffId: string }>;
+  searchParams?: Promise<{ tab?: string; guided?: string }>;
 };
 
 export async function generateMetadata({ params }: HandoffDetailPageProps): Promise<Metadata> {
@@ -90,31 +85,31 @@ async function buildStageProgress(handoffId: string, runStatus: AnalysisRunStatu
       key: 'component_detection',
       label: 'Component detection',
       items: components,
-      countLabel: pluralize(components.length, 'component') + ' detected',
+      countLabel: pluralize(components.length, 'component'),
     },
     {
       key: 'specification_extraction',
       label: 'Specification extraction',
       items: specifications,
-      countLabel: pluralize(specifications.length, 'specification') + ' extracted',
+      countLabel: pluralize(specifications.length, 'spec'),
     },
     {
       key: 'state_analysis',
       label: 'State & interaction analysis',
       items: states,
-      countLabel: pluralize(states.length, 'interaction state') + ' identified',
+      countLabel: pluralize(states.length, 'state'),
     },
     {
       key: 'responsive_analysis',
       label: 'Responsive analysis',
       items: responsiveRules,
-      countLabel: pluralize(responsiveRules.length, 'responsive rule') + ' identified',
+      countLabel: pluralize(responsiveRules.length, 'rule'),
     },
     {
       key: 'gap_detection',
       label: 'Gap detection',
       items: issues,
-      countLabel: pluralize(issues.length, 'issue') + ' found',
+      countLabel: pluralize(issues.length, 'gap'),
     },
   ];
 
@@ -152,15 +147,16 @@ async function buildStageProgress(handoffId: string, runStatus: AnalysisRunStatu
   return stages;
 }
 
-export default async function HandoffDetailPage({ params }: HandoffDetailPageProps) {
+export default async function HandoffDetailPage({ params, searchParams }: HandoffDetailPageProps) {
   const { handoffId } = await params;
+  const { tab: tabParam, guided: guidedParam } = (await searchParams) ?? {};
   const handoff = await getOwnedHandoffOrNull(handoffId);
 
   if (!handoff) {
     notFound();
   }
 
-  const [screens, latestRun, components, issues, unresolvedCriticalCount, shareLinks] =
+  const [screens, latestRun, components, issues, unresolvedCriticalCount, shareLinks, owner] =
     await Promise.all([
       db.screen.findMany({
         where: { handoffId },
@@ -189,6 +185,11 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
         select: { id: true, status: true, createdAt: true, expiresAt: true },
         orderBy: { createdAt: 'desc' },
       }),
+      // For the draft Analysis card's quota line.
+      db.user.findUniqueOrThrow({
+        where: { id: handoff.ownerId },
+        select: { analysisQuota: true, analysisUsageCount: true, billingCycleStart: true },
+      }),
     ]);
 
   const processedScreens = screens.filter(
@@ -198,7 +199,7 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
   // None of these six depend on one another — previously each was awaited
   // one at a time, turning every page load into a waterfall of round trips
   // instead of one round-trip's worth of wall-clock time.
-  const [notes, screenFlows, changelogEntries, developerFlags, implementationMarks, screenThumbnails, stages, responsiveRules] =
+  const [notes, screenFlows, changelogEntries, developerFlags, implementationMarks, screenThumbnails, stages, responsiveRules, gapAnswers, ruleDecisions, gapDecisions] =
     await Promise.all([
       db.designerNote.findMany({
         where: { handoffId },
@@ -228,7 +229,12 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
       db.responsiveRule.findMany({
         where: { screen: { handoffId } },
         include: { screen: true },
+        // Fixed order, so a row doesn't jump after the designer edits it.
+        orderBy: [{ screen: { order: 'asc' } }, { createdAt: 'asc' }, { id: 'asc' }],
       }),
+      getGapAnswers(handoffId),
+      getLatestDecisions(handoffId, 'ResponsiveRule'),
+      getLatestDecisions(handoffId, 'HandoffIssue'),
     ]);
 
   const markedKeys = new Set(
@@ -244,7 +250,6 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
   const deltaById = Object.fromEntries(
     nextBestActions.map((action) => [action.issueId, action.delta]),
   );
-  const topAction = nextBestActions[0] ?? null;
 
   // See lib/screenPins.ts — the region data this derives from is already
   // fully persisted (ComponentInstance.dimensions), so this is pure
@@ -257,317 +262,579 @@ export default async function HandoffDetailPage({ params }: HandoffDetailPagePro
   });
   const pinKeyFor = (componentId: string) => `component:${componentId}` as const;
 
-  // Mirrors the same conditionals each section below already renders under —
-  // never lists a section the page didn't actually render.
-  const sectionNavItems = [
-    { id: 'screens', label: 'Screens' },
-    processedScreens.length > 0 && { id: 'analysis', label: 'Analysis' },
-    components.length > 0 && { id: 'components', label: 'Components' },
-    responsiveRules.length > 0 && { id: 'responsive', label: 'Responsive' },
-    issues.length > 0 && { id: 'issues', label: 'Issues' },
-    changelogEntries.length > 0 && { id: 'history', label: 'History' },
-    developerFlags.length > 0 && { id: 'developer-feedback', label: 'Developer feedback' },
-    { id: 'notes', label: 'Notes' },
-    components.length > 0 && { id: 'share', label: 'Share' },
-  ].filter((item): item is { id: string; label: string } => Boolean(item));
+  // Review progress, for the header line and the tab/"to review" counts.
+  // Findings are the four AI-generated, designer-reviewable kinds; gaps
+  // count separately as open until resolved or dismissed.
+  const allFindings = [...components, ...allSpecifications, ...allStates, ...responsiveRules];
+  const reviewedFindingCount = allFindings.filter((finding) => finding.reviewStatus !== 'Unreviewed').length;
+  const openGapCount = issues.filter((issue) => issue.status === 'Open' || issue.status === 'InReview').length;
+  const toReviewCount = allFindings.length - reviewedFindingCount + openGapCount;
+  const openFlagCount = developerFlags.filter((flag) => flag.status === 'Open').length;
+
+  const screenNameById = new Map(screens.map((screen) => [screen.id, screen.name]));
+  const componentNameById = new Map(components.map((component) => [component.id, component.name]));
+  const gapLocation = (screenId: string | null, componentId: string | null) =>
+    [screenId ? screenNameById.get(screenId) : null, componentId ? componentNameById.get(componentId) : null]
+      .filter(Boolean)
+      .join(' · ') || null;
+
+  // Labels for the Screens, Responsive, Feedback, History and Notes tabs
+  // (Figma `04 — Handoff`), all from data already loaded above.
+  const isOpenIssue = (issue: (typeof issues)[number]) => issue.status === 'Open' || issue.status === 'InReview';
+  const screenMeta = (screenId: string) => {
+    const componentIds = new Set(
+      components.filter((component) => component.instances.some((instance) => instance.screenId === screenId)).map((component) => component.id),
+    );
+    const gaps = issues.filter(
+      (issue) => isOpenIssue(issue) && (issue.screenId === screenId || (issue.componentId !== null && componentIds.has(issue.componentId))),
+    ).length;
+    // Gap detection doesn't tie gaps to a screen yet (NewIssueFinding has no
+    // screen or component), so "0 gaps" would usually be false: show the
+    // count only when gaps really are linked to this screen.
+    return gaps > 0 ? `${pluralize(componentIds.size, 'component')} · ${pluralize(gaps, 'gap')}` : pluralize(componentIds.size, 'component');
+  };
+  const specById = new Map(components.flatMap((component) => component.specifications.map((spec) => [spec.id, { component: component.name, label: spec.property }] as const)));
+  const stateById = new Map(components.flatMap((component) => component.states.map((state) => [state.id, { component: component.name, label: state.name }] as const)));
+  const findingLabel = (findingType: string | null, reference: string | null): string | null => {
+    if (!findingType || !reference) return null;
+    if (findingType === 'Specification') { const spec = specById.get(reference); return spec ? `${spec.component} · ${spec.label}` : null; }
+    if (findingType === 'ComponentState') { const state = stateById.get(reference); return state ? `${state.component} · ${state.label}` : null; }
+    if (findingType === 'Component') return componentNameById.get(reference) ?? null;
+    if (findingType === 'ResponsiveRule') {
+      const rule = responsiveRules.find((candidate) => candidate.id === reference);
+      const component = rule?.componentId ? componentNameById.get(rule.componentId) : null;
+      return rule ? `${component ?? 'Layout'} · Responsive` : null;
+    }
+    if (findingType === 'HandoffIssue') return issues.find((issue) => issue.id === reference)?.title ?? null;
+    return null;
+  };
+  const GAP_DECISION_LABEL: Partial<Record<string, string>> = { Reject: 'Not a gap', Override: 'Answered', Confirm: 'Keep open' };
+  const conflictContext = Object.fromEntries(
+    changelogEntries.flatMap((entry) => entry.conflicts).flatMap((ref) => {
+      const decision = gapDecisions.get(ref.issueId);
+      const label = decision ? GAP_DECISION_LABEL[decision.action] : undefined;
+      return decision && label ? [[ref.issueId, { decision: label, decidedAt: decision.createdAt.toISOString() }]] : [];
+    }),
+  );
+  const noteItems = notes.map((note) => ({
+    id: note.id,
+    content: note.content,
+    createdAt: note.createdAt.toISOString(),
+    target:
+      (note.componentId ? componentNameById.get(note.componentId) : null) ??
+      (note.screenId ? screenNameById.get(note.screenId) : null) ??
+      'Whole handoff',
+  }));
+
+  const tab: ReviewTab = (['review', 'screens', 'responsive', 'feedback', 'history', 'notes'] as const).includes(
+    tabParam as ReviewTab,
+  )
+    ? (tabParam as ReviewTab)
+    : 'review';
+
+  const shareLinkItems = shareLinks.map((link) => ({
+    id: link.id,
+    status: link.status,
+    createdAt: link.createdAt.toISOString(),
+    expiresAt: link.expiresAt?.toISOString() ?? null,
+  }));
+
+  // Guided review (?guided=1): everything still to decide, in the order
+  // the guided panel walks it: gaps by severity, then values by provenance.
+  const isGuided = guidedParam === '1' && tab === 'review';
+  const isReady = handoff.readinessScore !== null && unresolvedCriticalCount === 0;
+  const severityRank: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3, Recommendation: 4 };
+  const pinFor = (componentId: string | null) => {
+    const screenId = componentId ? pinScreenIdByComponentId.get(componentId) : undefined;
+    return screenId && componentId ? { screenId, key: pinKeyFor(componentId) } : null;
+  };
+  const locate = (componentId: string) => {
+    const screenId = pinScreenIdByComponentId.get(componentId);
+    return gapLocation(screenId ?? null, componentId);
+  };
+  const guidedItems: GuidedItem[] = [
+    ...issues
+      .filter((issue) => issue.status === 'Open' || issue.status === 'InReview')
+      .sort((a, b) => (severityRank[a.severity] ?? 9) - (severityRank[b.severity] ?? 9))
+      .map(
+        (issue): GuidedItem => ({
+          key: `HandoffIssue:${issue.id}`,
+          findingType: 'HandoffIssue',
+          id: issue.id,
+          group: 'Gaps',
+          title: issue.title,
+          value: issue.description,
+          where: gapLocation(issue.screenId, issue.componentId),
+          provenance: issue.provenance,
+          severity: issue.severity,
+          description: issue.description,
+          recommendation: issue.recommendation,
+          makesReady: issue.severity === 'Critical' && unresolvedCriticalCount === 1,
+          pin: pinFor(issue.componentId),
+        }),
+      ),
+    ...components.flatMap((component): GuidedItem[] => [
+      ...(component.reviewStatus === 'Unreviewed'
+        ? [
+            {
+              key: `Component:${component.id}`,
+              findingType: 'Component' as const,
+              id: component.id,
+              group: component.provenance,
+              title: component.name,
+              value: component.description ?? component.type,
+              where: locate(component.id),
+              provenance: component.provenance,
+              pin: pinFor(component.id),
+            },
+          ]
+        : []),
+      ...component.specifications
+        .filter((spec) => spec.reviewStatus === 'Unreviewed')
+        .map((spec) => ({
+          key: `Specification:${spec.id}`,
+          findingType: 'Specification' as const,
+          id: spec.id,
+          group: spec.provenance,
+          title: `${component.name} · ${spec.property}`,
+          value: `${spec.value}${spec.unit ?? ''}`,
+          where: locate(component.id),
+          provenance: spec.provenance,
+          pin: pinFor(component.id),
+        })),
+      ...component.states
+        .filter((state) => state.reviewStatus === 'Unreviewed')
+        .map((state) => ({
+          key: `ComponentState:${state.id}`,
+          findingType: 'ComponentState' as const,
+          id: state.id,
+          group: state.provenance,
+          title: `${component.name} · ${state.name}`,
+          value: state.description ?? '',
+          where: locate(component.id),
+          provenance: state.provenance,
+          pin: pinFor(component.id),
+        })),
+    ]),
+    ...responsiveRules
+      .filter((rule) => rule.reviewStatus === 'Unreviewed')
+      .map(
+        (rule): GuidedItem => ({
+          key: `ResponsiveRule:${rule.id}`,
+          findingType: 'ResponsiveRule',
+          id: rule.id,
+          group: rule.provenance,
+          title: `${rule.screen?.name ?? 'Screen'} · ${rule.viewportCategory}`,
+          value: rule.behavior,
+          where: rule.screen?.name ?? null,
+          provenance: rule.provenance,
+          pin: pinFor(rule.componentId),
+        }),
+      ),
+  ];
+
+  const analysisBlock = processedScreens.length > 0 && (
+    <div className="flex flex-col gap-3">
+      <StartAnalysisButton handoffId={handoff.id} />
+      {latestRun && stages && <AnalysisProgressPanel runStatus={latestRun.status} stages={stages} />}
+    </div>
+  );
+
+  // Which screen this is (Figma `04 — Handoff`): a Draft before the first
+  // analysis, the Analyzing view while a run is in flight, the failed view
+  // when the only run produced nothing, and otherwise the Review layout.
+  const runStatus = latestRun?.status;
+  const phase: 'draft' | 'analyzing' | 'failed' | 'review' =
+    runStatus === 'Queued' || runStatus === 'Processing'
+      ? 'analyzing'
+      : !latestRun
+        ? 'draft'
+        : runStatus === 'Failed' && components.length === 0
+          ? 'failed'
+          : 'review';
+  const canvasScreens = screenThumbnails.map(({ screen, imageUrl }) => ({
+    id: screen.id,
+    name: screen.name,
+    imageUrl,
+    pins: pinsByScreen.get(screen.id) ?? [],
+  }));
+  const actionsMenu = <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />;
+
+  if (phase === 'draft') {
+    const cycleEnd = addMonths(owner.billingCycleStart, 1);
+    const hasRolledOver = isBefore(cycleEnd, new Date());
+    const remaining = hasRolledOver ? owner.analysisQuota : owner.analysisQuota - owner.analysisUsageCount;
+    const resetsOn = format(hasRolledOver ? addMonths(new Date(), 1) : cycleEnd, 'MMM d');
+    const hasScreens = processedScreens.length > 0;
+
+    return (
+      <div className="flex flex-col gap-5">
+        <ReviewHeader
+          name={handoff.name}
+          status={handoff.status}
+          readinessScore={null}
+          criticalOpenCount={0}
+          reviewedCount={0}
+          findingCount={0}
+          actions={actionsMenu}
+          statusLine={
+            <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">
+              Add the finished screens for this flow, in the order a user sees them. BuildBridge reads them when you start
+              the analysis.
+            </p>
+          }
+        />
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex flex-col gap-4">
+            <UploadDropzone handoffId={handoff.id} />
+            <DraftScreenList
+              handoffId={handoff.id}
+              screens={screenThumbnails.map(({ screen, imageUrl }) => {
+                const dims = screen.dimensions as { width?: number | null; height?: number | null } | null;
+                const size = `${(screen.asset.size / (1024 * 1024)).toFixed(1)}MB`;
+                return {
+                  id: screen.id,
+                  name: screen.asset.filename,
+                  imageUrl,
+                  meta: dims?.width && dims.height ? `${dims.width} × ${dims.height} · ${size}` : size,
+                };
+              })}
+            />
+          </div>
+          <section className="flex flex-col gap-3 rounded-[12px] border border-[--color-border] bg-white p-5">
+            <h2 className="m-0 text-[16px] font-medium leading-6 text-[--color-text-primary]">
+              {hasScreens ? `Ready to analyze ${pluralize(processedScreens.length, 'screen')}` : 'Analysis'}
+            </h2>
+            <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">
+              {hasScreens
+                ? 'BuildBridge finds components, specs, states and gaps on every screen. It takes a few minutes; you can leave this page and we’ll notify you.'
+                : 'BuildBridge finds components, specs, states and gaps on every screen. It takes a few minutes for a typical flow.'}
+            </p>
+            <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">
+              {remaining <= 0
+                ? `You’ve used all ${owner.analysisQuota} analyses this month. They reset ${resetsOn}.`
+                : remaining === 1
+                  ? `This uses your last analysis this month. They reset ${resetsOn}.`
+                  : `Uses 1 of your ${owner.analysisQuota} analyses this month. You have ${remaining} left.`}
+            </p>
+            <StartAnalysisButton handoffId={handoff.id} isFullWidth disabled={!hasScreens || remaining <= 0} />
+            {!hasScreens && (
+              <span className="text-[12px] leading-4 text-[--color-text-secondary]">Add at least one screen to start.</span>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'analyzing' || phase === 'failed') {
+    const runningStage = stages?.find((stage) => stage.status === 'running');
+    const runningIndex = stages ? stages.findIndex((stage) => stage.status === 'running') : -1;
+    return (
+      <ScreenPinProvider>
+        <div className="flex flex-col gap-5">
+          <ReviewHeader
+            name={handoff.name}
+            status={phase === 'failed' ? 'Draft' : handoff.status}
+            readinessScore={null}
+            criticalOpenCount={0}
+            reviewedCount={0}
+            findingCount={0}
+            actions={actionsMenu}
+            statusLine={
+              phase === 'analyzing' ? (
+                <p className="m-0 flex flex-wrap items-center justify-between gap-2 text-[14px] leading-5">
+                  <span className="flex items-center gap-2 text-[--color-text-primary]">
+                    <Clock aria-hidden="true" size={14} className="text-[--color-primary]" />
+                    Analyzing {pluralize(processedScreens.length, 'screen')}
+                    {runningStage && ` · ${runningStage.label} · stage ${runningIndex + 1} of ${stages?.length ?? 5}`}
+                  </span>
+                  <span className="text-[--color-text-secondary]">Readiness appears when analysis finishes.</span>
+                </p>
+              ) : null
+            }
+          />
+          {phase === 'failed' && (
+            <RunBanner tone="error" title="Analysis failed" action={<StartAnalysisButton handoffId={handoff.id} label="Try again" />}>
+              None of the 5 stages finished, so there are no findings yet. Your {pluralize(processedScreens.length, 'screen')}{' '}
+              {processedScreens.length === 1 ? 'is' : 'are'} saved.
+            </RunBanner>
+          )}
+          {phase === 'analyzing' && (
+            <ReviewTabs
+              handoffId={handoff.id}
+              current={tab === 'screens' || tab === 'notes' ? tab : 'review'}
+              tabs={[
+                { key: 'review', label: 'Review' },
+                { key: 'screens', label: 'Screens', count: processedScreens.length },
+                { key: 'notes', label: 'Notes' },
+              ]}
+            />
+          )}
+          {tab === 'notes' && phase === 'analyzing' ? (
+            <DesignerNoteThread handoffId={handoff.id} notes={noteItems} />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <ReviewCanvas screens={canvasScreens} />
+              {latestRun && stages && <AnalysisProgressPanel runStatus={latestRun.status} stages={stages} />}
+            </div>
+          )}
+        </div>
+      </ScreenPinProvider>
+    );
+  }
+
+  const incompleteStages = stages?.filter((stage) => stage.status === 'incomplete') ?? [];
 
   return (
     <ScreenPinProvider>
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-              {handoff.name}
-            </h1>
-            {components.length > 0 && (
-              <Link
-                href={`/handoffs/${handoff.id}/preview`}
-                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-              >
-                Preview documentation
-              </Link>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <HandoffStatusBadge status={handoff.status} />
-            <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />
-          </div>
-          {handoff.readinessScore !== null && handoff.readinessAlgorithmVersion !== null && (
-            <ReadinessScoreDisplay
-              score={handoff.readinessScore}
-              hasUnresolvedCritical={unresolvedCriticalCount > 0}
-              unresolvedCriticalCount={unresolvedCriticalCount}
-              algorithmVersion={handoff.readinessAlgorithmVersion}
-              topAction={topAction}
+      <div className="flex flex-col gap-5">
+        <ReviewHeader
+          name={handoff.name}
+          status={handoff.status}
+          readinessScore={handoff.readinessScore}
+          criticalOpenCount={unresolvedCriticalCount}
+          reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
+          findingCount={allFindings.length + issues.length}
+          actions={
+            <>
+              <AskBuildBridgeFab handoffId={handoff.id} variant="text" />
+              {components.length > 0 && (
+                <ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant={isReady ? 'primary' : 'secondary'} />
+              )}
+              {toReviewCount > 0 && !isGuided && (
+                <Link
+                  href={`/handoffs/${handoff.id}?guided=1`}
+                  className={buttonVariants({ variant: isReady ? 'secondary' : 'primary' })}
+                >
+                  Review next · {toReviewCount} left
+                </Link>
+              )}
+              <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />
+            </>
+          }
+        />
+
+        {runStatus === 'PartiallyCompleted' && incompleteStages.length > 0 && (
+          <RunBanner
+            tone="neutral"
+            title={`Partly analyzed: ${(stages?.length ?? 5) - incompleteStages.length} of ${stages?.length ?? 5} stages finished`}
+            action={<StartAnalysisButton handoffId={handoff.id} label="Run analysis again" variant="secondary" />}
+          >
+            {incompleteStages.map((stage) => stage.label).join(' and ')} {incompleteStages.length === 1 ? 'wasn’t' : 'weren’t'} checked.
+            Readiness stays hidden until they are, so it can’t look better than it is.
+          </RunBanner>
+        )}
+
+        <ReviewTabs
+          handoffId={handoff.id}
+          current={tab}
+          tabs={[
+            { key: 'review', label: 'Review', count: toReviewCount },
+            { key: 'screens', label: 'Screens', count: processedScreens.length },
+            { key: 'responsive', label: 'Responsive', count: responsiveRules.length },
+            { key: 'feedback', label: 'Developer feedback', count: openFlagCount },
+            { key: 'history', label: 'History' },
+            { key: 'notes', label: 'Notes' },
+          ]}
+        />
+
+        {tab === 'review' && (
+          <ReviewWorkspace
+            handoffId={handoff.id}
+            isGuided={isGuided}
+            guidedItems={guidedItems}
+            isBlocked={unresolvedCriticalCount > 0}
+            shareButton={<ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant="primary" />}
+              screens={screenThumbnails.map(({ screen, imageUrl }) => ({
+                id: screen.id,
+                name: screen.name,
+                imageUrl,
+                pins: pinsByScreen.get(screen.id) ?? [],
+              }))}
+            panel={
+            <FindingsPanel
+              toReviewCount={toReviewCount}
+              reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
+              notice={components.length === 0 ? analysisBlock : undefined}
+              gaps={issues.map(
+                (issue): PanelGap => ({
+                  id: issue.id,
+                  title: issue.title,
+                  description: issue.description,
+                  severity: issue.severity,
+                  recommendation: issue.recommendation,
+                  status: issue.status,
+                  provenance: issue.provenance,
+                  where: gapLocation(issue.screenId, issue.componentId),
+                  answer: gapAnswers.get(issue.id) ?? null,
+                  delta: deltaById[issue.id] ?? 0,
+                }),
+              )}
+              components={components.map(
+                (component): PanelComponent => {
+                  const pinScreenId = pinScreenIdByComponentId.get(component.id) ?? null;
+                  const pin = pinScreenId
+                    ? pinsByScreen.get(pinScreenId)?.find((candidate) => candidate.key === pinKeyFor(component.id))
+                    : undefined;
+                  return {
+                    id: component.id,
+                    name: component.name,
+                    type: component.type,
+                    description: component.description,
+                    provenance: component.provenance,
+                    reviewStatus: component.reviewStatus,
+                    isImplemented: isImplemented('Component', component.id),
+                    specifications: component.specifications.map((spec) => ({
+                      id: spec.id,
+                      property: spec.property,
+                      value: spec.value,
+                      unit: spec.unit,
+                      provenance: spec.provenance,
+                      reviewStatus: spec.reviewStatus,
+                      isImplemented: isImplemented('Specification', spec.id),
+                    })),
+                    states: component.states.map((state) => ({
+                      ...state,
+                      isImplemented: isImplemented('ComponentState', state.id),
+                    })),
+                    pinNumber: pin?.number ?? null,
+                  };
+                },
+              )}
             />
-          )}
-          {components.length > 0 && (
-            <p className="text-[--color-text-secondary]">
-              This is where you edit the documentation before sharing it — confirm, modify, reject,
-              or override any finding below.
+            }
+          />
+        )}
+
+        {tab === 'screens' && (
+          <section className="flex flex-col gap-4">
+            <TabIntro
+              actions={
+                <>
+                  <UploadDropzone handoffId={handoff.id} variant="button" />
+                  {processedScreens.length > 0 && <StartAnalysisButton handoffId={handoff.id} label="Re-analyze" variant="secondary" />}
+                </>
+              }
+            >
+              {/* Reordering is Draft-only (upload-actions.ts): once analysed, the
+                  order is part of what was reviewed, so no "Drag to reorder" here. */}
+              {pluralize(screenThumbnails.length, 'screen')}, in the order developers see them.
+            </TabIntro>
+            {screenThumbnails.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {screenThumbnails.map(({ screen, imageUrl }, index) => (
+                  <ScreenThumbnail
+                    key={screen.id}
+                    screenId={screen.id}
+                    name={screen.name}
+                    imageUrl={imageUrl}
+                    analysisStatus={screen.analysisStatus}
+                    order={index + 1}
+                    meta={screenMeta(screen.id)}
+                    pins={pinsByScreen.get(screen.id) ?? []}
+                  />
+                ))}
+              </div>
+            )}
+            <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+              Re-analyzing checks new and changed screens. Screens that haven’t changed don’t use an analysis.
             </p>
-          )}
-        </div>
+            <ScreenFlowList
+              handoffId={handoff.id}
+              screens={processedScreens.map((screen) => ({ id: screen.id, name: screen.name }))}
+              flows={screenFlows.map((flow) => ({
+                id: flow.id,
+                sourceScreenName: flow.sourceScreen.name,
+                targetScreenName: flow.targetScreen.name,
+                label: flow.label,
+              }))}
+            />
+          </section>
+        )}
 
-        <HandoffSectionNav sections={sectionNavItems} />
-
-        <section id="screens" className="flex flex-col gap-3 scroll-mt-32">
-          <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-            <ImageIcon aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-            Screens
-          </h2>
-          <UploadDropzone handoffId={handoff.id} />
-
-          {screenThumbnails.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {screenThumbnails.map(({ screen, imageUrl }) => (
-                <ScreenThumbnail
-                  key={screen.id}
-                  screenId={screen.id}
-                  name={screen.name}
-                  imageUrl={imageUrl}
-                  analysisStatus={screen.analysisStatus}
-                  pins={pinsByScreen.get(screen.id) ?? []}
-                />
-              ))}
-            </div>
-          )}
-
-          <ScreenFlowList
-            handoffId={handoff.id}
-            screens={processedScreens.map((screen) => ({ id: screen.id, name: screen.name }))}
-            flows={screenFlows.map((flow) => ({
-              id: flow.id,
-              sourceScreenName: flow.sourceScreen.name,
-              targetScreenName: flow.targetScreen.name,
-              label: flow.label,
-            }))}
-          />
-        </section>
-
-        {processedScreens.length > 0 && (
-          <section id="analysis" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <Zap aria-hidden="true" size={18} className="text-[--color-primary]" />
-              Analysis
-            </h2>
-            <StartAnalysisButton handoffId={handoff.id} />
-            {latestRun && stages && (
-              <AnalysisProgressPanel runStatus={latestRun.status} stages={stages} />
+        {tab === 'responsive' && (
+          <section className="flex flex-col gap-4">
+            <TabIntro>How the layout changes on each viewport. Confirm what’s right; gaps show where the design doesn’t say.</TabIntro>
+            {responsiveRules.length > 0 || issues.some((issue) => isOpenIssue(issue) && issue.category === 'ResponsiveBehavior') ? (
+              <ResponsiveRuleList
+                handoffId={handoff.id}
+                rules={responsiveRules.map((rule) => ({
+                  id: rule.id,
+                  viewportCategory: rule.viewportCategory,
+                  behavior: rule.behavior,
+                  provenance: rule.provenance,
+                  reviewStatus: rule.reviewStatus,
+                  isImplemented: isImplemented('ResponsiveRule', rule.id),
+                  previousValue: ruleDecisions.get(rule.id)?.action === 'Modify' ? ruleDecisions.get(rule.id)?.previousValue : null,
+                }))}
+                gaps={issues
+                  .filter((issue) => isOpenIssue(issue) && issue.category === 'ResponsiveBehavior')
+                  .map((issue) => ({ id: issue.id, title: issue.title, viewportLabel: null }))}
+              />
+            ) : (
+              <EmptyTab>No responsive behavior found yet.</EmptyTab>
             )}
           </section>
         )}
 
-        {components.length > 0 && (
-          <section id="components" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <Boxes aria-hidden="true" size={18} className="text-[--color-detected]" />
-              Components
-            </h2>
-            {(['Detected', 'Inferred', 'Suggested'] as ProvenanceType[]).map((provenance) => {
-              const group = components.filter(
-                (component) =>
-                  component.provenance === provenance && component.reviewStatus === 'Unreviewed',
-              );
-              if (group.length < 2) return null;
-
-              return (
-                <BulkDecisionBar
-                  key={provenance}
-                  handoffId={handoff.id}
-                  findingType="Component"
-                  provenance={provenance}
-                  findingReferences={group.map((component) => component.id)}
-                  label="component"
-                />
-              );
-            })}
-            {/* Specifications and states are nested per-component below, but
-              a designer reviewing e.g. 40 Detected specs across 10
-              components benefits from acting on all of them at once rather
-              than component-by-component — so these bulk bars operate on
-              the flattened set across every component in the handoff. */}
-            {(['Detected', 'Inferred', 'Suggested'] as ProvenanceType[]).map((provenance) => {
-              const group = allSpecifications.filter(
-                (spec) => spec.provenance === provenance && spec.reviewStatus === 'Unreviewed',
-              );
-              if (group.length < 2) return null;
-
-              return (
-                <BulkDecisionBar
-                  key={`spec-${provenance}`}
-                  handoffId={handoff.id}
-                  findingType="Specification"
-                  provenance={provenance}
-                  findingReferences={group.map((spec) => spec.id)}
-                  label="specification"
-                />
-              );
-            })}
-            {(['Detected', 'Inferred', 'Suggested'] as ProvenanceType[]).map((provenance) => {
-              const group = allStates.filter(
-                (state) => state.provenance === provenance && state.reviewStatus === 'Unreviewed',
-              );
-              if (group.length < 2) return null;
-
-              return (
-                <BulkDecisionBar
-                  key={`state-${provenance}`}
-                  handoffId={handoff.id}
-                  findingType="ComponentState"
-                  provenance={provenance}
-                  findingReferences={group.map((state) => state.id)}
-                  label="state"
-                />
-              );
-            })}
-            <ComponentsList
-              components={components.map((component) => ({
-                id: component.id,
-                name: component.name,
-                type: component.type,
-                description: component.description,
-                provenance: component.provenance,
-                reviewStatus: component.reviewStatus,
-                isImplemented: isImplemented('Component', component.id),
-                specifications: component.specifications.map((spec) => ({
-                  ...spec,
-                  isImplemented: isImplemented('Specification', spec.id),
-                })),
-                states: component.states.map((state) => ({
-                  ...state,
-                  isImplemented: isImplemented('ComponentState', state.id),
-                })),
-                pinScreenId: pinScreenIdByComponentId.get(component.id) ?? null,
-              }))}
-            />
-          </section>
-        )}
-
-        {responsiveRules.length > 0 && (
-          <section id="responsive" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <Smartphone aria-hidden="true" size={18} className="text-[--color-inferred]" />
-              Responsive behavior
-            </h2>
-            {(['Detected', 'Inferred', 'Suggested'] as ProvenanceType[]).map((provenance) => {
-              const group = responsiveRules.filter(
-                (rule) => rule.provenance === provenance && rule.reviewStatus === 'Unreviewed',
-              );
-              if (group.length < 2) return null;
-
-              return (
-                <BulkDecisionBar
-                  key={`responsive-${provenance}`}
-                  handoffId={handoff.id}
-                  findingType="ResponsiveRule"
-                  provenance={provenance}
-                  findingReferences={group.map((rule) => rule.id)}
-                  label="responsive rule"
-                />
-              );
-            })}
-            <ResponsiveRuleList
-              rules={responsiveRules.map((rule) => ({
-                ...rule,
-                isImplemented: isImplemented('ResponsiveRule', rule.id),
-                pinScreenId: rule.componentId
-                  ? (pinScreenIdByComponentId.get(rule.componentId) ?? null)
-                  : null,
-                pinKey: rule.componentId ? pinKeyFor(rule.componentId) : undefined,
-              }))}
-            />
-          </section>
-        )}
-
-        {issues.length > 0 && (
-          <section id="issues" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <AlertTriangle aria-hidden="true" size={18} className="text-[--color-warning]" />
-              Issues
-            </h2>
-            <IssuePanel
-              handoffId={handoff.id}
-              issues={issues.map((issue): HandoffIssueItem => ({
-                ...issue,
-                pinScreenId: issue.componentId
-                  ? (pinScreenIdByComponentId.get(issue.componentId) ?? null)
-                  : null,
-                pinKey: issue.componentId ? pinKeyFor(issue.componentId) : undefined,
-              }))}
-              deltaById={deltaById}
-            />
-          </section>
-        )}
-
-        {changelogEntries.length > 0 && (
-          <section id="history" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <History aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-              Re-analysis history
-            </h2>
-            <AnalysisChangelogPanel entries={changelogEntries} />
-          </section>
-        )}
-
-        {developerFlags.length > 0 && (
-          <section id="developer-feedback" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <MessageSquareWarning
-                aria-hidden="true"
-                size={18}
-                className="text-[--color-primary]"
+        {tab === 'feedback' && (
+          <section className="flex flex-col gap-4">
+            <TabIntro>Questions and mismatches developers flagged on the share link. They see the status you set.</TabIntro>
+            {developerFlags.length > 0 ? (
+              <DeveloperFlagPanel
+                flags={developerFlags.map((flag): DeveloperFlagItem => ({
+                  id: flag.id,
+                  kind: flag.kind,
+                  message: flag.message,
+                  submittedByName: flag.submittedByName,
+                  status: flag.status,
+                  createdAt: flag.createdAt.toISOString(),
+                  target: findingLabel(flag.findingType, flag.findingReference),
+                }))}
               />
-              Developer feedback
-            </h2>
-            <DeveloperFlagPanel
-              flags={developerFlags.map((flag): DeveloperFlagItem => ({
-                id: flag.id,
-                kind: flag.kind,
-                message: flag.message,
-                submittedByName: flag.submittedByName,
-                status: flag.status,
-                createdAt: flag.createdAt.toISOString(),
-                findingReference: flag.findingReference,
-              }))}
-            />
+            ) : (
+              <EmptyTab>No developer feedback yet. Flags from your share link show up here.</EmptyTab>
+            )}
           </section>
         )}
 
-        <section id="notes" className="flex flex-col gap-3 scroll-mt-32">
-          <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-            <StickyNote aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-            Notes
-          </h2>
-          <DesignerNoteThread
-            handoffId={handoff.id}
-            notes={notes.map((note) => ({
-              id: note.id,
-              content: note.content,
-              createdAt: note.createdAt.toISOString(),
-            }))}
-          />
-        </section>
+        {tab === 'history' && (
+          <section className="flex flex-col gap-4">
+            <TabIntro>Each analysis run and what it changed. Your decisions are never overwritten; conflicts come back to you.</TabIntro>
+            {changelogEntries.length > 0 ? (
+              <AnalysisChangelogPanel entries={changelogEntries} conflictContext={conflictContext} />
+            ) : (
+              <EmptyTab>No analysis history yet.</EmptyTab>
+            )}
+          </section>
+        )}
 
-        {components.length > 0 && (
-          <section id="share" className="flex flex-col gap-3 scroll-mt-32">
-            <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-              <Share2 aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-              Share
-            </h2>
-            <ShareLinkPanel
-              handoffId={handoff.id}
-              shareLinks={shareLinks.map((link) => ({
-                id: link.id,
-                status: link.status,
-                createdAt: link.createdAt.toISOString(),
-                expiresAt: link.expiresAt?.toISOString() ?? null,
-              }))}
-            />
+        {tab === 'notes' && (
+          <section className="flex flex-col gap-4">
+            <TabIntro>Context for the developer that the screens can’t show. Notes appear in the developer view under Implementation notes.</TabIntro>
+            <DesignerNoteThread handoffId={handoff.id} notes={noteItems} />
           </section>
         )}
       </div>
-      <AskBuildBridgeFab handoffId={handoff.id} />
     </ScreenPinProvider>
+  );
+}
+
+/** The one-line description each tab opens with (Figma), with optional actions on the right. */
+function TabIntro({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">{children}</p>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+function EmptyTab({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="m-0 rounded-[12px] border border-[--color-border] bg-white px-4 py-6 text-[14px] leading-5 text-[--color-text-secondary]">
+      {children}
+    </p>
   );
 }

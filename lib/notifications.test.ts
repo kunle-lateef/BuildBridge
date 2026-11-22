@@ -4,6 +4,12 @@ const mockDb = {
   analysisRun: { findUnique: vi.fn() },
   developerFlag: { findUnique: vi.fn() },
   implementationMark: { findUnique: vi.fn() },
+  component: { count: vi.fn(), findFirst: vi.fn() },
+  specification: { count: vi.fn(), findFirst: vi.fn() },
+  componentState: { count: vi.fn(), findFirst: vi.fn() },
+  responsiveRule: { count: vi.fn() },
+  handoffIssue: { count: vi.fn() },
+  screen: { count: vi.fn() },
   notification: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
 };
 
@@ -34,6 +40,9 @@ const HANDOFF = { id: 'handoff-1', name: 'Checkout redesign', ownerId: 'user-a',
 beforeEach(() => {
   vi.clearAllMocks();
   mockDb.notification.create.mockResolvedValue({ id: 'notif-1' });
+  for (const model of ['component', 'specification', 'componentState', 'responsiveRule', 'handoffIssue', 'screen'] as const) {
+    mockDb[model].count.mockResolvedValue(0);
+  }
 });
 
 describe('dispatchAnalysisRunNotification', () => {
@@ -63,9 +72,11 @@ describe('dispatchAnalysisRunNotification', () => {
     );
     expect(mockSendAnalysisRunNotificationEmail).toHaveBeenCalledWith(
       'designer@example.com',
-      'Checkout redesign',
-      'Completed',
-      expect.stringContaining('/handoffs/handoff-1'),
+      expect.objectContaining({
+        handoffName: 'Checkout redesign',
+        outcome: 'Completed',
+        handoffUrl: expect.stringContaining('/handoffs/handoff-1'),
+      }),
     );
   });
 
@@ -104,7 +115,7 @@ describe('dispatchDeveloperFlagNotification', () => {
   });
 
   it('creates a Notification deep-linked to the flag anchor and sends email when enabled', async () => {
-    mockDb.developerFlag.findUnique.mockResolvedValue({ id: 'flag-1', kind: 'Mismatch', handoff: HANDOFF });
+    mockDb.developerFlag.findUnique.mockResolvedValue({ id: 'flag-1', kind: 'Mismatch', message: 'Active tab color differs from the spec.', handoff: HANDOFF });
 
     await dispatchDeveloperFlagNotification('flag-1');
 
@@ -112,15 +123,18 @@ describe('dispatchDeveloperFlagNotification', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           type: 'DeveloperFlagReceived',
-          linkUrl: '/handoffs/handoff-1#flag-flag-1',
+          linkUrl: '/handoffs/handoff-1?tab=feedback#flag-flag-1',
         }),
       }),
     );
     expect(mockSendDeveloperFlagNotificationEmail).toHaveBeenCalledWith(
       'designer@example.com',
-      'Checkout redesign',
-      'Mismatch',
-      expect.stringContaining('/handoffs/handoff-1'),
+      expect.objectContaining({
+        handoffName: 'Checkout redesign',
+        kind: 'Mismatch',
+        message: 'Active tab color differs from the spec.',
+        feedbackUrl: expect.stringContaining('/handoffs/handoff-1?tab=feedback#flag-flag-1'),
+      }),
     );
   });
 });
@@ -151,8 +165,7 @@ describe('dispatchImplementationMarkNotification', () => {
     );
     expect(mockSendImplementationMarkedEmail).toHaveBeenCalledWith(
       'designer@example.com',
-      'Checkout redesign',
-      expect.stringContaining('/handoffs/handoff-1'),
+      expect.objectContaining({ handoffName: 'Checkout redesign', handoffUrl: expect.stringContaining('/handoffs/handoff-1') }),
     );
   });
 
@@ -248,6 +261,54 @@ describe('createNotification', () => {
         body: 'Body',
         linkUrl: '/handoffs/handoff-1',
       },
+    });
+  });
+});
+
+describe('notification wording (Figma 07 — Notifications)', () => {
+  const bodyOf = () => mockDb.notification.create.mock.calls[0]?.[0].data as { title: string; body: string };
+
+  it('a finished run counts components and open gaps', async () => {
+    mockDb.analysisRun.findUnique.mockResolvedValue({ status: 'Completed', handoff: HANDOFF });
+    mockDb.component.count.mockResolvedValue(14);
+    mockDb.handoffIssue.count.mockResolvedValueOnce(9).mockResolvedValueOnce(6);
+
+    await dispatchAnalysisRunNotification('run-1');
+
+    expect(bodyOf()).toMatchObject({ title: 'Analysis finished', body: '14 components and 6 gaps found.' });
+  });
+
+  it('a partial run says how many of the five stages produced something', async () => {
+    mockDb.analysisRun.findUnique.mockResolvedValue({ status: 'PartiallyCompleted', handoff: HANDOFF });
+    mockDb.component.count.mockResolvedValue(4);
+    mockDb.specification.count.mockResolvedValue(12);
+    mockDb.componentState.count.mockResolvedValue(3);
+
+    await dispatchAnalysisRunNotification('run-1');
+
+    expect(bodyOf()).toMatchObject({ title: 'Analysis partly finished', body: '3 of 5 stages finished. Review the rest by hand.' });
+  });
+
+  it('a developer question quotes their words', async () => {
+    mockDb.developerFlag.findUnique.mockResolvedValue({ id: 'flag-1', kind: 'Question', message: 'Is the order summary\nsticky on tablet?', handoff: HANDOFF });
+
+    await dispatchDeveloperFlagNotification('flag-1');
+
+    expect(bodyOf()).toMatchObject({ title: 'New question from a developer', body: '“Is the order summary sticky on tablet?”' });
+  });
+
+  it('an implemented mark names the value, looked up inside the same handoff only', async () => {
+    mockDb.implementationMark.findUnique.mockResolvedValue({ id: 'mark-1', findingType: 'Specification', findingReference: 'spec-1', handoff: HANDOFF });
+    mockDb.specification.findFirst.mockResolvedValue({ property: 'corner radius', component: { name: 'Pay button' } });
+
+    await dispatchImplementationMarkNotification('mark-1');
+
+    expect(mockDb.specification.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'spec-1', component: { handoffId: 'handoff-1' } } }),
+    );
+    expect(bodyOf()).toMatchObject({
+      title: 'Finding marked implemented',
+      body: 'Pay button corner radius, marked by a developer on the share link.',
     });
   });
 });

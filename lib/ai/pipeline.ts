@@ -153,6 +153,7 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
               property: spec.property,
               value: spec.value,
               unit: spec.unit,
+              numericValue: spec.numericValue ?? null,
               confidence: spec.confidence,
               provenance: spec.provenance,
             })),
@@ -330,6 +331,7 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
               property: spec.property,
               value: spec.value,
               unit: spec.unit,
+              numericValue: spec.numericValue,
             },
           ]
         : [],
@@ -389,13 +391,34 @@ export async function runAnalysisPipeline(analysisRunId: string): Promise<void> 
 
   const readiness = await computeReadiness(handoffId);
 
+  // Readiness must never look better than it is (AGENTS.md). Agreed with the
+  // developer on Nov 22, following Figma `04 — Handoff`:
+  // - A run where every stage failed found nothing, so nothing was deducted
+  //   and the score would read 100% / Ready. If no earlier run succeeded,
+  //   the handoff goes back to Draft with no score.
+  // - A partly completed run skipped whole stages, so the score is hidden
+  //   (null) and the handoff needs review until a full run finishes.
+  // The formula itself is unchanged, and the snapshot below still records
+  // what it computed for this run.
+  const hasEarlierSuccess =
+    finalStatus === 'Failed'
+      ? (await db.analysisRun.count({
+          where: { handoffId, id: { not: analysisRunId }, status: { in: ['Completed', 'PartiallyCompleted'] } },
+        })) > 0
+      : true;
+
   await db.handoff.update({
     where: { id: handoffId },
-    data: {
-      status: deriveHandoffStatus('Analyzing', readiness.hasUnresolvedCritical),
-      readinessScore: readiness.overall,
-      readinessAlgorithmVersion: readiness.version,
-    },
+    data:
+      finalStatus === 'Failed' && !hasEarlierSuccess
+        ? { status: 'Draft', readinessScore: null, readinessAlgorithmVersion: null }
+        : finalStatus === 'PartiallyCompleted'
+          ? { status: 'NeedsReview', readinessScore: null, readinessAlgorithmVersion: null }
+          : {
+              status: deriveHandoffStatus('Analyzing', readiness.hasUnresolvedCritical),
+              readinessScore: readiness.overall,
+              readinessAlgorithmVersion: readiness.version,
+            },
   });
 
   // Snapshotted here (not derived later) since Handoff.readinessScore is
@@ -456,16 +479,21 @@ function summarizeFailures(failures: StageFailure[]): string {
 }
 
 async function buildHandoffSummary(handoffId: string): Promise<string> {
-  const [components, specifications, states, responsiveRules, screenCount] = await Promise.all([
-    db.component.findMany({ where: { handoffId } }),
+  const [components, specifications, states, responsiveRules, screens] = await Promise.all([
+    db.component.findMany({ where: { handoffId }, include: { instances: { select: { screenId: true } } } }),
     db.specification.findMany({ where: { component: { handoffId } } }),
     db.componentState.findMany({ where: { component: { handoffId } } }),
     db.responsiveRule.findMany({ where: { screen: { handoffId } } }),
-    db.screen.count({ where: { handoffId } }),
+    db.screen.findMany({ where: { handoffId }, select: { id: true, name: true }, orderBy: { order: 'asc' } }),
   ]);
+  const screenName = new Map(screens.map((screen) => [screen.id, screen.name]));
 
+  // Screen and component names are listed exactly as stored, so a gap can
+  // name where it is (screenName/componentName) and the server can match
+  // that name back to one screen or component.
   const lines: string[] = [
-    `Handoff has ${screenCount} screen(s) and ${components.length} detected component(s).`,
+    `Handoff has ${screens.length} screen(s): ${screens.map((screen) => `"${screen.name}"`).join(', ') || 'none'}.`,
+    `${components.length} detected component(s):`,
   ];
 
   for (const component of components) {
@@ -473,15 +501,17 @@ async function buildHandoffSummary(handoffId: string): Promise<string> {
     const componentStates = states.filter((state) => state.componentId === component.id);
     const stateSummary =
       componentStates.map((state) => `${state.name} [${state.provenance}]`).join(', ') || 'none reported';
+    const onScreens = [...new Set(component.instances.map((instance) => screenName.get(instance.screenId)).filter(Boolean))];
 
     lines.push(
-      `- ${component.name} (${component.type}): ${componentSpecs.length} specification(s) extracted; states: ${stateSummary}.`,
+      `- "${component.name}" (${component.type}) on ${onScreens.map((name) => `"${name}"`).join(', ') || 'no screen'}: ${componentSpecs.length} specification(s) extracted; states: ${stateSummary}.`,
     );
   }
 
   const responsiveSummary =
-    responsiveRules.map((rule) => `${rule.viewportCategory} — ${rule.behavior}`).join('; ') ||
-    'no responsive evidence reported';
+    responsiveRules
+      .map((rule) => `${rule.viewportCategory} on "${(rule.screenId && screenName.get(rule.screenId)) || 'unknown screen'}" — ${rule.behavior}`)
+      .join('; ') || 'no responsive evidence reported';
   lines.push(`Responsive evidence: ${responsiveSummary}.`);
 
   return lines.join('\n');

@@ -1,6 +1,5 @@
 'use client';
 
-import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { CreateHandoffForm } from '@/components/handoff/CreateHandoffForm';
@@ -12,13 +11,12 @@ import { Modal } from '@/components/ui/Modal';
  * permanently-expanded form sitting above the list — the form only earns
  * its space while someone is actually creating a handoff.
  */
-export function CreateHandoffButton() {
+export function CreateHandoffButton({ variant = 'primary' }: { variant?: 'primary' | 'secondary' }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <Button type="button" variant="cta" onClick={() => setIsOpen(true)}>
-        <Plus aria-hidden="true" size={18} />
+      <Button type="button" variant={variant} onClick={() => setIsOpen(true)}>
         New handoff
       </Button>
 

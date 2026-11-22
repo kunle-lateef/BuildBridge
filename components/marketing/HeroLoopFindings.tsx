@@ -1,217 +1,472 @@
 'use client';
 
-import { Link2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 
+import { PIN_BASE, PIN_STYLE } from '@/components/marketing/HeroLoopScreen';
 import {
-  LOOP_FINDINGS,
-  type LoopFinding,
+  ANALYSIS_STAGES,
+  type CursorTarget,
+  type LoopRowId,
   type LoopState,
+  R2_NEW_VALUE,
+  R2_OLD_VALUE,
 } from '@/components/marketing/heroLoopTimeline';
-import { buttonVariants } from '@/components/ui/Button';
-import { HandoffStatusBadge } from '@/components/ui/HandoffStatusBadge';
+import { Check, CheckCircle2, Circle, Clock, Pencil, X } from '@/components/ui/icons';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { cn } from '@/lib/cn';
+import type { ProvenanceType } from '@/lib/types';
 
 type HeroLoopFindingsProps = {
   state: LoopState;
-  reducedMotion: boolean;
+  /** Registers the elements the demo cursor travels to (desktop only). */
+  targetRef: (target: CursorTarget) => Ref<HTMLElement>;
 };
 
-const RING_RADIUS = 36;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const SCORE_TWEEN_MS = 450;
+const MOTION = 'duration-[240ms] ease-[cubic-bezier(0.65,0,0.35,1)]';
 
 /**
- * The review side of the loop: the findings list, the readiness ring, and the
- * share link. Below `sm` this is the whole loop (HeroHandoffLoop hides the
- * screen mockup there), so it stacks in normal flow; from `sm` up it is
- * pinned to the scaled stage's design coordinates.
+ * The Review page's findings panel at the hero's size: the Analysis stage
+ * list while analysis runs, then the findings, the critical gap and
+ * readiness. Every state here is a real Review state (Confirm, the Modify
+ * editor, the expanded gap card), never a hero-only shortcut.
  */
-export function HeroLoopFindings({ state, reducedMotion }: HeroLoopFindingsProps) {
-  const score = useCountUp(state.scoreTarget, reducedMotion);
-  const isComplete = state.confirmedCount === LOOP_FINDINGS.length;
-  const ringOffset = RING_CIRCUMFERENCE * (1 - score / 100);
+export function HeroLoopFindings({ state, targetRef }: HeroLoopFindingsProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const overflow = useListOverflow(listRef, innerRef);
 
   return (
-    <>
-      <div className="relative z-[3] w-full rounded-[--radius-xl] border border-[--color-border] bg-[--color-background] shadow-[0_30px_60px_-30px_rgba(30,41,59,0.35)] sm:absolute sm:left-[410px] sm:top-[90px] sm:w-[344px]">
-        <div className="flex h-[72px] flex-col justify-center gap-0.5 border-b border-[--color-border] px-5">
-          <span className="text-[length:var(--font-desktop-heading-4-semi-bold-size)] font-semibold text-[--color-text-primary]">
-            Findings
-          </span>
-          <span className="font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            Checkout Redesign · v1
-          </span>
-        </div>
+    <aside className="relative grid min-h-0 grid-rows-[53px_436px_1fr] border-[--color-border] bg-white sm:border-l">
+      <div className="relative border-b border-[--color-border]">
+        <PanelHeading isShown={state.isAnalyzing}>
+          <span className="font-medium text-[--color-text-primary]">Analysis</span>
+        </PanelHeading>
+        <PanelHeading isShown={!state.isAnalyzing}>
+          <span className="font-medium text-[--color-text-primary]">Findings</span>
+          <span className="text-[12px] text-[--color-text-secondary]">4 of 11</span>
+          <span className="flex-1" />
+          <span className="text-[12px] text-[--color-text-secondary]">Screen: Checkout</span>
+        </PanelHeading>
+      </div>
 
-        <div className="relative h-[312px]">
-          <div
-            className={cn(
-              'absolute inset-0 flex items-center justify-center text-[length:var(--font-desktop-label-regular-size)] text-[--color-text-muted] transition-opacity duration-200',
-              state.isEmptyVisible ? 'opacity-100' : 'opacity-0',
-            )}
+      <div ref={listRef} className="relative overflow-hidden">
+        <AnalysisStages state={state} />
+
+        <div
+          ref={innerRef}
+          className={cn('grid grid-cols-[minmax(0,1fr)] content-start gap-1 p-3 transition-transform', MOTION)}
+          style={{ transform: `translateY(-${state.isListScrolled ? overflow : 0}px)` }}
+        >
+          <FindingRow
+            id="r1"
+            state={state}
+            pin="1"
+            provenance="Detected"
+            title="Pay button · radius"
+            value="8px  #4F46E5"
+            isSelected={state.r1.isSelected}
+            side={
+              <FadeIn isShown={state.r1.isConfirmed}>
+                <ReviewStatusBadge status="Confirmed" />
+              </FadeIn>
+            }
           >
-            Findings appear after analysis
-          </div>
-          {LOOP_FINDINGS.map((finding) => (
-            <FindingRow key={finding.id} finding={finding} state={state} />
-          ))}
-        </div>
+            <Expander isOpen={state.r1.isOpen}>
+              <div className="flex flex-wrap gap-2 pt-3 sm:pl-9">
+                <SmallButton ref={targetRef('c1')} isPressed={state.pressed === 'c1'} icon={<Check size={14} />}>
+                  Confirm
+                </SmallButton>
+                <SmallButton icon={<Pencil size={14} />}>Modify</SmallButton>
+                <SmallButton icon={<X size={14} />}>Reject</SmallButton>
+              </div>
+            </Expander>
+          </FindingRow>
 
-        <div className="flex h-[118px] items-center gap-[18px] px-5">
-          <div className="relative h-[84px] w-[84px] shrink-0">
-            <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
-              <circle
-                cx="42"
-                cy="42"
-                r={RING_RADIUS}
-                fill="none"
-                stroke="var(--color-surface)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="42"
-                cy="42"
-                r={RING_RADIUS}
-                fill="none"
-                stroke={isComplete ? 'var(--color-success)' : 'var(--color-primary)'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={ringOffset}
-                transform="rotate(-90 42 42)"
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[length:var(--font-desktop-heading-4-semi-bold-size)] font-semibold tabular-nums text-[--color-text-primary]">
-              {score}%
-            </span>
-          </div>
-          <div className="flex flex-col items-start gap-1.5">
-            <span className="text-[length:var(--font-desktop-body-semi-bold-size)] font-semibold text-[--color-text-primary]">
-              Readiness score
-            </span>
-            <span className="text-[length:var(--font-desktop-label-regular-size)] tabular-nums text-[--color-text-secondary]">
-              {scoreCaption(state)}
-            </span>
-            <HandoffStatusBadge status={state.status} />
-          </div>
+          <FindingRow
+            id="r2"
+            state={state}
+            pin="2"
+            provenance="Inferred"
+            title={<span ref={targetRef('r2title')}>Card number · focus ring</span>}
+            value={state.r2.isSaved ? R2_NEW_VALUE : R2_OLD_VALUE}
+            isSelected={state.r2.isSelected}
+            side={
+              state.r2.isSaved ? (
+                <span className="text-[12px] leading-4 text-[--color-text-secondary]">Modified by designer</span>
+              ) : null
+            }
+          >
+            <Expander isOpen={state.r2.isOpen}>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-2 pb-0.5 pt-3 sm:pl-9">
+                <div className="flex h-10 items-center overflow-hidden whitespace-nowrap rounded-[8px] border-2 border-[--color-primary] bg-white px-3 font-mono text-[13px] text-[--color-text-primary]">
+                  {state.r2.isInputSelected ? (
+                    <span className="bg-[--color-primary-light]">{state.r2.input}</span>
+                  ) : (
+                    <>
+                      {state.r2.input}
+                      <Caret />
+                    </>
+                  )}
+                </div>
+                <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+                  Was {R2_OLD_VALUE} (Inferred). Developers will see your value marked “Modified by designer”.
+                </p>
+                <div className="flex items-center gap-1 pt-1">
+                  <PrimaryButton ref={targetRef('r2save')} isPressed={state.pressed === 'r2save'}>
+                    Save change
+                  </PrimaryButton>
+                  <TextButton>Cancel</TextButton>
+                </div>
+              </div>
+            </Expander>
+          </FindingRow>
+
+          <FindingRow
+            id="r3"
+            state={state}
+            pin="3"
+            provenance="Suggested"
+            title="Pay button · loading"
+            value="Spinner only"
+          />
+          <FindingRow
+            id="r4"
+            state={state}
+            pin="4"
+            provenance="Inferred"
+            title="Expiry · error state"
+            value="Inline, below field"
+          />
+
+          <GapCard state={state} targetRef={targetRef} />
         </div>
       </div>
 
-      <div
-        className={cn(
-          'relative z-[3] mt-4 flex w-full items-center gap-3.5 rounded-[--radius-xl] bg-[--color-text-primary] px-[18px] py-4 text-white transition-[opacity,transform] sm:absolute sm:left-[410px] sm:top-[616px] sm:mt-0 sm:w-[344px]',
-          state.isShareVisible ? 'translate-y-0 opacity-100' : 'translate-y-3.5 opacity-0',
-          state.isFadingOut ? 'duration-700' : 'duration-[400ms] ease-out',
-        )}
-      >
-        <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[--radius-lg] bg-white/10 text-[--color-primary-light]">
-          <Link2 aria-hidden="true" size={20} />
-        </span>
-        <div className="flex flex-col">
-          <span className="text-[length:var(--font-desktop-body-semi-bold-size)] font-semibold">
-            Read-only link ready
-          </span>
-          <span className="font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-primary-light]">
-            Developers see confirmed specs only
-          </span>
-        </div>
-      </div>
-    </>
+      <Readiness state={state} />
+    </aside>
   );
 }
 
-function FindingRow({ finding, state }: { finding: LoopFinding; state: LoopState }) {
-  const { isShown, isPressed, isDone, isRippling } = state.findings[finding.id];
-
+function PanelHeading({ isShown, children }: { isShown: boolean; children: ReactNode }) {
   return (
     <div
       className={cn(
-        'relative flex h-[78px] items-center justify-between gap-2.5 border-b border-[--color-surface] pl-5 pr-[18px] transition-[opacity,transform]',
-        isShown ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0',
-        state.isFadingOut ? 'duration-700' : 'delay-100 duration-[350ms] ease-out',
+        'absolute inset-0 flex items-center gap-2 bg-white px-5 transition-opacity duration-150',
+        isShown ? 'opacity-100' : 'opacity-0',
       )}
     >
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="truncate text-[length:var(--font-desktop-body-medium-size)] font-medium text-[--color-text-primary]">
-          {finding.name}
-        </span>
-        <div className="flex min-w-0 items-center gap-2">
-          {'provenance' in finding.label ? (
-            <ProvenanceBadge provenance={finding.label.provenance} className="shrink-0" />
-          ) : (
-            <SeverityBadge severity={finding.label.severity} className="shrink-0" />
-          )}
-          <span className="truncate font-mono text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-secondary]">
-            {finding.value}
-          </span>
+      {children}
+    </div>
+  );
+}
+
+function AnalysisStages({ state }: { state: LoopState }) {
+  return (
+    <div
+      className={cn(
+        'absolute inset-0 grid content-start py-2 transition-opacity duration-150',
+        state.isAnalyzing ? 'opacity-100' : 'pointer-events-none opacity-0',
+      )}
+    >
+      {ANALYSIS_STAGES.map((stage, i) => {
+        const stageState = state.stages[i];
+        return (
+          <div
+            key={stage}
+            className={cn(
+              'flex h-[34px] items-center gap-3 px-5 text-[13px]',
+              stageState === 'now'
+                ? 'bg-[--color-background] text-[--color-text-primary]'
+                : 'text-[--color-text-secondary]',
+            )}
+          >
+            {stageState === 'done' && <CheckCircle2 size={16} className="text-[--color-text-body]" />}
+            {stageState === 'now' && <Clock size={16} className="text-[--color-primary]" />}
+            {stageState === 'todo' && <Circle size={16} className="text-[--color-text-dismissed]" />}
+            {stage}
+            {stageState === 'done' && i === 0 && (
+              <span className="ml-auto text-[12px] text-[--color-text-muted]">4 components</span>
+            )}
+            {stageState === 'now' && <span className="ml-auto text-[12px] text-[--color-text-muted]">In progress</span>}
+          </div>
+        );
+      })}
+      <span className="px-5 pt-2 text-[12px] leading-[18px] text-[--color-text-secondary]">
+        Findings appear here as each stage finishes.
+      </span>
+    </div>
+  );
+}
+
+function FindingRow({
+  id,
+  state,
+  pin,
+  provenance,
+  title,
+  value,
+  isSelected = false,
+  side,
+  children,
+}: {
+  id: LoopRowId;
+  state: LoopState;
+  pin: string;
+  provenance: ProvenanceType;
+  title: ReactNode;
+  value: string;
+  isSelected?: boolean;
+  side?: ReactNode;
+  children?: ReactNode;
+}) {
+  const isShown = state.rowsShown[id];
+  return (
+    <div
+      className={cn(
+        'rounded-[8px] border p-3 transition-[opacity,transform,background-color,border-color]',
+        MOTION,
+        isShown ? 'translate-x-0 opacity-100' : 'translate-x-3 opacity-0',
+        isSelected ? 'border-[--color-border] bg-[--color-surface]' : 'border-transparent',
+        state.tapped === id && 'max-sm:bg-[--color-primary-light]',
+      )}
+    >
+      <div className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-3">
+        <span className={cn(PIN_BASE, PIN_STYLE[provenance])}>{pin}</span>
+        <div className="min-w-0">
+          <span className="block font-medium text-[--color-text-primary]">{title}</span>
+          <code className="mt-1 block whitespace-pre font-mono text-[13px] leading-[18px] text-[--color-text-secondary]">
+            {value}
+          </code>
+        </div>
+        <div className="grid justify-items-end gap-1">
+          <ProvenanceBadge provenance={provenance} />
+          {side}
         </div>
       </div>
+      {children}
+    </div>
+  );
+}
 
-      {/* Spans styled as buttons, never real <button>s — the loop is aria-hidden, and a focusable control inside it would be a keyboard trap (see HeroHandoffLoop). */}
-      <div className="relative h-8 w-[90px] shrink-0">
-        <span
-          className={cn(
-            buttonVariants({ variant: 'secondary', size: 'sm' }),
-            'absolute inset-0 border-[--color-primary] bg-[--color-background] font-semibold text-[--color-primary] transition-[opacity,transform] duration-150',
-            isPressed && 'scale-[0.93]',
-            isDone && 'opacity-0',
-          )}
-        >
-          {finding.action}
-        </span>
-        <span
-          className={cn(
-            'absolute inset-0 flex items-center justify-center transition-opacity duration-200',
-            isDone ? 'opacity-100' : 'opacity-0',
-          )}
-        >
-          <ReviewStatusBadge status={finding.doneStatus} />
-        </span>
-        {isRippling && (
-          <span className="pointer-events-none absolute left-1/2 top-1/2 -ml-[30px] -mt-[30px] h-[60px] w-[60px] rounded-full border-2 border-[--color-primary] opacity-0 motion-safe:animate-confirm-ripple" />
+function GapCard({
+  state,
+  targetRef,
+}: {
+  state: LoopState;
+  targetRef: (target: CursorTarget) => Ref<HTMLElement>;
+}) {
+  const { gap } = state;
+  const isQuestionShown = !gap.isAnswered && !gap.isOpen;
+  return (
+    <div
+      className={cn(
+        'mt-1 rounded-[8px] border bg-white px-3 py-3 transition-[opacity,transform,border-color]',
+        MOTION,
+        state.isGapShown ? 'translate-x-0 opacity-100' : 'translate-x-3 opacity-0',
+        gap.isSelected ? 'border-[--color-error]' : 'border-[--color-error-light]',
+        state.isGapPulsing && 'animate-[gap-pulse_600ms_ease-out_1]',
+        state.tapped === 'gap' && 'max-sm:bg-[--color-primary-light]',
+      )}
+    >
+      <div className="flex items-center gap-2 text-[12px] leading-4 text-[--color-text-secondary]">
+        <SeverityBadge severity="Critical" />
+        {gap.isSelected ? (
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <ProvenanceBadge provenance="Inferred" />
+            Checkout · Pay button
+          </span>
+        ) : (
+          <span>Gap</span>
         )}
+        <FadeIn isShown={gap.isAnswered} className="inline-flex items-center gap-1 font-medium text-[--color-text-primary]">
+          <Check size={14} />
+          Answered
+        </FadeIn>
+      </div>
+
+      {isQuestionShown && (
+        <p ref={targetRef('gapQ') as Ref<HTMLParagraphElement>} className="m-0 mt-2 text-[--color-text-body]">
+          No state for a declined card. Developers would have to guess.
+        </p>
+      )}
+      {gap.isAnswered && (
+        <p className="m-0 mt-2 text-[13px] leading-[18px] text-[--color-text-secondary]">
+          Your answer: Show “Your card was declined. Try another card.” above Pay. Keep the form filled in and focus
+          the card number.
+        </p>
+      )}
+
+      <Expander isOpen={gap.isOpen}>
+        <div className="grid gap-2 pt-3">
+          <span className="text-[15px] font-semibold leading-[22px] text-[--color-text-primary]">
+            No declined-card state
+          </span>
+          <p className="m-0 text-[13px] leading-[19px] text-[--color-text-secondary]">
+            The design shows success only. What does the form do when the bank says no?
+          </p>
+          <p className="m-0 text-[13px] leading-[19px] text-[--color-text-secondary]">
+            <span className="font-semibold text-[--color-text-body]">Suggested fix:</span> an inline error above Pay with
+            a way to try another card.
+          </p>
+          <span className="text-[12px] font-medium leading-4 text-[--color-text-body]">
+            → Answering this makes the handoff ready
+          </span>
+          <span className="text-[13px] font-medium leading-[18px] text-[--color-text-body]">Your answer</span>
+          <div className="min-h-[84px] rounded-[8px] border-2 border-[--color-primary] bg-white px-3 py-3 text-[14px] leading-5 text-[--color-text-body]">
+            {gap.typed}
+            <Caret />
+          </div>
+          <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+            Developers see this as the confirmed behavior.
+          </p>
+          <div className="flex items-center gap-1 pt-1">
+            <PrimaryButton ref={targetRef('gapSave')} isPressed={state.pressed === 'gapSave'}>
+              Save answer
+            </PrimaryButton>
+            <TextButton>Cancel</TextButton>
+          </div>
+        </div>
+      </Expander>
+    </div>
+  );
+}
+
+function Readiness({ state }: { state: LoopState }) {
+  return (
+    <div className="relative grid content-start gap-3 border-t border-[--color-border] px-5 pt-4">
+      <span
+        className={cn(
+          'absolute left-5 top-[22px] text-[12px] leading-4 text-[--color-text-secondary] transition-opacity duration-150',
+          state.isAnalyzing ? 'opacity-100' : 'opacity-0',
+        )}
+      >
+        Readiness appears when analysis finishes.
+      </span>
+      <div
+        className={cn(
+          'grid gap-3 transition-opacity',
+          MOTION,
+          state.isScoreShown ? 'opacity-100' : 'opacity-0',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <span className="min-w-[58px] text-[28px] font-semibold leading-9 text-[--color-text-primary] tabular-nums">
+            {state.score}%
+          </span>
+          <span
+            className={cn(
+              'text-[12px] font-medium leading-4',
+              state.isReady ? 'text-[--color-success]' : 'text-[--color-error]',
+            )}
+          >
+            {state.isReady ? 'Ready to share' : 'Not ready · 1 critical gap open'}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-[--color-surface]">
+          <i
+            className={cn(
+              'block h-full rounded-full',
+              state.isReady ? 'bg-[--color-success]' : 'bg-[--color-warning]',
+            )}
+            style={{ width: `${state.score}%` }}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function scoreCaption(state: LoopState): string {
-  if (state.status === 'Draft') return 'Waiting for analysis';
-  if (state.status === 'Analyzing') {
-    return `${state.detectedCount} ${state.detectedCount === 1 ? 'finding' : 'findings'} so far`;
-  }
-  return `${state.confirmedCount} of ${state.detectedCount} findings confirmed`;
+function Expander({ isOpen, children }: { isOpen: boolean; children: ReactNode }) {
+  return (
+    <div className={cn('grid transition-[grid-template-rows]', MOTION, isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+      <div className="overflow-hidden">{children}</div>
+    </div>
+  );
 }
 
-/** Eases the displayed score toward its target so the number climbs with the ring instead of jumping. */
-function useCountUp(target: number, reducedMotion: boolean): number {
-  const [value, setValue] = useState(target);
-  const currentRef = useRef(target);
+function FadeIn({ isShown, className, children }: { isShown: boolean; className?: string; children: ReactNode }) {
+  return (
+    <span className={cn('transition-opacity duration-150', isShown ? 'opacity-100' : 'opacity-0', className)}>
+      {children}
+    </span>
+  );
+}
+
+function Caret() {
+  return <span className="ml-px inline-block h-[15px] w-px bg-[--color-text-primary] align-middle" />;
+}
+
+const pressedClass = (isPressed?: boolean) => isPressed && 'scale-[0.96] brightness-[0.94]';
+
+function SmallButton({
+  ref,
+  isPressed,
+  icon,
+  children,
+}: {
+  ref?: Ref<HTMLElement>;
+  isPressed?: boolean;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      ref={ref as Ref<HTMLSpanElement>}
+      className={cn(
+        'inline-flex h-8 items-center gap-2 rounded-[8px] border border-[--color-border] bg-white px-3 text-[13px] font-medium text-[--color-text-body] transition-transform duration-100',
+        pressedClass(isPressed),
+      )}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+function PrimaryButton({ ref, isPressed, children }: { ref?: Ref<HTMLElement>; isPressed?: boolean; children: ReactNode }) {
+  return (
+    <span
+      ref={ref as Ref<HTMLSpanElement>}
+      className={cn(
+        'inline-flex h-10 items-center rounded-[8px] bg-[--color-primary] px-4 text-[14px] font-semibold text-white transition-transform duration-100',
+        pressedClass(isPressed),
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function TextButton({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex h-10 items-center px-4 text-[14px] font-semibold text-[--color-text-body]">{children}</span>
+  );
+}
+
+/**
+ * How far the findings list has to scroll so the open gap card fits, kept
+ * current while the card's editor expands, as the real panel scrolls it.
+ */
+function useListOverflow(
+  listRef: React.RefObject<HTMLDivElement | null>,
+  innerRef: React.RefObject<HTMLDivElement | null>,
+): number {
+  const [overflow, setOverflow] = useState(0);
 
   useEffect(() => {
-    if (reducedMotion) {
-      currentRef.current = target;
-      setValue(target);
-      return;
-    }
+    const list = listRef.current;
+    const inner = innerRef.current;
+    if (!list || !inner) return;
+    const measure = () => setOverflow(Math.max(0, inner.scrollHeight - list.clientHeight));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(inner);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [listRef, innerRef]);
 
-    const from = currentRef.current;
-    const start = performance.now();
-    let raf = 0;
-    function step(now: number) {
-      const t = Math.min(1, (now - start) / SCORE_TWEEN_MS);
-      const eased = 1 - Math.pow(1 - t, 3);
-      currentRef.current = from + (target - from) * eased;
-      setValue(Math.round(currentRef.current));
-      if (t < 1) raf = requestAnimationFrame(step);
-    }
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, reducedMotion]);
-
-  return value;
+  return overflow;
 }
+

@@ -1,6 +1,6 @@
-import { AlertCircle } from 'lucide-react';
 import type { ReactNode, TextareaHTMLAttributes } from 'react';
 
+import { AlertCircle } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -17,7 +17,7 @@ export function Textarea({ label, error, labelAction, hideLabel, id, className, 
   return (
     <div className="flex flex-col gap-1.5">
       <div className={cn('flex items-center justify-between', hideLabel && 'sr-only')}>
-        <label htmlFor={id} className="text-[--color-text-body]">
+        <label htmlFor={id} className="text-[14px] font-medium leading-5 text-[--color-text-body]">
           {label}
         </label>
         {labelAction}
@@ -27,14 +27,14 @@ export function Textarea({ label, error, labelAction, hideLabel, id, className, 
         aria-describedby={errorId}
         aria-invalid={error ? true : undefined}
         className={cn(
-          'rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]',
+          'rounded-[--radius-md] border border-[--color-border] bg-white px-3 py-2.5 text-[14px] leading-5 text-[--color-text-body] placeholder:text-[--color-text-muted]',
           error && 'border-[--color-error]',
           className,
         )}
         {...props}
       />
       {error && (
-        <p id={errorId} role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p id={errorId} role="alert" className="flex items-center gap-1.5 text-[14px] font-medium leading-5 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {error}
         </p>

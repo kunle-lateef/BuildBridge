@@ -42,6 +42,7 @@ describe('buildMarkdownExport', () => {
           status: 'Open',
           provenance: 'Suggested',
           pinScreenId: null,
+          answer: null,
         },
       ],
     });
@@ -60,7 +61,7 @@ describe('buildMarkdownExport', () => {
     expect(markdown).not.toContain('## Implementation notes');
   });
 
-  it('splits ComponentState entries into Interactions vs States exactly like InteractionsSection/StatesSection', () => {
+  it('splits ComponentState entries into Interactions vs States into Interactions and States', () => {
     const markdown = buildMarkdownExport({
       ...MINIMAL_PROJECTION,
       components: [

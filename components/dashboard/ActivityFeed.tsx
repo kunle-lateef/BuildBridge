@@ -1,14 +1,6 @@
-import {
-  CheckCircle2,
-  Clock,
-  MessageSquareWarning,
-  Pencil,
-  ThumbsDown,
-  Wand2,
-  XCircle,
-} from 'lucide-react';
 import Link from 'next/link';
 
+import { Check, Clock, Flag, Pencil, ThumbsDown, XCircle } from '@/components/ui/icons';
 import type { ActivityEvent } from '@/lib/activity';
 import { formatRelativeTime } from '@/lib/relativeTime';
 
@@ -34,74 +26,61 @@ function describe(event: ActivityEvent): string {
     case 'DecisionRecorded':
       return DECISION_ACTION_LABEL[event.action] ?? 'Recorded a decision';
     case 'DeveloperFlagReceived':
-      return `Developer submitted a ${event.flagKind.toLowerCase()}`;
+      return event.flagKind === 'Mismatch' ? 'A developer flagged a mismatch' : 'A developer asked a question';
   }
 }
 
 function EventIcon({ event }: { event: ActivityEvent }) {
   if (event.kind === 'AnalysisFinished') {
-    if (event.status === 'Failed') {
-      return <XCircle aria-hidden="true" size={16} className="text-[--color-error]" />;
-    }
-    if (event.status === 'Queued' || event.status === 'Processing') {
-      return <Clock aria-hidden="true" size={16} className="text-[--color-text-muted]" />;
-    }
-    return <CheckCircle2 aria-hidden="true" size={16} className="text-[--color-success]" />;
+    if (event.status === 'Failed') return <XCircle aria-hidden="true" size={14} className="text-[--color-error]" />;
+    if (event.status === 'Queued' || event.status === 'Processing') return <Clock aria-hidden="true" size={14} />;
+    return <Check aria-hidden="true" size={14} />;
   }
-
   if (event.kind === 'DecisionRecorded') {
-    if (event.action === 'Reject') {
-      return <ThumbsDown aria-hidden="true" size={16} className="text-[--color-error]" />;
-    }
-    if (event.action === 'Modify' || event.action === 'Override') {
-      return <Pencil aria-hidden="true" size={16} className="text-[--color-warning]" />;
-    }
-    return <CheckCircle2 aria-hidden="true" size={16} className="text-[--color-success]" />;
+    if (event.action === 'Reject') return <ThumbsDown aria-hidden="true" size={14} className="text-[--color-error]" />;
+    if (event.action === 'Modify' || event.action === 'Override') return <Pencil aria-hidden="true" size={14} />;
+    return <Check aria-hidden="true" size={14} />;
   }
-
-  return <MessageSquareWarning aria-hidden="true" size={16} className="text-[--color-text-muted]" />;
+  return <Flag aria-hidden="true" size={14} />;
 }
 
 /**
- * Chronological stream across every handoff — analysis completions,
- * designer decisions, developer flags — sourced from lib/activity.ts.
- * Purely informational (read-only), unlike IssuePanel/BulkDecisionBar.
- * Renders only rows, never its own outer border — the caller (currently
- * only the handoffs list page) supplies the Card and heading it sits inside,
- * so the border can wrap both without doubling up.
+ * "Recent activity" (Figma `03 — Dashboard`): analysis runs, designer
+ * decisions and developer flags across every handoff, newest first.
  */
 export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
-  if (events.length === 0) {
-    return (
-      <div className="flex items-center gap-2 p-3 text-[--color-text-secondary]">
-        <Wand2 aria-hidden="true" size={16} className="text-[--color-text-muted]" />
-        No activity yet.
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2 p-3">
-      {events.map((event) => (
-        <div
-          key={`${event.kind}-${event.id}`}
-          className="flex items-center gap-3 rounded-[--radius-md] border border-[--color-border] p-3"
-        >
-          <EventIcon event={event} />
-          <span className="flex-1 truncate text-[--color-text-body]">
-            {describe(event)}{' '}
-            <Link
-              href={`/handoffs/${event.handoffId}`}
-              className="text-[--color-primary] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+    <section className="overflow-hidden rounded-[12px] border border-[--color-border] bg-white">
+      <h2 className="m-0 border-b border-[--color-border] p-4 text-[14px] font-medium leading-5 text-[--color-text-primary]">
+        Recent activity
+      </h2>
+      {events.length === 0 ? (
+        <p className="m-0 px-4 py-3 text-[14px] leading-5 text-[--color-text-secondary]">No activity yet.</p>
+      ) : (
+        <ul className="m-0 list-none p-0">
+          {events.map((event, index) => (
+            <li
+              key={`${event.kind}-${event.id}`}
+              className={`flex items-start gap-3 px-4 py-3 ${index < events.length - 1 ? 'border-b border-[--color-border]' : ''}`}
             >
-              {event.handoffName}
-            </Link>
-          </span>
-          <span className="shrink-0 text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            {formatRelativeTime(event.at)}
-          </span>
-        </div>
-      ))}
-    </div>
+              <span className="pt-0.5 text-[--color-text-secondary]">
+                <EventIcon event={event} />
+              </span>
+              <span className="flex min-w-0 flex-1 items-center justify-between gap-4">
+                <span className="truncate text-[14px] leading-5 text-[--color-text-body]">
+                  {describe(event)} ·{' '}
+                  <Link href={`/handoffs/${event.handoffId}`} className="text-[--color-primary] hover:underline">
+                    {event.handoffName}
+                  </Link>
+                </span>
+                <span className="shrink-0 text-[12px] leading-4 text-[--color-text-secondary]">
+                  {formatRelativeTime(event.at)}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

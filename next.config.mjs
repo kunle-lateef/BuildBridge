@@ -18,6 +18,11 @@ const nextConfig = {
   // them from the server bundle means they're require()'d from
   // node_modules at runtime instead, which is what these packages expect.
   serverExternalPackages: ['bullmq', 'ioredis', 'sharp', 'file-type'],
+  // The share-link preview image reads its fonts and logo from disk at
+  // request time; make sure Vercel ships those files with that function.
+  outputFileTracingIncludes: {
+    '/share/[token]/opengraph-image': ['./assets/fonts/*.woff', './public/logo/buildbridge-logo.svg'],
+  },
   images: {
     remotePatterns: storageUrl
       ? [{ protocol: storageUrl.protocol.replace(':', ''), hostname: storageUrl.hostname, port: storageUrl.port }]

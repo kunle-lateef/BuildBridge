@@ -33,7 +33,7 @@ export const signUpSchema = z
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match.',
+    message: 'Passwords don’t match.',
     path: ['confirmPassword'],
   });
 
@@ -52,13 +52,18 @@ export const requestPasswordResetSchema = z.object({
 export const resetPasswordSchema = z
   .object({
     token: z.string().min(1),
+    // Same rules as sign-up, so the checklist on the reset page (Figma
+    // "Reset password") lists only rules that are actually enforced.
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters.')
-      .max(72, 'Password must be at most 72 characters.'),
+      .max(72, 'Password must be at most 72 characters.')
+      .regex(PASSWORD_UPPERCASE_REGEX, 'Password must include at least one uppercase letter.')
+      .regex(PASSWORD_NUMBER_REGEX, 'Password must include at least one number.')
+      .regex(PASSWORD_SPECIAL_CHAR_REGEX, 'Password must include at least one special character.'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match.',
+    message: 'Passwords don’t match.',
     path: ['confirmPassword'],
   });

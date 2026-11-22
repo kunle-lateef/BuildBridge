@@ -1,11 +1,11 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 
 import { createHandoff } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
+import { AlertCircle } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
@@ -54,7 +54,7 @@ export function CreateHandoffForm({ onCancel }: CreateHandoffFormProps) {
       />
 
       {state && !state.ok && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={16} />
           {state.error.message}
         </p>

@@ -29,10 +29,10 @@ export function ResponsiveSection({ shareToken, rules }: ResponsiveSectionProps)
       <h2 className="text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]">
         Responsive behavior
       </h2>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         {rules.map((rule) => (
           <div key={rule.id} className="flex flex-col gap-1 border-b border-[--color-border] py-2 last:border-b-0">
-            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-[--color-text-body] sm:min-w-[6rem]">{rule.viewportCategory}</span>
                 {rule.screenName && <span className="text-[--color-text-muted]">{rule.screenName}</span>}

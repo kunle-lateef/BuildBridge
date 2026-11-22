@@ -39,7 +39,7 @@ describe('resetPassword', () => {
   it('rejects a token that does not exist', async () => {
     mockDb.verificationToken.findUnique.mockResolvedValue(null);
 
-    const result = await resetPassword(null, formDataWith('bogus-token', 'newpassword123'));
+    const result = await resetPassword(null, formDataWith('bogus-token', 'NewPassword123!'));
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('invalid_token');
@@ -53,7 +53,7 @@ describe('resetPassword', () => {
       expires: daysFromNow(-1),
     });
 
-    const result = await resetPassword(null, formDataWith('expired-token', 'newpassword123'));
+    const result = await resetPassword(null, formDataWith('expired-token', 'NewPassword123!'));
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('invalid_token');
@@ -68,7 +68,7 @@ describe('resetPassword', () => {
   });
 
   it('rejects a confirmPassword that doesn’t match, before ever looking up the token', async () => {
-    const result = await resetPassword(null, formDataWith('some-token', 'newpassword123', 'somethingelse'));
+    const result = await resetPassword(null, formDataWith('some-token', 'NewPassword123!', 'somethingelse'));
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('invalid_input');
@@ -82,7 +82,7 @@ describe('resetPassword', () => {
       expires: daysFromNow(1),
     });
 
-    const result = await resetPassword(null, formDataWith('valid-token', 'newpassword123'));
+    const result = await resetPassword(null, formDataWith('valid-token', 'NewPassword123!'));
 
     expect(result.ok).toBe(true);
     expect(mockDb.user.update).toHaveBeenCalledWith(
@@ -96,7 +96,7 @@ describe('resetPassword', () => {
     });
     expect(mockSignIn).toHaveBeenCalledWith('credentials', {
       email: 'user@example.com',
-      password: 'newpassword123',
+      password: 'NewPassword123!',
       redirect: false,
     });
   });
@@ -109,7 +109,7 @@ describe('resetPassword', () => {
     });
     mockSignIn.mockRejectedValue(new Error('session store unavailable'));
 
-    const result = await resetPassword(null, formDataWith('valid-token', 'newpassword123'));
+    const result = await resetPassword(null, formDataWith('valid-token', 'NewPassword123!'));
 
     expect(mockDb.user.update).toHaveBeenCalled();
     expect(result).toEqual({ ok: true, data: { reset: true } });

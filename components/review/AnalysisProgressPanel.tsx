@@ -1,9 +1,9 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+import { CheckCircle2, Circle, Clock, Minus, XCircle } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 import type { AnalysisRunStatus } from '@/lib/types';
 
@@ -11,6 +11,7 @@ export type StageProgress = {
   key: string;
   label: string;
   status: 'pending' | 'running' | 'done' | 'incomplete';
+  /** Short count once a stage is done: "14 components". */
   countLabel: string;
   provenanceSplit?: { detected: number; inferred: number; suggested: number };
 };
@@ -23,94 +24,85 @@ type AnalysisProgressPanelProps = {
 
 const POLL_INTERVAL_MS = 4000;
 
+const NOTE: Partial<Record<AnalysisRunStatus, string>> = {
+  Queued: 'Findings appear here as each stage finishes. You can leave this page; you’ll get a notification when it’s done.',
+  Processing:
+    'Findings appear here as each stage finishes. You can leave this page; you’ll get a notification when it’s done.',
+  PartiallyCompleted: 'Everything found so far is ready to review.',
+  Failed:
+    'This usually clears up on a second try. If it fails again, check the screens are clean exports, not photos or very long scrolls.',
+};
+
 /**
- * Itemized per-stage progress display, replacing a bare "Analyzing…"
- * spinner — see .agents/rules/reference-inspiration.md's Cursor-derived
- * pattern. There's no push channel in this stack (no WebSockets/SSE), so
- * this polls via router.refresh() while the run is active; the counts and
- * stage rows themselves are computed server-side from persisted rows, not
- * client state, so a refresh is always a true reflection of pipeline
- * progress rather than an optimistic guess.
+ * The Analysis panel (Figma `04 — Handoff` → "Review — Analyzing",
+ * "— Partly analyzed", "— Analysis failed"): the five stages, each with its
+ * state and what it found. Polls with router.refresh() while the run is
+ * active, since there's no push channel; every row is computed server-side
+ * from persisted findings, so a refresh is always the real progress.
+ * A stage that didn't finish never reads as done.
  */
 export function AnalysisProgressPanel({ runStatus, stages, className }: AnalysisProgressPanelProps) {
   const router = useRouter();
   const isActive = runStatus === 'Queued' || runStatus === 'Processing';
-  const completedCount = stages.filter((stage) => stage.status === 'done').length;
+  const firstIncomplete = stages.findIndex((stage) => stage.status === 'incomplete');
 
   useEffect(() => {
     if (!isActive) return;
-
-    const interval = setInterval(() => {
-      router.refresh();
-    }, POLL_INTERVAL_MS);
-
+    const interval = setInterval(() => router.refresh(), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [isActive, router]);
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4', className)}>
-      <h2 className="text-[--color-text-primary]">Analysis progress</h2>
-      {/* Never let an itemized stage list read as "everything succeeded" on
-          a run that didn't — see the PRD's partial-analysis acceptance
-          criteria and edge case: present as explicitly partial, with a
-          count, never silently as complete. */}
-      {runStatus === 'PartiallyCompleted' && (
-        <p className="flex items-center gap-1.5 rounded-[--radius-md] bg-[--color-warning-light] px-3 py-2 text-[--color-warning]">
-          <AlertTriangle aria-hidden="true" size={16} />
-          Only {completedCount} of {stages.length} stages completed — the rest need manual review. See the
-          stage list below for which ones.
-        </p>
-      )}
-      {runStatus === 'Failed' && (
-        <p className="flex items-center gap-1.5 rounded-[--radius-md] bg-[--color-error-light] px-3 py-2 text-[--color-error]">
-          <AlertTriangle aria-hidden="true" size={16} />
-          Analysis failed — no stages completed. Try running it again.
-        </p>
-      )}
-      <ul className="flex flex-col gap-1.5">
-        {stages.map((stage) => (
-          <li
-            key={stage.key}
-            className="flex flex-col items-start gap-1 py-2 sm:flex-row sm:items-center sm:gap-2 sm:py-1"
-          >
-            <div className="flex items-center gap-2">
-              <StageIcon status={stage.status} />
-              <span className="text-[--color-text-body]">{stage.label}</span>
-            </div>
-            <span className="flex flex-col items-start gap-0.5 pl-6 text-[--color-text-secondary] sm:ml-auto sm:flex-row sm:items-center sm:gap-2 sm:pl-0">
-              <span>{stage.countLabel}</span>
-              {stage.provenanceSplit && (
-                <span className="font-mono text-[--color-text-muted]">
-                  {stage.provenanceSplit.detected}D / {stage.provenanceSplit.inferred}I /{' '}
-                  {stage.provenanceSplit.suggested}S
-                </span>
+    <aside className={cn('flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white', className)}>
+      <h2 className="m-0 border-b border-[--color-border] px-4 py-3 text-[14px] font-medium leading-5 text-[--color-text-primary]">
+        Analysis
+      </h2>
+      <ul className="m-0 list-none py-2 pl-0">
+        {stages.map((stage, index) => {
+          // A failed run stops at its first stage; the ones after it never ran.
+          const didNotRun = runStatus === 'Failed' && stage.status === 'incomplete' && index > firstIncomplete;
+          return (
+            <li
+              key={stage.key}
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5 text-[14px] leading-5',
+                stage.status === 'running' ? 'bg-[--color-background] text-[--color-text-primary]' : 'text-[--color-text-secondary]',
+                stage.status === 'done' && 'text-[--color-text-body]',
               )}
-            </span>
-          </li>
-        ))}
+            >
+              <StageIcon status={stage.status} runFailed={runStatus === 'Failed'} didNotRun={didNotRun} />
+              <span className="flex-1">{stage.label}</span>
+              <span
+                className={cn(
+                  'text-[12px] leading-4',
+                  stage.status === 'incomplete' && runStatus === 'Failed' && !didNotRun ? 'text-[--color-error]' : 'text-[--color-text-secondary]',
+                )}
+              >
+                {stage.status === 'done' && stage.countLabel}
+                {stage.status === 'running' && 'In progress'}
+                {stage.status === 'incomplete' && (runStatus === 'Failed' ? (didNotRun ? 'Didn’t run' : 'Failed') : 'Didn’t finish · check by hand')}
+              </span>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+      {NOTE[runStatus] && <p className="m-0 px-4 pb-4 pt-1 text-[14px] leading-5 text-[--color-text-secondary]">{NOTE[runStatus]}</p>}
+    </aside>
   );
 }
 
-function StageIcon({ status }: { status: StageProgress['status'] }) {
-  if (status === 'done') {
-    return <CheckCircle2 aria-label="Complete" size={16} className="shrink-0 text-[--color-success]" />;
-  }
-
-  if (status === 'running') {
+function StageIcon({ status, runFailed, didNotRun }: { status: StageProgress['status']; runFailed: boolean; didNotRun: boolean }) {
+  if (status === 'done') return <CheckCircle2 aria-label="Complete" size={16} className="shrink-0 text-[--color-text-body]" />;
+  if (status === 'running') return <Clock aria-label="In progress" size={16} className="shrink-0 text-[--color-primary]" />;
+  if (status === 'incomplete') {
+    if (didNotRun) return <Minus aria-label="Didn’t run" size={16} className="shrink-0 text-[--color-text-dismissed]" />;
     return (
-      <Loader2
-        aria-label="In progress"
+      <XCircle
+        aria-label="Not completed"
         size={16}
-        className="shrink-0 animate-spin text-[--color-primary] motion-reduce:animate-none"
+        className={cn('shrink-0', runFailed ? 'text-[--color-error]' : 'text-[--color-text-secondary]')}
       />
     );
   }
-
-  if (status === 'incomplete') {
-    return <XCircle aria-label="Not completed" size={16} className="shrink-0 text-[--color-error]" />;
-  }
-
-  return <CircleDashed aria-label="Pending" size={16} className="shrink-0 text-[--color-text-muted]" />;
+  return <Circle aria-label="Pending" size={16} className="shrink-0 text-[--color-text-dismissed]" />;
 }

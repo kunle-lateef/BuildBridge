@@ -77,3 +77,17 @@ describe('the "insufficient evidence" fallback path is actually wired up', () =>
     expect(RESPONSIVE_ANALYSIS_SYSTEM_PROMPT).toContain(INSUFFICIENT_EVIDENCE_MESSAGE);
   });
 });
+
+describe('gap detection: where a gap is', () => {
+  const base = { title: 't', description: 'd', severity: 'High', category: 'EdgeCases', provenance: 'Suggested', confidence: 0.5 };
+
+  it('accepts an optional screen and component name, and works without them', () => {
+    expect(gapDetectionResultSchema.safeParse({ issues: [{ ...base, screenName: 'Cart', componentName: 'Pay button' }] }).success).toBe(true);
+    expect(gapDetectionResultSchema.safeParse({ issues: [base] }).success).toBe(true);
+  });
+
+  it('rejects an empty or oversized name rather than storing it', () => {
+    expect(gapDetectionResultSchema.safeParse({ issues: [{ ...base, screenName: '' }] }).success).toBe(false);
+    expect(gapDetectionResultSchema.safeParse({ issues: [{ ...base, componentName: 'x'.repeat(201) }] }).success).toBe(false);
+  });
+});

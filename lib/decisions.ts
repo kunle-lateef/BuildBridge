@@ -35,9 +35,47 @@ export type NewIssueFinding = {
   recommendation?: string;
   provenance: ProvenanceType;
   confidence: number;
+  /** Where the gap is, by name; resolved to ids by resolveFindingLinks. */
+  screenName?: string;
+  componentName?: string;
 };
 
 type ExistingIssue = Pick<HandoffIssue, 'id' | 'title' | 'category' | 'status'>;
+
+export type LinkTargets = {
+  screens: { id: string; name: string }[];
+  /** Every component, with the screens it appears on (from its instances). */
+  components: { id: string; name: string; screenIds: string[] }[];
+};
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Turns a finding's screen/component names into ids, only when the name
+ * points at exactly one thing in this handoff. A component name shared by
+ * several components (the same "Email Input" on two screens) is narrowed by
+ * the screen when one is given; if it's still ambiguous, or a name matches
+ * nothing, that link is left empty. Never guesses.
+ */
+export function resolveFindingLinks(
+  finding: Pick<NewIssueFinding, 'screenName' | 'componentName'>,
+  targets: LinkTargets,
+): { screenId: string | null; componentId: string | null } {
+  const screenMatches = finding.screenName
+    ? targets.screens.filter((screen) => sameName(screen.name, finding.screenName as string))
+    : [];
+  const screenId = screenMatches.length === 1 ? (screenMatches[0]?.id ?? null) : null;
+
+  let componentMatches = finding.componentName
+    ? targets.components.filter((component) => sameName(component.name, finding.componentName as string))
+    : [];
+  if (componentMatches.length > 1 && screenId) {
+    componentMatches = componentMatches.filter((component) => component.screenIds.includes(screenId));
+  }
+  const componentId = componentMatches.length === 1 ? (componentMatches[0]?.id ?? null) : null;
+
+  return { screenId, componentId };
+}
 
 type IssueReconciliation = {
   toCreate: NewIssueFinding[];
@@ -104,16 +142,40 @@ export async function persistGapDetectionFindings(
   analysisRunId: string,
   findings: NewIssueFinding[],
 ): Promise<{ createdCount: number; reaffirmedCount: number; conflictCount: number }> {
-  const existingIssues = await db.handoffIssue.findMany({
-    where: { handoffId },
-    select: { id: true, title: true, category: true, status: true },
-  });
+  const [existingIssues, screens, components] = await Promise.all([
+    db.handoffIssue.findMany({
+      where: { handoffId },
+      select: { id: true, title: true, category: true, status: true, screenId: true, componentId: true },
+    }),
+    db.screen.findMany({ where: { handoffId }, select: { id: true, name: true } }),
+    db.component.findMany({ where: { handoffId }, select: { id: true, name: true, instances: { select: { screenId: true } } } }),
+  ]);
+  const targets: LinkTargets = {
+    screens,
+    components: components.map((component) => ({
+      id: component.id,
+      name: component.name,
+      screenIds: component.instances.map((instance) => instance.screenId),
+    })),
+  };
 
   const { toCreate, reaffirmed, conflicts } = reconcileIssueFindings(existingIssues, findings);
 
   for (const finding of toCreate) {
+    // Names are lookup keys only; the row stores the resolved ids.
     const created = await db.handoffIssue.create({
-      data: { handoffId, sourceAnalysisRunId: analysisRunId, ...finding },
+      data: {
+        handoffId,
+        sourceAnalysisRunId: analysisRunId,
+        title: finding.title,
+        description: finding.description,
+        severity: finding.severity,
+        category: finding.category,
+        recommendation: finding.recommendation,
+        provenance: finding.provenance,
+        confidence: finding.confidence,
+        ...resolveFindingLinks(finding, targets),
+      },
     });
     await db.analysisRunFinding.create({
       data: { analysisRunId, handoffIssueId: created.id, kind: 'Created' },
@@ -121,6 +183,18 @@ export async function persistGapDetectionFindings(
   }
 
   for (const match of reaffirmed) {
+    // A gap found again keeps everything the designer sees; it only gains a
+    // screen/component link it didn't have yet. An existing link is never
+    // replaced.
+    const existing = existingIssues.find((issue) => issue.id === match.existingIssueId);
+    const links = resolveFindingLinks(match.matchedFinding, targets);
+    const fill = {
+      ...(existing && !existing.screenId && links.screenId ? { screenId: links.screenId } : {}),
+      ...(existing && !existing.componentId && links.componentId ? { componentId: links.componentId } : {}),
+    };
+    if (Object.keys(fill).length > 0) {
+      await db.handoffIssue.update({ where: { id: match.existingIssueId }, data: fill });
+    }
     await db.analysisRunFinding.create({
       data: { analysisRunId, handoffIssueId: match.existingIssueId, kind: 'Reaffirmed' },
     });

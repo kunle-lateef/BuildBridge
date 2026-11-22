@@ -96,8 +96,8 @@ export async function updateProfile(
 /**
  * Requires the current password — proof the caller is really the account
  * holder, not just whoever has the current session, matching this app's
- * general "sensitive changes re-verify" posture (see DeleteAccountButton's
- * confirm-phrase gate). Bumping sessionVersion below invalidates every
+ * general "sensitive changes re-verify" posture.
+ * Bumping sessionVersion below invalidates every
  * session including this one (see signOutEverywhere's comment on why that
  * mechanism exists).
  *

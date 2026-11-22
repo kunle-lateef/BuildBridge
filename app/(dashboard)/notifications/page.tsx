@@ -24,27 +24,17 @@ export default async function NotificationsPage() {
   const notifications = await listNotifications(session.user.id, { limit: PAGE_LIMIT });
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-          Notifications
-        </h1>
-        <p className="text-[--color-text-secondary]">
-          Every analysis completion, developer flag, and implementation mark — up to your last {PAGE_LIMIT}.
-        </p>
-      </div>
-
-      <NotificationsPageList
-        notifications={notifications.map((notification) => ({
-          id: notification.id,
-          type: notification.type,
-          title: notification.title,
-          body: notification.body,
-          linkUrl: notification.linkUrl,
-          readAt: notification.readAt?.toISOString() ?? null,
-          createdAt: notification.createdAt.toISOString(),
-        }))}
-      />
-    </div>
+    <NotificationsPageList
+      notifications={notifications.map((notification) => ({
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        handoffName: notification.handoff?.name ?? null,
+        linkUrl: notification.linkUrl,
+        readAt: notification.readAt?.toISOString() ?? null,
+        createdAt: notification.createdAt.toISOString(),
+      }))}
+    />
   );
 }

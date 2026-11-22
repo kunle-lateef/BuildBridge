@@ -1,11 +1,11 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { duplicateHandoff } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
+import { AlertCircle } from '@/components/ui/icons';
 
 type DuplicateHandoffButtonProps = {
   handoffId: string;
@@ -40,7 +40,7 @@ export function DuplicateHandoffButton({ handoffId }: DuplicateHandoffButtonProp
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <Button
         type="button"
         variant="secondary"
@@ -52,7 +52,7 @@ export function DuplicateHandoffButton({ handoffId }: DuplicateHandoffButtonProp
         {isPending ? 'Duplicating…' : 'Duplicate'}
       </Button>
       {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {error}
         </p>

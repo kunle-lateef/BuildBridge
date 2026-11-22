@@ -32,7 +32,7 @@ const mockTx = {
 };
 
 const mockDb = {
-  analysisRun: { findUniqueOrThrow: vi.fn(), update: vi.fn() },
+  analysisRun: { findUniqueOrThrow: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(0) },
   screen: { findMany: vi.fn(), update: vi.fn(), count: vi.fn() },
   component: { findUniqueOrThrow: vi.fn(), findMany: vi.fn() },
   componentInstance: { findMany: vi.fn() },
@@ -183,11 +183,12 @@ describe('runAnalysisPipeline', () => {
     // The other stages still ran and persisted despite one failure.
     expect(mockTx.component.create).toHaveBeenCalled();
     expect(mockDb.componentState.createMany).not.toHaveBeenCalled(); // no states returned, but no error either
-    // Readiness reports no unresolved Critical here (mockComputeReadiness's
-    // default in beforeEach), so status still derives to Ready even on a
-    // partially-completed run — completeness and readiness are independent.
+    // Whole stages were skipped, so readiness is hidden rather than shown as
+    // a score that can only look better than it is (Figma, agreed Nov 22).
     expect(mockDb.handoff.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'Ready' }) }),
+      expect.objectContaining({
+        data: { status: 'NeedsReview', readinessScore: null, readinessAlgorithmVersion: null },
+      }),
     );
   });
 
@@ -205,9 +206,23 @@ describe('runAnalysisPipeline', () => {
         modelIdentifier: expect.any(String),
       },
     });
-    // Readiness/handoff status still gets updated even on a fully-failed run —
-    // the pipeline never throws, it always reaches its final bookkeeping step.
-    expect(mockDb.handoff.update).toHaveBeenCalled();
+    // Nothing was found, so nothing was deducted: without this the handoff
+    // would read 100% / Ready. With no earlier successful run it goes back to
+    // Draft with no score.
+    expect(mockDb.handoff.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'Draft', readinessScore: null, readinessAlgorithmVersion: null } }),
+    );
+  });
+
+  it('keeps readiness from earlier findings when a re-run fails after an earlier success', async () => {
+    mockCallStructured.mockRejectedValue(new Error('the model is unavailable'));
+    mockDb.analysisRun.count.mockResolvedValueOnce(1);
+
+    await runAnalysisPipeline('run-1');
+
+    expect(mockDb.handoff.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'Ready', readinessScore: expect.any(Number) }) }),
+    );
   });
 
   it('skips an already-Analyzed screen for stages 1-4', async () => {

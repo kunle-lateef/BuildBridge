@@ -1,17 +1,27 @@
 'use client';
 
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 
+import { AuthNotice } from '@/components/marketing/AuthLayout';
 import { Button } from '@/components/ui/Button';
+import { AlertCircle, CheckCircle2 } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
 import type { ActionResult } from '@/lib/types';
 import { signInSchema } from '@/lib/validators/auth';
 
 import { signInAction } from './actions';
+
+// Wording from Figma `02 — Auth` ("Sign in — wrong password", "— too many attempts").
+const SIGN_IN_ERRORS: Record<string, { title: string; detail: string }> = {
+  invalid_credentials: { title: 'Incorrect email or password', detail: 'Check both and try again.' },
+  rate_limited: {
+    title: 'Too many attempts',
+    detail: 'Sign-in is paused for a few minutes to protect your account. Try again shortly, or reset your password now.',
+  },
+};
 
 const initialState: ActionResult<{ success: true }> | null = null;
 
@@ -32,10 +42,15 @@ export function SignInForm() {
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate>
       {passwordChanged && !state && (
-        <p role="status" className="flex items-center gap-1.5 text-[--color-success]">
-          <CheckCircle2 aria-hidden="true" size={16} />
+        <AuthNotice tone="success" icon={<CheckCircle2 aria-hidden="true" size={14} />}>
           Password changed. Sign in with your new password.
-        </p>
+        </AuthNotice>
+      )}
+
+      {state && !state.ok && (
+        <AuthNotice tone="error" icon={<AlertCircle aria-hidden="true" size={14} />} title={SIGN_IN_ERRORS[state.error.code]?.title ?? state.error.message}>
+          {SIGN_IN_ERRORS[state.error.code]?.detail}
+        </AuthNotice>
       )}
 
       <Input
@@ -56,30 +71,23 @@ export function SignInForm() {
         autoComplete="current-password"
         required
         label="Password"
-        placeholder="Your password"
+        placeholder=""
         labelAction={
-          <Link href="/forgot-password" className="text-[--color-primary] underline">
+          <Link href="/forgot-password" className="text-[14px] leading-5 text-[--color-primary] underline">
             Forgot password?
           </Link>
         }
         {...fieldProps('password')}
       />
 
-      {state && !state.ok && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
-          <AlertCircle aria-hidden="true" size={16} />
-          {state.error.message}
-        </p>
-      )}
-
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" size="lg" disabled={isPending}>
         {isPending ? 'Signing in…' : 'Sign in'}
       </Button>
 
-      <p className="text-center text-[--color-text-secondary]">
-        Don&apos;t have an account?{' '}
+      <p className="m-0 text-center text-[14px] leading-5 text-[--color-text-secondary]">
+        New to BuildBridge?{' '}
         <Link href="/sign-up" className="text-[--color-primary] underline">
-          Create one
+          Create account
         </Link>
       </p>
     </form>

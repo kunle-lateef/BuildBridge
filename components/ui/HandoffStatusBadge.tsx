@@ -37,7 +37,7 @@ export function HandoffStatusBadge({ status, className }: HandoffStatusBadgeProp
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-[--radius-sm] px-2 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] font-medium',
+        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[--radius-sm] px-2 text-[12px] font-medium leading-4',
         STYLES[status],
         className,
       )}
