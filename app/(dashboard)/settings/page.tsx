@@ -1,5 +1,3 @@
-import { addMonths } from 'date-fns';
-import { AlertTriangle, Bell, Settings as SettingsIcon, Shield, User } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { ChangePasswordForm } from '@/components/dashboard/ChangePasswordForm';
@@ -7,11 +5,11 @@ import { DeleteAccountButton } from '@/components/dashboard/DeleteAccountButton'
 import { EditProfileForm } from '@/components/dashboard/EditProfileForm';
 import { EmailNotificationsToggle } from '@/components/dashboard/EmailNotificationsToggle';
 import { QuotaUsageDisplay } from '@/components/dashboard/QuotaUsageDisplay';
-import { SettingsTabs } from '@/components/dashboard/SettingsTabs';
+import { SettingsRow, SettingsTabs } from '@/components/dashboard/SettingsTabs';
 import { SignOutEverywhereButton } from '@/components/dashboard/SignOutEverywhereButton';
-import { Card } from '@/components/ui/Card';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { summarizeUsage } from '@/lib/plan-limits';
 
 import {
   changePassword,
@@ -25,122 +23,99 @@ export const metadata: Metadata = {
   title: 'Settings — BuildBridge',
 };
 
-export default async function SettingsPage() {
+/** Figma `06 — Settings`: Account, Notifications and Security tabs, each a stack of labelled rows. */
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const session = await auth();
 
   if (!session?.user) {
     return null;
   }
 
-  const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id } });
+  const userId = session.user.id;
+  const [user, handoffs, activeShareLinks] = await Promise.all([
+    db.user.findUniqueOrThrow({ where: { id: userId } }),
+    db.handoff.findMany({ where: { ownerId: userId }, select: { status: true, isExample: true } }),
+    db.shareLink.count({
+      where: {
+        status: 'Active',
+        handoff: { ownerId: userId },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+    }),
+  ]);
+
+  const archivedHandoffs = handoffs.filter((handoff) => handoff.status === 'Archived').length;
+  const activeHandoffs = handoffs.length - archivedHandoffs;
+  // The example handoff never counts toward the active-handoff cap.
+  const usage = summarizeUsage(user, handoffs.filter((handoff) => handoff.status !== 'Archived' && !handoff.isExample).length);
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[length:var(--font-desktop-heading-2-semi-bold-size)] font-semibold text-[--color-text-primary]">
-          Settings
-        </h1>
-        <p className="text-[--color-text-secondary]">
-          Manage your profile, notification preferences, and account security.
-        </p>
-      </div>
+      <h1 className="m-0 text-[28px] font-semibold leading-9 text-[--color-text-primary]">Settings</h1>
 
       <SettingsTabs
+        initialId={tab}
         tabs={[
           {
             id: 'account',
             label: 'Account',
             content: (
-              <div className="flex flex-col gap-8">
-                <section className="flex flex-col gap-3">
-                  <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-                    <User aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-                    Account
-                  </h2>
-                  <Card className="flex flex-col gap-4">
-                    <EditProfileForm initialName={user.name ?? ''} action={updateProfile} />
-                    {/* Email is deliberately read-only for now — it's also the sign-in
-                        credential, so changing it needs its own verification step
-                        (confirm the new address before it takes effect) rather than a
-                        plain text field. */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[--color-text-body]">Email</span>
-                      <p className="text-[--color-text-secondary]">{user.email}</p>
-                    </div>
-                  </Card>
-                </section>
-
-                <section className="flex flex-col gap-3">
-                  <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-                    <SettingsIcon aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-                    Usage
-                  </h2>
-                  <QuotaUsageDisplay
-                    used={user.analysisUsageCount}
-                    quota={user.analysisQuota}
-                    planTier={user.planTier}
-                    cycleStartsAt={user.billingCycleStart.toISOString()}
-                    cycleResetsAt={addMonths(user.billingCycleStart, 1).toISOString()}
-                  />
-                </section>
-              </div>
+              <>
+                <SettingsRow title="Profile" description="Shown in your account menu. Developers on a share link never see it.">
+                  <EditProfileForm initialName={user.name ?? ''} email={user.email} action={updateProfile} />
+                </SettingsRow>
+                <SettingsRow
+                  title="Plan and usage"
+                  description="Analyses reset each billing cycle. Running analysis again on a handoff that hasn’t changed doesn’t use one."
+                >
+                  <QuotaUsageDisplay {...usage} />
+                </SettingsRow>
+              </>
             ),
           },
           {
             id: 'notifications',
             label: 'Notifications',
             content: (
-              <section className="flex flex-col gap-3">
-                <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-                  <Bell aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-                  Notifications
-                </h2>
-                <Card>
-                  <EmailNotificationsToggle
-                    initialEnabled={user.emailNotificationsEnabled}
-                    action={updateEmailNotificationsPreference}
-                  />
-                </Card>
-              </section>
+              <SettingsRow title="Email" description="In-app notifications are always on. Choose whether we also email you.">
+                <EmailNotificationsToggle
+                  initialEnabled={user.emailNotificationsEnabled}
+                  action={updateEmailNotificationsPreference}
+                />
+              </SettingsRow>
             ),
           },
           {
             id: 'security',
             label: 'Security',
             content: (
-              <div className="flex flex-col gap-8">
-                <section className="flex flex-col gap-3">
-                  <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-                    <Shield aria-hidden="true" size={18} className="text-[--color-text-secondary]" />
-                    Security
-                  </h2>
-                  <Card className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-3">
-                      <span className="text-[--color-text-body]">Change password</span>
-                      <ChangePasswordForm action={changePassword} />
-                    </div>
-                    <div className="flex flex-col gap-1.5 border-t border-[--color-border] pt-4">
-                      <p className="text-[--color-text-secondary]">
-                        Signs out every device currently signed in as you, including this one.
-                      </p>
-                      <SignOutEverywhereButton action={signOutEverywhere} />
-                    </div>
-                  </Card>
-                </section>
-
-                <section className="flex flex-col gap-3">
-                  <h2 className="flex items-center gap-2 text-[--color-error]">
-                    <AlertTriangle aria-hidden="true" size={18} />
-                    Danger zone
-                  </h2>
-                  <Card className="flex flex-col gap-1.5">
-                    <p className="text-[--color-text-secondary]">
-                      Permanently deletes your account and every handoff you own. This cannot be undone.
-                    </p>
-                    <DeleteAccountButton action={deleteAccount} />
-                  </Card>
-                </section>
-              </div>
+              <>
+                <SettingsRow
+                  title="Password"
+                  description="Use at least 8 characters, with an uppercase letter, a number and a special character."
+                >
+                  <ChangePasswordForm action={changePassword} />
+                </SettingsRow>
+                <SettingsRow title="Sessions" description="Signed in somewhere you don’t recognize? End every session at once.">
+                  <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">
+                    This signs out every device signed in as you, including this one.
+                  </p>
+                  <SignOutEverywhereButton action={signOutEverywhere} />
+                </SettingsRow>
+                <SettingsRow
+                  title="Delete account"
+                  isDanger
+                  description="Permanently deletes your account and every handoff you own: screens, analysis, notes and share links. This can’t be undone."
+                >
+                  <DeleteAccountButton
+                    action={deleteAccount}
+                    activeHandoffs={activeHandoffs}
+                    archivedHandoffs={archivedHandoffs}
+                    activeShareLinks={activeShareLinks}
+                  />
+                </SettingsRow>
+              </>
             ),
           },
         ]}

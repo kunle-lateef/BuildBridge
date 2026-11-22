@@ -91,3 +91,31 @@ export async function editDesignerNote(input: {
 
   return { ok: true, data: { noteId: note.id } };
 }
+
+/**
+ * Removes a note (the bin icon on the Notes tab, Figma `04 — Handoff /
+ * Notes tab`). Same explicit ownership check as edit; a note on someone
+ * else's handoff reads as not found.
+ */
+export async function deleteDesignerNote(noteId: string): Promise<ActionResult<{ deleted: true }>> {
+  const session = await auth();
+
+  if (!session?.user) {
+    return unauthenticatedError();
+  }
+
+  const note = typeof noteId === 'string' && noteId.length > 0
+    ? await db.designerNote.findUnique({ where: { id: noteId }, include: { handoff: true } })
+    : null;
+
+  if (!note || note.handoff.ownerId !== session.user.id) {
+    return notFoundError('Note not found.');
+  }
+
+  await db.designerNote.delete({ where: { id: note.id } });
+
+  logger.info('handoff.note.deleted', { handoffId: note.handoffId, noteId: note.id });
+  revalidatePath(`/handoffs/${note.handoffId}`);
+
+  return { ok: true, data: { deleted: true } };
+}

@@ -1,12 +1,12 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ArchiveHandoffButton } from '@/components/handoff/ArchiveHandoffButton';
 import { DeleteHandoffButton } from '@/components/handoff/DeleteHandoffButton';
 import { DuplicateHandoffButton } from '@/components/handoff/DuplicateHandoffButton';
 import { Button } from '@/components/ui/Button';
+import { MoreHorizontal } from '@/components/ui/icons';
 
 type HandoffActionsMenuProps = {
   handoffId: string;
@@ -53,7 +53,7 @@ export function HandoffActionsMenu({ handoffId, isArchived }: HandoffActionsMenu
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-10 mt-1.5 flex w-max flex-col gap-1.5 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] p-2 shadow-lg"
+          className="absolute right-0 top-full z-10 mt-2 flex w-max flex-col gap-2 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] p-2 shadow-lg"
         >
           <DuplicateHandoffButton handoffId={handoffId} />
           <ArchiveHandoffButton handoffId={handoffId} isArchived={isArchived} />

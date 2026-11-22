@@ -47,6 +47,9 @@ const extractedSpecificationSchema = z.object({
   property: z.string().min(1),
   value: z.string().min(1),
   unit: z.string().optional(),
+  // Only for a single plain measurement (8 for "8px"); omitted otherwise.
+  // Drift compares this number, never a parse of the free-text value.
+  numericValue: z.number().finite().optional(),
   provenance: provenanceSchema,
   confidence: confidenceSchema,
 });
@@ -117,6 +120,13 @@ const handoffIssueFindingSchema = z.object({
   recommendation: z.string().optional(),
   provenance: provenanceSchema,
   confidence: confidenceSchema,
+  // Where the gap is, by the names the handoff summary uses. Names, not
+  // ids: the model never sees ids. They're only lookup keys; the server
+  // links a gap to a screen or component only on an exact match inside this
+  // handoff (lib/decisions.ts resolveFindingLinks), and links nothing
+  // otherwise.
+  screenName: z.string().min(1).max(200).optional(),
+  componentName: z.string().min(1).max(200).optional(),
 });
 
 export const gapDetectionResultSchema = z.object({

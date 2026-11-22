@@ -19,6 +19,10 @@ export type ConsistencySpecInput = {
   property: string;
   value: string;
   unit: string | null;
+  // Set by the AI only for a single plain measurement. Specs without it are
+  // compared as exact text; free-text values are never parsed for numbers
+  // ("2px primary, offset 2" used to read as 2).
+  numericValue: number | null;
 };
 
 /**
@@ -63,10 +67,21 @@ export function detectConsistencyOutliersWithSource(specs: ConsistencySpecInput[
   const outliers: ConsistencyOutlier[] = [];
 
   for (const group of groups.values()) {
-    const numeric = group.filter((spec) => !Number.isNaN(Number.parseFloat(spec.value)));
-    const nonNumeric = group.filter((spec) => Number.isNaN(Number.parseFloat(spec.value)));
+    const nonNumeric = group.filter((spec) => typeof spec.numericValue !== 'number');
 
-    outliers.push(...flagNumericOutliers(numeric));
+    // Numbers only compare within one unit: 12px and 12% are not the same value.
+    const numericByUnit = new Map<string, ConsistencySpecInput[]>();
+    for (const spec of group) {
+      if (typeof spec.numericValue !== 'number') continue;
+      const unitKey = (spec.unit ?? '').trim().toLowerCase();
+      const list = numericByUnit.get(unitKey) ?? [];
+      list.push(spec);
+      numericByUnit.set(unitKey, list);
+    }
+
+    for (const numeric of numericByUnit.values()) {
+      outliers.push(...flagNumericOutliers(numeric));
+    }
     outliers.push(...flagStringOutliers(nonNumeric));
   }
 
@@ -76,7 +91,7 @@ export function detectConsistencyOutliersWithSource(specs: ConsistencySpecInput[
 function flagNumericOutliers(entries: ConsistencySpecInput[]): ConsistencyOutlier[] {
   if (entries.length < MIN_GROUP_SIZE) return [];
 
-  const withRounded = entries.map((entry) => ({ entry, rounded: Math.round(Number.parseFloat(entry.value)) }));
+  const withRounded = entries.map((entry) => ({ entry, rounded: Math.round(entry.numericValue ?? 0) }));
   const majorityValue = mostFrequent(withRounded.map(({ rounded }) => rounded));
 
   if (majorityValue === null) return [];
@@ -163,5 +178,6 @@ function buildFinding(
     recommendation: `Confirm whether ${componentName}'s ${property} is intentionally different, or should match the handoff's established ${majorityDisplay}.`,
     provenance: 'Detected',
     confidence: 1.0,
+    componentName,
   };
 }

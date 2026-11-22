@@ -1,10 +1,11 @@
 'use client';
 
-import { AlertCircle, CheckCircle2, Loader2, UploadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import { recordUpload } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
+import { Button } from '@/components/ui/Button';
+import { AlertCircle, CheckCircle2, Loader2, UploadCloud } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 import { ALLOWED_UPLOAD_MEDIA_TYPES, MAX_UPLOAD_SIZE_BYTES } from '@/lib/validators/upload';
 
@@ -17,9 +18,11 @@ type UploadItem = {
 
 type UploadDropzoneProps = {
   handoffId: string;
+  /** "button" is the compact "Add screens" button on the Screens tab (Figma). */
+  variant?: 'dropzone' | 'button';
 };
 
-export function UploadDropzone({ handoffId }: UploadDropzoneProps) {
+export function UploadDropzone({ handoffId, variant = 'dropzone' }: UploadDropzoneProps) {
   const router = useRouter();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -106,6 +109,31 @@ export function UploadDropzone({ handoffId }: UploadDropzoneProps) {
     });
   }
 
+  if (variant === 'button') {
+    const active = items.filter((item) => item.status === 'uploading' || item.status === 'processing').length;
+    const failed = items.filter((item) => item.status === 'error');
+    return (
+      <div className="relative">
+        <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()} disabled={active > 0}>
+          {active > 0 ? `Uploading ${active}…` : 'Add screens'}
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept={ALLOWED_UPLOAD_MEDIA_TYPES.join(',')}
+          onChange={(event) => handleFiles(event.target.files)}
+          className="hidden"
+        />
+        {failed.length > 0 && (
+          <p role="alert" className="absolute right-0 top-full z-10 mt-1 w-64 rounded-[8px] border border-[--color-border] bg-white px-3 py-2 text-[12px] leading-4 text-[--color-error] shadow-sm">
+            {failed.map((item) => `${item.filename}: ${item.message ?? 'Failed'}`).join(' · ')}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <button
@@ -122,13 +150,17 @@ export function UploadDropzone({ handoffId }: UploadDropzoneProps) {
           handleFiles(event.dataTransfer.files);
         }}
         className={cn(
-          'flex flex-col items-center justify-center gap-2 rounded-[--radius-lg] border border-dashed border-[--color-border] px-6 py-10 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]',
+          'flex flex-col items-center justify-center gap-2 rounded-[12px] border-[1.5px] border-dashed border-[--color-border] bg-white px-6 py-8 text-center',
           isDragging && 'border-[--color-primary] bg-[--color-surface]',
         )}
       >
-        <UploadCloud aria-hidden="true" size={24} className="text-[--color-text-muted]" />
-        <span className="text-[--color-text-body]">Drop screens here, or click to browse</span>
-        <span className="text-[--color-text-muted]">PNG, JPG, or WebP — up to 25MB each</span>
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-[--color-primary-light] text-[--color-primary]">
+          <UploadCloud aria-hidden="true" size={18} />
+        </span>
+        <span className="text-[14px] leading-5 text-[--color-text-body]">
+          Drop screens here, or <span className="text-[--color-primary]">browse</span>
+        </span>
+        <span className="text-[12px] leading-4 text-[--color-text-secondary]">PNG, JPG or WebP, up to 25MB each</span>
         <input
           ref={inputRef}
           type="file"
@@ -140,7 +172,7 @@ export function UploadDropzone({ handoffId }: UploadDropzoneProps) {
       </button>
 
       {items.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-2">
           {items.map((item) => (
             <li
               key={item.id}

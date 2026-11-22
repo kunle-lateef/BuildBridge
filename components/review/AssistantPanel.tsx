@@ -1,10 +1,10 @@
 'use client';
 
-import { AlertCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { AlertCircle, Send } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/cn';
 
@@ -113,7 +113,7 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
         )}
 
         {error && (
-          <p role="alert" className="flex shrink-0 items-center gap-1.5 text-[--color-error]">
+          <p role="alert" className="flex shrink-0 items-center gap-2 text-[--color-error]">
             <AlertCircle aria-hidden="true" size={14} />
             {error}
           </p>
@@ -127,7 +127,7 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
           vertical rhythm can differ while the horizontal one still matches. */}
       <form
         onSubmit={(event) => void sendMessage(event)}
-        className="flex shrink-0 items-center gap-3 border-t border-[--color-border] px-4 py-5"
+        className="flex shrink-0 items-center gap-3 border-t border-[--color-border] px-4 py-6"
       >
         <Input
           id="assistant-input"

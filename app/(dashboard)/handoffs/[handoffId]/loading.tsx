@@ -1,5 +1,5 @@
-import { PageLoading } from '@/components/ui/PageLoading';
+import { HandoffLoading } from '@/components/ui/PageLoading';
 
 export default function Loading() {
-  return <PageLoading />;
+  return <HandoffLoading />;
 }

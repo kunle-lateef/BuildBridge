@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { notFoundError, unauthenticatedError } from '@/lib/actionErrors';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { gatherUnarchiveFacts, statusAfterUnarchive } from '@/lib/handoff-status';
 import { logger } from '@/lib/logger';
 import { ACTIVE_HANDOFF_CAP } from '@/lib/plan-limits';
 import { deleteObject } from '@/lib/storage';
@@ -172,6 +173,7 @@ export async function duplicateHandoff(sourceHandoffId: string): Promise<ActionR
               property: spec.property,
               value: spec.value,
               unit: spec.unit,
+              numericValue: spec.numericValue,
               confidence: spec.confidence,
               provenance: spec.provenance,
             })),
@@ -222,8 +224,8 @@ export async function duplicateHandoff(sourceHandoffId: string): Promise<ActionR
 /**
  * Archiving is the only way to free up the ACTIVE_HANDOFF_CAP once it's
  * reached (see createHandoff's error message) — a real dead end without
- * this. There's no stored "previous status," so unarchiving deliberately
- * returns to Draft rather than attempting to reconstruct where it was.
+ * this. There's no stored "previous status": unarchiving rebuilds it from
+ * the handoff's runs, share links and readiness (lib/handoff-status.ts).
  */
 export async function archiveHandoff(handoffId: string): Promise<ActionResult<{ handoffId: string }>> {
   const session = await auth();
@@ -276,7 +278,8 @@ export async function unarchiveHandoff(handoffId: string): Promise<ActionResult<
     };
   }
 
-  await db.handoff.update({ where: { id: handoffId }, data: { status: 'Draft' } });
+  const status = statusAfterUnarchive(await gatherUnarchiveFacts(handoffId));
+  await db.handoff.update({ where: { id: handoffId }, data: { status } });
 
   logger.info('handoff.unarchived', { handoffId });
   revalidatePath('/handoffs');
@@ -319,16 +322,17 @@ export async function deleteHandoff(handoffId: string): Promise<ActionResult<{ d
   });
 
   try {
-    // Order matters: DesignerDecision has no cascade from Handoff, so it
-    // must go first. AnalysisRun also has no cascade from Handoff, but now
-    // HandoffIssue.sourceAnalysisRunId references it — deleting AnalysisRun
-    // before the Handoff (and its cascaded HandoffIssue rows) would violate
-    // that FK, so AnalysisRun has to be deleted last, after the cascade has
-    // already cleared every HandoffIssue that could reference it.
+    // Order matters. DesignerDecision has no cascade from Handoff, so it
+    // goes first. AnalysisRun must go before the Handoff:
+    // analysis_runs.handoff_id is ON DELETE RESTRICT, so deleting the
+    // Handoff while runs still point at it fails outright (it did, for any
+    // analysed handoff). Deleting runs first is safe:
+    // handoff_issues.source_analysis_run_id is ON DELETE SET NULL, and the
+    // run's own join rows cascade. The Handoff delete then cascades the rest.
     await db.$transaction([
       db.designerDecision.deleteMany({ where: { handoffId } }),
-      db.handoff.delete({ where: { id: handoffId } }),
       db.analysisRun.deleteMany({ where: { handoffId } }),
+      db.handoff.delete({ where: { id: handoffId } }),
     ]);
   } catch (error) {
     logger.error('handoff.delete_failed', {

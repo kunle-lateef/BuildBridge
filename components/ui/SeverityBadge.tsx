@@ -1,11 +1,10 @@
 import { cva, type VariantProps } from 'class-variance-authority';
-import { AlertCircle, AlertOctagon, AlertTriangle, Info, Lightbulb } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import type { IssueSeverity } from '@/lib/types';
 
 const severityBadgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-[--radius-sm] px-2 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] font-medium',
+  'inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[--radius-sm] px-2 text-[12px] font-medium leading-4',
   {
     variants: {
       severity: {
@@ -19,32 +18,22 @@ const severityBadgeVariants = cva(
   },
 );
 
-const ICON: Record<IssueSeverity, typeof AlertOctagon> = {
-  Critical: AlertOctagon,
-  High: AlertTriangle,
-  Medium: AlertCircle,
-  Low: Info,
-  Recommendation: Lightbulb,
-};
-
 type SeverityBadgeProps = VariantProps<typeof severityBadgeVariants> & {
   severity: IssueSeverity;
   className?: string;
 };
 
 /**
- * Never color alone — always paired with an icon, per
- * .agents/rules/design-system.md's SeverityBadge spec.
+ * Matches Figma's SeverityBadge component (Foundations): a dot plus the
+ * severity word. The word itself means the badge never relies on colour alone.
  */
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
-  const Icon = ICON[severity];
-
   return (
     <span
       className={cn(severityBadgeVariants({ severity }), className)}
       aria-label={`${severity} severity`}
     >
-      <Icon aria-hidden="true" size={12} />
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {severity}
     </span>
   );

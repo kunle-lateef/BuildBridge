@@ -1,27 +1,34 @@
 'use client';
 
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { AlertCircle, CheckCircle2, Info, X } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 type ToastVariant = 'success' | 'error' | 'info';
 
+type ToastAction = {
+  /** "Undo" or "Retry". Only offer Undo where the action can really be undone. */
+  label: string;
+  onClick: () => void;
+};
+
 type ToastRecord = {
-  id: string;
+  id: number;
   message: string;
   variant: ToastVariant;
+  action?: ToastAction;
 };
 
 type ToastActions = {
   /** Fire-and-forget confirmation for an action that already succeeded — never blocks, never replaces the inline `role="alert"` banners forms already use for validation/failure. */
-  toast: (message: string, variant?: ToastVariant) => void;
+  toast: (message: string, variant?: ToastVariant, options?: { action?: ToastAction }) => void;
 };
 
 const noopActions: ToastActions = { toast: () => undefined };
 const ToastActionsContext = createContext<ToastActions>(noopActions);
 
-const AUTO_DISMISS_MS = 4000;
+const AUTO_DISMISS_MS = 5000;
 
 const VARIANT_ICON: Record<ToastVariant, typeof CheckCircle2> = {
   success: CheckCircle2,
@@ -30,76 +37,85 @@ const VARIANT_ICON: Record<ToastVariant, typeof CheckCircle2> = {
 };
 
 const VARIANT_COLOR: Record<ToastVariant, string> = {
-  success: 'text-[--color-success]',
+  success: 'text-[--color-text-primary]',
   error: 'text-[--color-error]',
   info: 'text-[--color-primary]',
 };
 
 /**
- * App-wide confirmation toasts — see the UX audit's "no toast system exists
- * anywhere" finding. Archive/revoke/decision/note actions previously
- * succeeded with only an ambient state change as feedback (a button label
- * flipping, a row updating) and no explicit confirmation. One shared
- * Context (same pattern as ScreenPinProvider/MobileSidebarProvider) so any
- * client component under it can call `useToast().toast(...)` without prop
- * drilling.
+ * App-wide toasts, per Figma `11 — System / Toasts`: bottom-right on
+ * desktop, bottom-centre on mobile; one at a time (a new one replaces the
+ * old); success and info close after 5s, errors stay until dismissed. An
+ * optional action button carries "Undo" or "Retry".
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastRecord[]>([]);
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const [current, setCurrent] = useState<ToastRecord | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nextId = useRef(0);
 
-  const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    const timer = timers.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      timers.current.delete(id);
-    }
+  const dismiss = useCallback(() => {
+    setCurrent(null);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
   }, []);
 
-  const toast = useCallback(
-    (message: string, variant: ToastVariant = 'success') => {
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      setToasts((prev) => [...prev, { id, message, variant }]);
-      timers.current.set(
-        id,
-        setTimeout(() => dismiss(id), AUTO_DISMISS_MS),
-      );
+  const toast = useCallback<ToastActions['toast']>(
+    (message, variant = 'success', options) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      nextId.current += 1;
+      setCurrent({ id: nextId.current, message, variant, action: options?.action });
+      if (variant !== 'error') {
+        timer.current = setTimeout(() => setCurrent(null), AUTO_DISMISS_MS);
+      }
     },
-    [dismiss],
+    [],
   );
 
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
   const actions = useMemo<ToastActions>(() => ({ toast }), [toast]);
+  const Icon = current ? VARIANT_ICON[current.variant] : null;
 
   return (
     <ToastActionsContext.Provider value={actions}>
       {children}
       <div
-        aria-live="polite"
-        aria-atomic="false"
-        className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-2"
+        aria-live={current?.variant === 'error' ? 'assertive' : 'polite'}
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-center sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end"
       >
-        {toasts.map((item) => {
-          const Icon = VARIANT_ICON[item.variant];
-          return (
-            <div
-              key={item.id}
-              role="status"
-              className="pointer-events-auto flex max-w-sm items-start gap-2 rounded-[--radius-lg] border border-[--color-border] bg-[--color-background] p-3 shadow-lg"
-            >
-              <Icon aria-hidden="true" size={18} className={cn('mt-0.5 shrink-0', VARIANT_COLOR[item.variant])} />
-              <p className="flex-1 text-[--color-text-body]">{item.message}</p>
+        {current && Icon && (
+          <div
+            key={current.id}
+            role={current.variant === 'error' ? 'alert' : 'status'}
+            className="pointer-events-auto flex max-w-[560px] items-center gap-3 rounded-[8px] border border-[--color-border] bg-white px-3 py-2.5 shadow-md"
+          >
+            <Icon aria-hidden="true" size={16} className={cn('shrink-0', VARIANT_COLOR[current.variant])} />
+            <p className="m-0 text-[14px] leading-5 text-[--color-text-primary]">{current.message}</p>
+            {current.action && (
               <button
                 type="button"
-                onClick={() => dismiss(item.id)}
-                aria-label="Dismiss"
-                className="shrink-0 rounded-[--radius-sm] p-0.5 text-[--color-text-muted] hover:bg-[--color-surface] hover:text-[--color-text-primary] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+                onClick={() => {
+                  current.action?.onClick();
+                  dismiss();
+                }}
+                className="shrink-0 text-[14px] font-medium leading-5 text-[--color-primary] hover:underline"
               >
-                <X aria-hidden="true" size={14} />
+                {current.action.label}
               </button>
-            </div>
-          );
-        })}
+            )}
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-[4px] p-0.5 text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary]"
+            >
+              <X aria-hidden="true" size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </ToastActionsContext.Provider>
   );

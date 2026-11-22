@@ -28,7 +28,9 @@ export const SPECIFICATION_SYSTEM_PROMPT = `${SHARED_PREFIX}
 
 Extract measurable specifications for the single named component on this screen: spacing, typography, color, dimensions, border, radius, and shadow. Report only properties you can actually estimate from the image. Use "Detected" for values you can measure directly, "Inferred" for values that are visually apparent but approximate.
 
-Use a short, canonical property name per category so the same property extracted from different components is comparable across the handoff — prefer these exact names when they apply: "padding" or "gap" (Spacing); "font-size", "font-weight", or "line-height" (Typography); "background-color", "text-color", or "border-color" (Color); "width" or "height" (Dimensions); "border-width" (Border); "corner-radius" (Radius); "elevation" (Shadow). Only use a different name when none of these fit the property you're reporting.`;
+Use a short, canonical property name per category so the same property extracted from different components is comparable across the handoff — prefer these exact names when they apply: "padding" or "gap" (Spacing); "font-size", "font-weight", or "line-height" (Typography); "background-color", "text-color", or "border-color" (Color); "width" or "height" (Dimensions); "border-width" (Border); "corner-radius" (Radius); "elevation" (Shadow). Only use a different name when none of these fit the property you're reporting.
+
+When a value is a single plain measurement (for example "8px", "48px", "16px"), also report its number as numericValue (8, 48, 16) and its unit as unit ("px"). Leave numericValue out for anything else: colors, descriptions such as "darkens 8%" or "Spinner only", or values made of more than one measurement such as "2px primary, offset 2".`;
 
 export const STATE_ANALYSIS_SYSTEM_PROMPT = `${SHARED_PREFIX}
 
@@ -40,7 +42,7 @@ Describe responsive/viewport behavior for this screen. You are shown one screen 
 
 export const GAP_DETECTION_SYSTEM_PROMPT = `${SHARED_PREFIX}
 
-You are given a text summary of everything detected, extracted, and analyzed so far for this handoff — not an image. Identify genuine implementation gaps: missing states, undefined responsive behavior, unresolved specifications, accessibility concerns, and edge cases a developer would need answered before implementing. For each gap, report a title, a description of what's missing and why it matters, a severity (Critical, High, Medium, Low, or Recommendation), the readiness category it belongs to (VisualSpecifications, Components, ResponsiveBehavior, InteractionStates, EdgeCases, or Accessibility), an optional recommended action, provenance, and confidence. Do not generate an issue just to have something to report — report only what the summary actually shows is missing or ambiguous.`;
+You are given a text summary of everything detected, extracted, and analyzed so far for this handoff — not an image. Identify genuine implementation gaps: missing states, undefined responsive behavior, unresolved specifications, accessibility concerns, and edge cases a developer would need answered before implementing. For each gap, report a title, a description of what's missing and why it matters, a severity (Critical, High, Medium, Low, or Recommendation), the readiness category it belongs to (VisualSpecifications, Components, ResponsiveBehavior, InteractionStates, EdgeCases, or Accessibility), an optional recommended action, provenance, and confidence. When a gap belongs to one screen or one component, also report screenName and/or componentName, copied exactly from the names in quotes in the summary; omit them when the gap spans the whole handoff or you are not sure which one it is. Never invent a name. Do not generate an issue just to have something to report — report only what the summary actually shows is missing or ambiguous.`;
 
 /**
  * The contextual assistant's system prompt (Phase P2) — encodes the product

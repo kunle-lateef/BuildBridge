@@ -1,7 +1,7 @@
 import type { DeveloperHandoffProjection } from '@/lib/share';
 import type { ComponentStateName } from '@/lib/types';
 
-// Same split as InteractionsSection.tsx/StatesSection.tsx on the actual
+// Same split the developer view used to make on the actual
 // share page — kept in sync here rather than re-decided, since both views
 // must agree on what "Interactions" vs "States" means for the same data.
 const INTERACTION_STATE_NAMES: ComponentStateName[] = ['Hover', 'Focus', 'Disabled', 'Loading'];
@@ -168,6 +168,7 @@ function buildEdgeCases(projection: DeveloperHandoffProjection): string | null {
       issue.description,
     );
     if (issue.recommendation) lines.push(`**Recommendation:** ${issue.recommendation}`);
+    if (issue.answer) lines.push(`**Designer's answer:** ${issue.answer}`);
     lines.push(`Category: ${issue.category}`);
   }
   return lines.join('\n');

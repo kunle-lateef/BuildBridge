@@ -7,7 +7,8 @@
       "category": "EdgeCases",
       "recommendation": "Design and confirm an empty state for the table.",
       "provenance": "Suggested",
-      "confidence": 0.35
+      "confidence": 0.35,
+      "componentName": "Data Table"
     },
     {
       "title": "Responsive behavior undetermined",

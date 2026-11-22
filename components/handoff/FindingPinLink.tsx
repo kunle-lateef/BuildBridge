@@ -1,8 +1,8 @@
 'use client';
 
-import { MapPin } from 'lucide-react';
-
 import { useScreenPinActions } from '@/components/handoff/ScreenPinProvider';
+import { MapPin } from '@/components/ui/icons';
+
 
 type FindingPinLinkProps = {
   screenId: string;
@@ -23,7 +23,7 @@ export function FindingPinLink({ screenId, pinKey }: FindingPinLinkProps) {
       onClick={() => openScreenPin({ screenId, highlightedKey: pinKey })}
       aria-label="Show on screen"
       title="Show on screen"
-      className="inline-flex items-center justify-center rounded-[--radius-sm] p-1 text-[--color-text-muted] hover:bg-[--color-surface] hover:text-[--color-primary] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+      className="inline-flex items-center justify-center rounded-[--radius-sm] p-1 text-[--color-text-muted] hover:bg-[--color-surface] hover:text-[--color-primary]"
     >
       <MapPin aria-hidden="true" size={14} />
     </button>

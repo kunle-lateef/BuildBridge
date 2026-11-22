@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <AuthLayout title="Welcome back!" description="Sign in to continue to BuildBridge.">
+    <AuthLayout title="Sign in to BuildBridge" panel="share">
       <Suspense fallback={null}>
         <SignInForm />
       </Suspense>

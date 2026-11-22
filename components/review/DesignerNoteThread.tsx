@@ -1,15 +1,16 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
 import {
   addDesignerNote,
+  deleteDesignerNote,
   editDesignerNote,
 } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { AlertCircle, Pencil, Trash2 } from '@/components/ui/icons';
 import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
@@ -22,10 +23,12 @@ import { addDesignerNoteSchema } from '@/lib/validators/note';
 // never sees.
 const addNoteFieldSchema = addDesignerNoteSchema.pick({ content: true });
 
-type DesignerNoteItem = {
+export type DesignerNoteItem = {
   id: string;
   content: string;
   createdAt: string;
+  /** What the note is about: a component or screen name, or "Whole handoff". */
+  target: string;
 };
 
 type DesignerNoteThreadProps = {
@@ -35,149 +38,170 @@ type DesignerNoteThreadProps = {
 
 type MutationResult = ActionResult<{ noteId: string }> | null;
 
+function noteTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === now.toDateString()) {
+    return `Today, ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 /**
- * Designer-authored context that survives into the developer view — see
- * ImplementationNotesSection.tsx on app/share/[token]. Rendered as plain
- * text throughout (React's default escaping); never dangerouslySetInnerHTML
- * — see security.md's XSS section.
+ * Figma `04 — Handoff / Notes tab`. Designer-authored context that appears
+ * in the developer view under Implementation notes. Rendered as plain text
+ * throughout (React's default escaping); never dangerouslySetInnerHTML —
+ * see security.md's XSS section.
  */
 export function DesignerNoteThread({ handoffId, notes }: DesignerNoteThreadProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
   const { fieldProps } = useFieldErrors(addNoteFieldSchema);
   const [addState, addFormAction, isAdding] = useActionState<MutationResult, FormData>(
-    async (_prevState, formData) => {
-      const content = String(formData.get('content') ?? '');
-      const result = await addDesignerNote({ handoffId, content });
-      return result;
-    },
+    async (_prevState, formData) => addDesignerNote({ handoffId, content: String(formData.get('content') ?? '') }),
     null,
   );
 
   useEffect(() => {
     if (addState?.ok) {
-      toast('Note added.');
+      toast('Note added');
+      formRef.current?.reset();
+      router.refresh();
     }
-  }, [addState, toast]);
+  }, [addState, toast, router]);
 
   return (
-    <div className="flex flex-col gap-3">
-      {notes.length === 0 ? (
-        <p className="text-[--color-text-muted]">No notes yet. Add context for the developer below.</p>
-      ) : (
-        notes.map((note) => <NoteRow key={note.id} note={note} onSaved={() => router.refresh()} />)
-      )}
-
-      <form
-        action={(formData) => {
-          addFormAction(formData);
-        }}
-        className="flex flex-col gap-2"
-      >
+    <div className="flex max-w-[760px] flex-col gap-3">
+      <form ref={formRef} action={addFormAction} className="flex flex-col gap-3 rounded-[12px] border border-[--color-border] bg-white p-3">
         <Textarea
           id="new-note-content"
           name="content"
           label="Add a note"
           hideLabel
-          rows={2}
+          rows={3}
           placeholder="Add a note for the developer…"
           {...fieldProps('content')}
         />
         {addState && !addState.ok && (
-          <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+          <p role="alert" className="m-0 flex items-center gap-2 text-[14px] text-[--color-error]">
             <AlertCircle aria-hidden="true" size={14} />
             {addState.error.message}
           </p>
         )}
-        <Button type="submit" variant="secondary" size="sm" disabled={isAdding} className="self-start">
+        <Button type="submit" disabled={isAdding} className="self-end">
           {isAdding ? 'Adding…' : 'Add note'}
         </Button>
       </form>
+
+      {notes.map((note) => (
+        <NoteCard key={note.id} note={note} onChanged={() => router.refresh()} />
+      ))}
     </div>
   );
 }
 
-function NoteRow({ note, onSaved }: { note: DesignerNoteItem; onSaved: () => void }) {
+function NoteCard({ note, onChanged }: { note: DesignerNoteItem; onChanged: () => void }) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [content, setContent] = useState(note.content);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
-    setIsSaving(true);
+    setIsBusy(true);
     setError(null);
     const result = await editDesignerNote({ noteId: note.id, content });
-    setIsSaving(false);
-
+    setIsBusy(false);
     if (!result.ok) {
       setError(result.error.message);
       return;
     }
-
     setIsEditing(false);
-    toast('Note updated.');
-    onSaved();
+    toast('Note updated');
+    onChanged();
   }
 
-  if (isEditing) {
-    const contentError = content.trim().length === 0 ? 'Note cannot be empty.' : undefined;
-
-    return (
-      <Card className="flex flex-col gap-1.5">
-        <Textarea
-          id={`note-${note.id}-content`}
-          label="Edit note"
-          hideLabel
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          rows={2}
-          autoFocus
-          maxLength={2000}
-          error={contentError}
-        />
-        <div className="flex gap-2">
-          <Button type="button" size="sm" disabled={isSaving || !!contentError} onClick={() => void save()}>
-            {isSaving ? 'Saving…' : 'Save'}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={isSaving}
-            onClick={() => {
-              setContent(note.content);
-              setIsEditing(false);
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-        {error && (
-          <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
-            <AlertCircle aria-hidden="true" size={14} />
-            {error}
-          </p>
-        )}
-      </Card>
-    );
+  async function remove() {
+    setIsBusy(true);
+    setError(null);
+    const result = await deleteDesignerNote(note.id);
+    setIsBusy(false);
+    setIsConfirmingDelete(false);
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    toast('Note deleted');
+    onChanged();
   }
+
+  const contentError = isEditing && content.trim().length === 0 ? 'Note cannot be empty.' : undefined;
 
   return (
-    <Card className="flex flex-col gap-1">
-      <p className="text-[--color-text-body]">{note.content}</p>
-      <div className="flex items-center gap-2">
-        <span className="text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-          {new Date(note.createdAt).toLocaleString()}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="text-[length:var(--font-desktop-caption-medium-size)] text-[--color-primary] hover:underline"
-        >
-          Edit
-        </button>
+    <article className="flex flex-col gap-2 rounded-[12px] border border-[--color-border] bg-white px-4 py-3.5">
+      <div className="flex items-center gap-2 text-[12px] leading-4 text-[--color-text-secondary]">
+        <span>{note.target}</span>
+        <span className="ml-auto">{noteTime(note.createdAt)}</span>
+        {!isEditing && (
+          <>
+            <button type="button" aria-label="Edit note" onClick={() => setIsEditing(true)} className="rounded-[4px] p-0.5 hover:bg-[--color-surface] hover:text-[--color-text-primary]">
+              <Pencil aria-hidden="true" size={14} />
+            </button>
+            <button type="button" aria-label="Delete note" onClick={() => setIsConfirmingDelete(true)} className="rounded-[4px] p-0.5 hover:bg-[--color-surface] hover:text-[--color-error]">
+              <Trash2 aria-hidden="true" size={14} />
+            </button>
+          </>
+        )}
       </div>
-    </Card>
+
+      {isEditing ? (
+        <>
+          <Textarea
+            id={`note-${note.id}-content`}
+            label="Edit note"
+            hideLabel
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            rows={2}
+            autoFocus
+            maxLength={2000}
+            error={contentError}
+          />
+          <div className="flex gap-2">
+            <Button type="button" size="sm" disabled={isBusy || !!contentError} onClick={() => void save()}>
+              {isBusy ? 'Saving…' : 'Save'}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" disabled={isBusy} onClick={() => { setContent(note.content); setIsEditing(false); }}>
+              Cancel
+            </Button>
+          </div>
+        </>
+      ) : (
+        <p className="m-0 whitespace-pre-line text-[14px] leading-5 text-[--color-text-primary]">{note.content}</p>
+      )}
+
+      {error && (
+        <p role="alert" className="m-0 flex items-center gap-2 text-[14px] text-[--color-error]">
+          <AlertCircle aria-hidden="true" size={14} />
+          {error}
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={isConfirmingDelete}
+        onClose={() => setIsConfirmingDelete(false)}
+        onConfirm={() => void remove()}
+        title="Delete this note?"
+        description="Developers stop seeing it on the share link. This can’t be undone."
+        confirmLabel="Delete note"
+        variant="danger"
+        isConfirming={isBusy}
+      />
+    </article>
   );
 }

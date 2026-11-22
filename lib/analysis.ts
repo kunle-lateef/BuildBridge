@@ -7,7 +7,9 @@ import { logger } from '@/lib/logger';
 import { enqueueAnalysisRun } from '@/lib/queue';
 import type { ActionResult } from '@/lib/types';
 
-const CURRENT_ANALYSIS_VERSION = 1;
+// 2: specifications carry numericValue (drift compares numbers by unit).
+// 3: gaps name their screen/component, linked to ids server-side.
+const CURRENT_ANALYSIS_VERSION = 3;
 
 function resolveQuota(user: Pick<User, 'analysisQuota' | 'analysisUsageCount' | 'billingCycleStart'>): {
   quotaRemaining: number;

@@ -1,10 +1,10 @@
 'use client';
 
-import { Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { AssistantPanel } from '@/components/review/AssistantPanel';
+import { Sparkles, X } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 type AssistantDrawerProps = {
@@ -107,7 +107,7 @@ export function AssistantDrawer({ open, onClose, handoffId }: AssistantDrawerPro
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-[--radius-sm] p-1.5 text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+            className="rounded-[--radius-sm] p-2 text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary]"
           >
             <X aria-hidden="true" size={18} />
           </button>

@@ -38,7 +38,7 @@ export function HandoffGrid({ handoffs, isFiltered }: HandoffGridProps) {
         <Link
           key={handoff.id}
           href={`/handoffs/${handoff.id}`}
-          className="flex flex-col gap-2 rounded-[--radius-md] border border-[--color-border] p-2 hover:bg-[--color-surface] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          className="flex flex-col gap-2 rounded-[--radius-md] border border-[--color-border] p-2 hover:bg-[--color-surface]"
         >
           <div className="relative aspect-video overflow-hidden rounded-[--radius-sm] bg-[--color-surface]">
             {handoff.thumbnailUrl ? (

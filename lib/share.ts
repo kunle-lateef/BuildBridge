@@ -1,6 +1,7 @@
 import type { ShareLink } from '@prisma/client';
 
 import { db } from '@/lib/db';
+import { getGapAnswers } from '@/lib/gapAnswers';
 import { buildScreenPins, type ScreenPin } from '@/lib/screenPins';
 import { createSignedReadUrl } from '@/lib/storage';
 import { generateSecureToken, hashSecureToken } from '@/lib/tokens';
@@ -124,8 +125,11 @@ export type DeveloperHandoffProjection = {
     status: IssueStatus;
     provenance: ProvenanceType;
     pinScreenId: string | null;
+    /** The designer's answer, once they've answered the gap (lib/gapAnswers.ts). */
+    answer: string | null;
   }[];
-  notes: { id: string; content: string }[];
+  /** componentId (when set) shows the note on that component's table, as "Note from the designer". */
+  notes: { id: string; content: string; componentId: string | null }[];
   screenFlows: { id: string; sourceScreenName: string; targetScreenName: string; label: string | null }[];
   recentUpdates: { title: string; category: ReadinessCategory; createdAt: string }[];
 };
@@ -148,6 +152,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
     screenFlows,
     recentUpdates,
     implementationMarks,
+    gapAnswers,
   ] = await Promise.all([
     db.handoff.findUniqueOrThrow({
       where: { id: handoffId },
@@ -191,6 +196,7 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
       where: { handoffId },
       select: { findingType: true, findingReference: true },
     }),
+    getGapAnswers(handoffId),
   ]);
 
   const markedKeys = new Set(implementationMarks.map((mark) => markKey(mark.findingType, mark.findingReference)));
@@ -273,8 +279,9 @@ export async function buildDeveloperProjection(handoffId: string): Promise<Devel
       status: issue.status,
       provenance: issue.provenance,
       pinScreenId: issue.componentId ? (pinScreenIdByComponentId.get(issue.componentId) ?? null) : null,
+      answer: gapAnswers.get(issue.id) ?? null,
     })),
-    notes: notes.map((note) => ({ id: note.id, content: note.content })),
+    notes: notes.map((note) => ({ id: note.id, content: note.content, componentId: note.componentId })),
     screenFlows: screenFlows.map((flow) => ({
       id: flow.id,
       sourceScreenName: flow.sourceScreen.name,

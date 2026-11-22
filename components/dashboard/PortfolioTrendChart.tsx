@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 export type TrendPoint = { analysisRunId: string; runDate: string; score: number };
 
@@ -9,134 +9,105 @@ type PortfolioTrendChartProps = {
   height?: number;
 };
 
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
 /**
- * A bigger, smoother sibling of CategoryTrendSparkline — a hand-rolled
- * smoothed-curve area chart (quadratic bezier through midpoints, the same
- * technique real charting libraries use for a "smooth line" look) with a
- * hover tooltip, matching the reference dashboards' portfolio-trend charts.
- * Still no charting library: this is one more SVG component, not a new
- * dependency, consistent with CategoryTrendSparkline's own reasoning.
+ * Figma `08 — Insights` "Average readiness": one thin primary line on a
+ * 0–100% grid, the latest value labelled, and a hover crosshair with a
+ * "<date> analysis" tooltip. Hand-rolled SVG; no charting library.
  */
-export function PortfolioTrendChart({ points, height = 220 }: PortfolioTrendChartProps) {
+export function PortfolioTrendChart({ points, height = 200 }: PortfolioTrendChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const gradientId = useId();
-  const width = 800;
-  const paddingTop = 16;
-  const paddingBottom = 28;
-  const chartHeight = height - paddingTop - paddingBottom;
+  const width = 1000;
+  const left = 0;
+  const right = 24;
+  const top = 12;
+  const bottom = 12;
+  const plotHeight = height - top - bottom;
 
   if (points.length < 2) {
     return (
-      <div className="flex items-center justify-center text-[--color-text-muted]" style={{ height }}>
-        Not enough analysis runs yet to chart a trend.
-      </div>
+      <p className="m-0 py-10 text-center text-[14px] leading-5 text-[--color-text-secondary]">
+        Run a few more analyses and the trend shows up here.
+      </p>
     );
   }
 
-  const stepX = width / (points.length - 1);
-  const toY = (score: number) => paddingTop + chartHeight - (Math.max(0, Math.min(100, score)) / 100) * chartHeight;
-  const toX = (index: number) => index * stepX;
-
-  // Smooth the line through each point's midpoint to the next, rather than
-  // straight segments — the same "quadratic through midpoints" trick most
-  // charting libraries use for a curved look without full spline math.
-  let linePath = `M ${toX(0)} ${toY(points[0]?.score ?? 0)}`;
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    if (!prev || !curr) continue;
-    const midX = (toX(i - 1) + toX(i)) / 2;
-    linePath += ` Q ${toX(i - 1)} ${toY(prev.score)} ${midX} ${(toY(prev.score) + toY(curr.score)) / 2}`;
-    linePath += ` Q ${midX} ${(toY(prev.score) + toY(curr.score)) / 2} ${toX(i)} ${toY(curr.score)}`;
-  }
-  const areaPath = `${linePath} L ${width} ${height - paddingBottom} L 0 ${height - paddingBottom} Z`;
-
-  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
+  const stepX = (width - left - right) / (points.length - 1);
+  const toX = (index: number) => left + index * stepX;
+  const toY = (score: number) => top + plotHeight - (Math.max(0, Math.min(100, score)) / 100) * plotHeight;
+  const line = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${toX(index)} ${toY(point.score)}`).join(' ');
+  const lastIndex = points.length - 1;
+  const last = points[lastIndex] as TrendPoint;
+  const hovered = hoverIndex !== null ? points[hoverIndex] : undefined;
+  // Up to four evenly spaced date labels, always including both ends.
+  const labelIndexes = [...new Set([0, Math.round(lastIndex / 3), Math.round((2 * lastIndex) / 3), lastIndex])];
 
   return (
-    <div className="relative">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        width="100%"
-        height={height}
-        role="img"
-        aria-label={`Portfolio readiness trend over ${points.length} runs, currently ${points[points.length - 1]?.score}%`}
-        onMouseLeave={() => setHoverIndex(null)}
-        onMouseMove={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const relativeX = ((event.clientX - rect.left) / rect.width) * width;
-          const index = Math.round(relativeX / stepX);
-          setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
-        }}
-      >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-
-        {/* Gridlines at 0/50/100% */}
-        {[0, 50, 100].map((mark) => (
-          <line
-            key={mark}
-            x1={0}
-            y1={toY(mark)}
-            x2={width}
-            y2={toY(mark)}
-            stroke="var(--color-border)"
-            strokeWidth={1}
-            strokeDasharray={mark === 0 ? undefined : '3 3'}
-          />
-        ))}
-
-        <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
-        <path d={linePath} fill="none" stroke="var(--color-primary)" strokeWidth={2.5} strokeLinecap="round" />
-
-        {points.map((point, index) => (
-          <circle
-            key={point.analysisRunId}
-            cx={toX(index)}
-            cy={toY(point.score)}
-            r={index === hoverIndex ? 5 : index === points.length - 1 ? 3.5 : 0}
-            fill="var(--color-primary)"
-            stroke="var(--color-background)"
-            strokeWidth={1.5}
-          />
-        ))}
-
-        {hoverIndex !== null && (
-          <line
-            x1={toX(hoverIndex)}
-            y1={paddingTop}
-            x2={toX(hoverIndex)}
-            y2={height - paddingBottom}
-            stroke="var(--color-text-muted)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
-        )}
-      </svg>
-
-      {hovered && hoverIndex !== null && (
-        <div
-          className="pointer-events-none absolute top-2 flex -translate-x-1/2 flex-col gap-0.5 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 py-2 shadow-lg"
-          style={{ left: `${(toX(hoverIndex) / width) * 100}%` }}
+    <div className="flex gap-3">
+      <div className="flex shrink-0 flex-col justify-between text-[11px] leading-4 text-[--color-text-secondary]" style={{ height, paddingTop: top - 8, paddingBottom: bottom - 8 }}>
+        <span>100%</span>
+        <span>50%</span>
+        <span>0%</span>
+      </div>
+      <div className="relative min-w-0 flex-1">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          width="100%"
+          height={height}
+          role="img"
+          aria-label={`Average readiness over the last ${points.length} analyses, now ${last.score}%`}
+          onMouseLeave={() => setHoverIndex(null)}
+          onMouseMove={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width) * width;
+            setHoverIndex(Math.max(0, Math.min(lastIndex, Math.round((x - left) / stepX))));
+          }}
         >
-          <span className="font-mono text-[length:var(--font-desktop-body-small-semi-bold-size)] font-semibold text-[--color-text-primary]">
-            {hovered.score}%
-          </span>
-          <span className="whitespace-nowrap text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-            {new Date(hovered.runDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </span>
-        </div>
-      )}
-
-      <div className="mt-1 flex justify-between text-[length:var(--font-desktop-caption-regular-size)] text-[--color-text-muted]">
-        <span>{new Date(points[0]?.runDate ?? '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-        <span>
-          {new Date(points[points.length - 1]?.runDate ?? '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {[0, 25, 50, 75, 100].map((mark) => (
+            <line key={mark} x1={0} x2={width} y1={toY(mark)} y2={toY(mark)} stroke="var(--color-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          ))}
+          {hoverIndex !== null && (
+            <line x1={toX(hoverIndex)} x2={toX(hoverIndex)} y1={top} y2={height - bottom} stroke="var(--color-text-secondary)" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          )}
+          <path d={line} fill="none" stroke="var(--color-primary)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {/* Dots and labels sit in HTML so they stay round and crisp when the SVG stretches. */}
+        {[lastIndex, ...(hoverIndex !== null && hoverIndex !== lastIndex ? [hoverIndex] : [])].map((index) => (
+          <span
+            key={index}
+            aria-hidden="true"
+            className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[--color-primary]"
+            style={{ left: `${(toX(index) / width) * 100}%`, top: toY(points[index]?.score ?? 0) }}
+          />
+        ))}
+        <span
+          className="absolute -translate-x-full -translate-y-full pb-1.5 pr-1 text-[12px] font-semibold leading-4 text-[--color-text-primary]"
+          style={{ left: `${(toX(lastIndex) / width) * 100}%`, top: toY(last.score) }}
+        >
+          {last.score}%
         </span>
+        {hovered && hoverIndex !== null && hoverIndex !== lastIndex && (
+          <div
+            className="pointer-events-none absolute flex flex-col gap-0.5 rounded-[6px] border border-[--color-border] bg-white px-3 py-2 shadow-sm"
+            style={{ left: `calc(${(toX(hoverIndex) / width) * 100}% + 10px)`, top: toY(hovered.score) + 8 }}
+          >
+            <span className="whitespace-nowrap text-[12px] leading-4 text-[--color-text-secondary]">{shortDate(hovered.runDate)} analysis</span>
+            <span className="text-[14px] font-semibold leading-5 text-[--color-text-primary]">{hovered.score}%</span>
+          </div>
+        )}
+        <div className="relative mt-1 h-4 text-[12px] leading-4 text-[--color-text-secondary]">
+          {labelIndexes.map((index) => (
+            <span
+              key={index}
+              className="absolute -translate-x-1/2 whitespace-nowrap"
+              style={{ left: `${(toX(index) / width) * 100}%` }}
+            >
+              {shortDate(points[index]?.runDate ?? '')}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

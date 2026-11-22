@@ -11,6 +11,8 @@ const mockDb = {
   screenFlow: { findMany: vi.fn() },
   analysisRunFinding: { findMany: vi.fn() },
   implementationMark: { findMany: vi.fn() },
+  // Gap answers (lib/gapAnswers.ts). Empty unless a test sets one.
+  designerDecision: { findMany: vi.fn().mockResolvedValue([]) },
 };
 
 vi.mock('@/lib/db', () => ({ db: mockDb }));
@@ -162,8 +164,20 @@ describe('buildDeveloperProjection — never leaks designer-only data', () => {
     mockDb.screenFlow.findMany.mockResolvedValue([]);
     mockDb.analysisRunFinding.findMany.mockResolvedValue([]);
     mockDb.implementationMark.findMany.mockResolvedValue([]);
+    // A gap answer: only its text may reach the developer, never who wrote it
+    // or what it replaced.
+    mockDb.designerDecision.findMany.mockResolvedValueOnce([
+      {
+        findingReference: 'issue-1',
+        newValue: 'Grey out the button and show why.',
+        previousValue: 'designer-only previous value',
+        createdBy: 'user-secret-owner-id',
+      },
+    ]);
 
     const projection = await buildDeveloperProjection('handoff-1');
+    expect(projection.issues[0]?.answer).toBe('Grey out the button and show why.');
+    expect(JSON.stringify(projection)).not.toContain('designer-only previous value');
 
     const serialized = JSON.stringify(projection);
 

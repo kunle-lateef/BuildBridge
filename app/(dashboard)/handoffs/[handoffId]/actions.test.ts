@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDb = {
   handoff: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn(), delete: vi.fn(), create: vi.fn() },
-  designerNote: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+  designerNote: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
   designerDecision: { deleteMany: vi.fn(), create: vi.fn() },
   analysisRun: { deleteMany: vi.fn() },
   designAsset: { findMany: vi.fn() },
@@ -30,6 +30,11 @@ const mockDeleteObject = vi.fn();
 vi.mock('@/lib/db', () => ({ db: mockDb }));
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+const mockGatherUnarchiveFacts = vi.fn();
+vi.mock('@/lib/handoff-status', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/handoff-status')>()),
+  gatherUnarchiveFacts: mockGatherUnarchiveFacts,
+}));
 vi.mock('@/lib/storage', () => ({
   deleteObject: mockDeleteObject,
   getObjectBytes: vi.fn(),
@@ -47,6 +52,7 @@ const {
   deleteHandoff,
   deleteScreenFlow,
   duplicateHandoff,
+  deleteDesignerNote,
   editDesignerNote,
   unarchiveHandoff,
   updateDeveloperFlagStatus,
@@ -142,6 +148,27 @@ describe('addDesignerNote / editDesignerNote — ownership-check template', () =
       data: { content: 'Edited content' },
     });
   });
+
+  it('deleteDesignerNote: rejects with not_found when the note belongs to a handoff owned by a different user', async () => {
+    mockAuth.mockResolvedValue(SESSION_USER_A);
+    mockDb.designerNote.findUnique.mockResolvedValue({ id: 'note-1', handoffId: 'handoff-1', handoff: { ownerId: 'user-b' } });
+
+    const result = await deleteDesignerNote('note-1');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('not_found');
+    expect(mockDb.designerNote.delete).not.toHaveBeenCalled();
+  });
+
+  it('deleteDesignerNote: deletes when the session user owns the note\'s handoff', async () => {
+    mockAuth.mockResolvedValue(SESSION_USER_A);
+    mockDb.designerNote.findUnique.mockResolvedValue({ id: 'note-1', handoffId: 'handoff-1', handoff: { ownerId: 'user-a' } });
+
+    const result = await deleteDesignerNote('note-1');
+
+    expect(result).toEqual({ ok: true, data: { deleted: true } });
+    expect(mockDb.designerNote.delete).toHaveBeenCalledWith({ where: { id: 'note-1' } });
+  });
 });
 
 describe('archiveHandoff / unarchiveHandoff', () => {
@@ -199,20 +226,43 @@ describe('archiveHandoff / unarchiveHandoff', () => {
     expect(mockDb.handoff.update).not.toHaveBeenCalled();
   });
 
-  it('unarchiveHandoff: sets status back to Draft when under the cap', async () => {
+  it('unarchiveHandoff: restores an analysed handoff to its real status, not Draft', async () => {
     mockAuth.mockResolvedValue(SESSION_USER_A);
     mockDb.handoff.findUnique.mockResolvedValue({ id: 'handoff-1', ownerId: 'user-a' });
     mockDb.user.findUniqueOrThrow.mockResolvedValue({ planTier: 'Free' });
     mockDb.handoff.count.mockResolvedValue(1);
-    mockDb.handoff.update.mockResolvedValue({ id: 'handoff-1', status: 'Draft' });
+    mockGatherUnarchiveFacts.mockResolvedValue({
+      latestRunStatus: 'Completed',
+      latestSuccessfulRunStatus: 'Completed',
+      hasActiveShareLink: false,
+      hasUnresolvedCritical: false,
+    });
 
     const result = await unarchiveHandoff('handoff-1');
 
     expect(result.ok).toBe(true);
+    expect(mockGatherUnarchiveFacts).toHaveBeenCalledWith('handoff-1');
     expect(mockDb.handoff.update).toHaveBeenCalledWith({
       where: { id: 'handoff-1' },
-      data: { status: 'Draft' },
+      data: { status: 'Ready' },
     });
+  });
+
+  it('unarchiveHandoff: goes back to Draft when nothing was ever analysed', async () => {
+    mockAuth.mockResolvedValue(SESSION_USER_A);
+    mockDb.handoff.findUnique.mockResolvedValue({ id: 'handoff-1', ownerId: 'user-a' });
+    mockDb.user.findUniqueOrThrow.mockResolvedValue({ planTier: 'Free' });
+    mockDb.handoff.count.mockResolvedValue(1);
+    mockGatherUnarchiveFacts.mockResolvedValue({
+      latestRunStatus: null,
+      latestSuccessfulRunStatus: null,
+      hasActiveShareLink: false,
+      hasUnresolvedCritical: false,
+    });
+
+    await unarchiveHandoff('handoff-1');
+
+    expect(mockDb.handoff.update).toHaveBeenCalledWith({ where: { id: 'handoff-1' }, data: { status: 'Draft' } });
   });
 });
 
@@ -286,7 +336,7 @@ describe('deleteHandoff — real, hard delete', () => {
     expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 
-  it('deletes DesignerDecision first, then the Handoff, then AnalysisRun rows last (FK order: HandoffIssue.sourceAnalysisRunId only clears via the Handoff cascade), then cleans up storage objects', async () => {
+  it('deletes DesignerDecision, then AnalysisRun rows, then the Handoff (analysis_runs.handoff_id is ON DELETE RESTRICT), then cleans up storage objects', async () => {
     mockAuth.mockResolvedValue(SESSION_USER_A);
     mockDb.handoff.findUnique.mockResolvedValue({ id: 'handoff-1', ownerId: 'user-a' });
     mockDb.designAsset.findMany.mockResolvedValue([
@@ -314,7 +364,7 @@ describe('deleteHandoff — real, hard delete', () => {
     expect(mockDb.designerDecision.deleteMany).toHaveBeenCalledWith({ where: { handoffId: 'handoff-1' } });
     expect(mockDb.analysisRun.deleteMany).toHaveBeenCalledWith({ where: { handoffId: 'handoff-1' } });
     expect(mockDb.handoff.delete).toHaveBeenCalledWith({ where: { id: 'handoff-1' } });
-    expect(callOrder).toEqual(['designerDecision', 'handoff', 'analysisRun']);
+    expect(callOrder).toEqual(['designerDecision', 'analysisRun', 'handoff']);
     expect(mockDeleteObject).toHaveBeenCalledWith('handoffs/handoff-1/asset-1.png');
     expect(mockDeleteObject).toHaveBeenCalledWith('handoffs/handoff-1/asset-2.png');
   });

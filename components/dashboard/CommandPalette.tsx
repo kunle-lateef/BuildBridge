@@ -12,7 +12,7 @@ type CommandPaletteProps = {
 const STATIC_DESTINATIONS = [
   { label: 'Handoffs', href: '/handoffs' },
   { label: 'Insights', href: '/insights' },
-  { label: 'Drift', href: '/drift' },
+  { label: 'Drift', href: '/insights?tab=drift' },
   { label: 'Settings', href: '/settings' },
 ];
 
@@ -42,21 +42,21 @@ export function CommandPalette({ handoffs, open, onOpenChange }: CommandPaletteP
     >
       <Command.Input
         placeholder="Find a handoff or page…"
-        className="w-full border-b border-[--color-border] bg-transparent px-4 py-3 text-[--color-text-body] focus-visible:outline-none"
+        className="w-full border-b border-[--color-border] bg-transparent px-4 py-3 text-[--color-text-body] focus:border-[--color-border] focus:shadow-none"
       />
       <Command.List className="max-h-80 overflow-y-auto p-2">
         <Command.Empty className="px-2 py-4 text-[--color-text-muted]">No results found.</Command.Empty>
 
         <Command.Group
           heading="Go to"
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[--color-text-muted]"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[--color-text-muted]"
         >
           {STATIC_DESTINATIONS.map((dest) => (
             <Command.Item
               key={dest.href}
               value={dest.label}
               onSelect={() => go(dest.href)}
-              className="cursor-pointer rounded-[--radius-sm] px-2 py-1.5 text-[--color-text-body] aria-selected:bg-[--color-surface]"
+              className="cursor-pointer rounded-[--radius-sm] px-2 py-2 text-[--color-text-body] aria-selected:bg-[--color-surface]"
             >
               {dest.label}
             </Command.Item>
@@ -66,14 +66,14 @@ export function CommandPalette({ handoffs, open, onOpenChange }: CommandPaletteP
         {handoffs.length > 0 && (
           <Command.Group
             heading="Handoffs"
-            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[--color-text-muted]"
+            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[--color-text-muted]"
           >
             {handoffs.map((handoff) => (
               <Command.Item
                 key={handoff.id}
                 value={handoff.name}
                 onSelect={() => go(`/handoffs/${handoff.id}`)}
-                className="cursor-pointer rounded-[--radius-sm] px-2 py-1.5 text-[--color-text-body] aria-selected:bg-[--color-surface]"
+                className="cursor-pointer rounded-[--radius-sm] px-2 py-2 text-[--color-text-body] aria-selected:bg-[--color-surface]"
               >
                 {handoff.name}
               </Command.Item>

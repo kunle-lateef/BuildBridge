@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { detectConsistencyOutliers, detectConsistencyOutliersWithSource, type ConsistencySpecInput } from './consistency';
 
+// numericValue mirrors what the AI reports: the number for a plain
+// measurement, null for anything else. Tests can still override it.
 function spec(overrides: Partial<ConsistencySpecInput> = {}): ConsistencySpecInput {
+  const value = overrides.value ?? '8';
+  const asNumber = Number(value);
   return {
     componentName: 'Primary Button',
     category: 'Radius',
     property: 'corner-radius',
-    value: '8',
+    value,
     unit: 'px',
+    numericValue: Number.isNaN(asNumber) ? null : asNumber,
     ...overrides,
   };
 }
@@ -140,5 +145,30 @@ describe('detectConsistencyOutliersWithSource', () => {
     const [outlier] = detectConsistencyOutliersWithSource(specs);
 
     expect(outlier?.source).toEqual(outlierSpec);
+  });
+
+  it('compares numbers only within the same unit', () => {
+    const specs = [
+      spec({ componentName: 'Button A', value: '12', unit: 'px' }),
+      spec({ componentName: 'Button B', value: '12', unit: 'px' }),
+      spec({ componentName: 'Button C', value: '12', unit: '%' }),
+      spec({ componentName: 'Button D', value: '50', unit: '%' }),
+    ];
+
+    // The px group agrees; the % group has only two entries, too few to judge.
+    expect(detectConsistencyOutliers(specs)).toHaveLength(0);
+  });
+
+  it('never parses a number out of a free-text value', () => {
+    const specs = [
+      spec({ componentName: 'Button A', property: 'focus-ring', value: '2', numericValue: 2 }),
+      spec({ componentName: 'Button B', property: 'focus-ring', value: '2', numericValue: 2 }),
+      spec({ componentName: 'Button C', property: 'focus-ring', value: '2px primary, offset 2', numericValue: null }),
+    ];
+
+    // Button C isn't counted as the number 2; it's text, so it isn't in the numeric group at all.
+    const outliers = detectConsistencyOutliersWithSource(specs);
+    expect(outliers.every((outlier) => outlier.source.componentName !== 'Button A')).toBe(true);
+    expect(outliers.some((outlier) => outlier.source.numericValue === 2)).toBe(false);
   });
 });

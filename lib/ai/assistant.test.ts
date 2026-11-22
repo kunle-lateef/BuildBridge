@@ -60,9 +60,10 @@ const baseProjection: DeveloperHandoffProjection = {
       status: 'Open',
       provenance: 'Suggested',
       pinScreenId: null,
+      answer: null,
     },
   ],
-  notes: [{ id: 'note-1', content: 'Reuse the existing button component' }],
+  notes: [{ id: 'note-1', content: 'Reuse the existing button component', componentId: null }],
   screenFlows: [],
   recentUpdates: [],
 };

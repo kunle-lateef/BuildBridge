@@ -365,7 +365,7 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 22,
+            "fontSize": 20,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
@@ -387,7 +387,7 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 22,
+            "fontSize": 20,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
@@ -409,7 +409,7 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 22,
+            "fontSize": 20,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
@@ -431,7 +431,7 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 22,
+            "fontSize": 20,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
@@ -455,7 +455,7 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 18,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
@@ -477,7 +477,7 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 18,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
@@ -499,7 +499,7 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 18,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
@@ -521,7 +521,7 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 18,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
@@ -995,14 +995,14 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1017,14 +1017,14 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1039,14 +1039,14 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1061,14 +1061,14 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1364,7 +1364,7 @@
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0,
-            "lineHeight": 26,
+            "lineHeight": 28,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1386,7 +1386,7 @@
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0,
-            "lineHeight": 26,
+            "lineHeight": 28,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1408,7 +1408,7 @@
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0,
-            "lineHeight": 26,
+            "lineHeight": 28,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1430,7 +1430,7 @@
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0,
-            "lineHeight": 26,
+            "lineHeight": 28,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -1447,7 +1447,7 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 17,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
@@ -1469,7 +1469,7 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 17,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
@@ -1491,7 +1491,7 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 17,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
@@ -1513,7 +1513,7 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 17,
+            "fontSize": 16,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
@@ -1987,14 +1987,14 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -2009,14 +2009,14 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -2031,14 +2031,14 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -2053,14 +2053,14 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -2979,14 +2979,14 @@
         "medium": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 500,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -3001,14 +3001,14 @@
         "regular": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 400,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -3023,14 +3023,14 @@
         "semi bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 600,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"
@@ -3045,14 +3045,14 @@
         "bold": {
           "type": "custom-fontStyle",
           "value": {
-            "fontSize": 13,
+            "fontSize": 14,
             "textDecoration": "none",
             "fontFamily": "Inter",
             "fontWeight": 700,
             "fontStyle": "normal",
             "fontStretch": "normal",
             "letterSpacing": 0.1,
-            "lineHeight": 18,
+            "lineHeight": 20,
             "paragraphIndent": 0,
             "paragraphSpacing": 0,
             "textCase": "none"

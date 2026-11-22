@@ -17,6 +17,7 @@ type SidebarNavLinkProps = {
    */
   icon: ReactNode;
   children: string;
+  count?: number;
 };
 
 /**
@@ -25,7 +26,7 @@ type SidebarNavLinkProps = {
  * layout (icon + label, full-width row, filled pill on the active item)
  * matching the reference dashboards' sidebar pattern.
  */
-export function SidebarNavLink({ href, icon, children }: SidebarNavLinkProps) {
+export function SidebarNavLink({ href, icon, children, count }: SidebarNavLinkProps) {
   const pathname = usePathname();
   const isActive = href === '/handoffs' ? pathname.startsWith('/handoffs') : pathname.startsWith(href);
 
@@ -34,14 +35,17 @@ export function SidebarNavLink({ href, icon, children }: SidebarNavLinkProps) {
       href={href}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-3 rounded-[--radius-md] px-3 py-2 text-[length:var(--font-desktop-body-small-medium-size)] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]',
+        'flex h-9 items-center gap-3 rounded-[--radius-md] px-3 text-[14px] leading-5 transition-colors',
         isActive
-          ? 'bg-[--color-primary-light] text-[--color-primary-dark]'
-          : 'text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary]',
+          ? 'bg-[--color-surface] font-medium text-[--color-text-primary]'
+          : 'text-[--color-text-secondary] hover:bg-[--color-background] hover:text-[--color-text-primary]',
       )}
     >
-      <span className={isActive ? 'text-[--color-primary-dark]' : 'text-[--color-text-muted]'}>{icon}</span>
-      {children}
+      <span className={isActive ? 'text-[--color-text-primary]' : 'text-[--color-text-secondary]'}>{icon}</span>
+      <span className="flex-1">{children}</span>
+      {count !== undefined && count > 0 && (
+        <span className="text-[12px] font-normal leading-4 text-[--color-text-secondary]">{count}</span>
+      )}
     </Link>
   );
 }

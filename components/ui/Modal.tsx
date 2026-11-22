@@ -1,6 +1,5 @@
 'use client';
 
-import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -66,7 +65,7 @@ export function Modal({ open, onClose, title, description, children, className }
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" onClick={onClose} />
+      <div className="absolute inset-0 bg-[--color-text-primary] opacity-40" aria-hidden="true" onClick={onClose} />
       <div
         ref={dialogRef}
         role="dialog"
@@ -74,28 +73,16 @@ export function Modal({ open, onClose, title, description, children, className }
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'relative flex w-full max-w-md flex-col gap-4 rounded-[--radius-lg] border border-[--color-border] bg-[--color-background] p-6 shadow-lg focus:outline-none',
+          'relative flex w-full max-w-[460px] flex-col gap-4 rounded-[12px] bg-white p-6 shadow-lg focus:outline-none',
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <h2
-              id={titleId}
-              className="text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]"
-            >
-              {title}
-            </h2>
-            {description && <p className="text-[--color-text-secondary]">{description}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex-shrink-0 rounded-[--radius-md] p-1 text-[--color-text-muted] hover:bg-[--color-surface] hover:text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
-          >
-            <X aria-hidden="true" size={20} />
-          </button>
+        {/* Figma's dialogs have no ✕: the buttons, Escape and the backdrop close them. */}
+        <div className="flex flex-col gap-3">
+          <h2 id={titleId} className="m-0 text-[16px] font-semibold leading-6 text-[--color-text-primary]">
+            {title}
+          </h2>
+          {description && <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">{description}</p>}
         </div>
         {children}
       </div>

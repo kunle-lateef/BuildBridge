@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <AuthLayout
-      title="Forgot your password?"
-      description="Enter the email on your account and we'll send you a reset link."
-    >
+    <AuthLayout>
       <ForgotPasswordForm />
     </AuthLayout>
   );

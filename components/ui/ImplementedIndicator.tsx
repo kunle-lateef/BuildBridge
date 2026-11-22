@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from '@/components/ui/icons';
 
 /**
  * Read-only twin of components/handoff/ImplementationMarkButton.tsx's
@@ -12,7 +12,7 @@ import { CheckCircle2 } from 'lucide-react';
 export function ImplementedIndicator() {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-[--radius-sm] border border-dashed border-[--color-border] px-1.5 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] text-[--color-text-secondary]"
+      className="inline-flex items-center gap-1 rounded-[--radius-sm] border border-dashed border-[--color-border] px-2 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] text-[--color-text-secondary]"
       title="Marked by a developer through the share link — not verified by you"
     >
       <CheckCircle2 aria-hidden="true" size={12} />

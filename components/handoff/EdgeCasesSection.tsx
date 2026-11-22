@@ -16,6 +16,8 @@ type EdgeCasesSectionProps = {
     status: IssueStatus;
     provenance: ProvenanceType;
     pinScreenId?: string | null;
+    /** The designer's answer; shown as the confirmed behavior. */
+    answer?: string | null;
   }[];
 };
 
@@ -23,7 +25,7 @@ type EdgeCasesSectionProps = {
  * All flagged gaps across every readiness category, not only issues
  * literally tagged "EdgeCases" — this is the one place a developer can see
  * everything BuildBridge identified as missing or ambiguous, matching the
- * product's core "detect gaps" framing. See InteractionsSection.tsx's
+ * product's core "detect gaps" framing. See lib/export/markdown.ts.s
  * comment for the same kind of interpretive-split note.
  */
 export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
@@ -39,7 +41,7 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
       <div className="flex flex-col gap-3">
         {issues.map((issue) => (
           <div key={issue.id} className="flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4">
-            <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2">
               <SeverityBadge severity={issue.severity} />
               <span className="font-medium text-[--color-text-primary]">{issue.title}</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -51,6 +53,11 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
               </div>
             </div>
             <p className="text-[--color-text-secondary]">{issue.description}</p>
+            {issue.answer && (
+              <p className="rounded-[8px] bg-[--color-surface] px-3 py-2 text-[--color-text-body]">
+                <span className="font-medium">Designer&apos;s answer:</span> {issue.answer}
+              </p>
+            )}
             {issue.recommendation && (
               <p className="text-[--color-text-secondary]">
                 <span className="font-medium">Recommendation:</span> {issue.recommendation}

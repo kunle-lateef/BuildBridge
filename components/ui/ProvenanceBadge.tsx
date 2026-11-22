@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 import type { ProvenanceType } from '@/lib/types';
 
 const provenanceBadgeVariants = cva(
-  'inline-flex items-center rounded-[--radius-sm] px-2 py-0.5 text-[length:var(--font-desktop-caption-medium-size)] font-medium',
+  'inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[--radius-sm] px-2 text-[12px] font-medium leading-4',
   {
     variants: {
       provenance: {
@@ -45,6 +45,7 @@ export function ProvenanceBadge({ provenance, className }: ProvenanceBadgeProps)
       className={cn(provenanceBadgeVariants({ provenance }), className)}
       aria-label={ARIA_LABEL[provenance]}
     >
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {LABEL[provenance]}
     </span>
   );

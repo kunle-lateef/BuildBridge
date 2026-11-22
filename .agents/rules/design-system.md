@@ -183,12 +183,13 @@ Every interactive element is reachable by keyboard, with a visible focus state u
 
 ## Logo & Brand Assets
 
-`public/logo/` holds two sets of four files:
+`public/logo/` holds the Figma `10 — Logo` exports (text outlined, so no font dependency):
 
-- `buildbridge-logo*.svg` / `buildbridge-logo-white*.svg` — the full icon+wordmark **lockup**, `viewBox="0 0 650 100"` (6.5:1), with "BuildBridge" baked in as real SVG `<text>`. This is what `components/ui/BrandMark.tsx` actually uses — it treats `size` as height only and derives width from the 6.5:1 ratio, rather than forcing it into a square (which crushes the wordmark to a sliver — a real bug hit and fixed once already, don't reintroduce it).
-- `buildbridge-icon*.svg` / `buildbridge-icon-white*.svg` — the icon glyph only, `viewBox="0 0 100 100"` (the lockup's first 100 units, text dropped), for any context that wants the mark without the wordmark. Not currently referenced by `BrandMark`; kept as a ready-made alternative rather than something to regenerate if this choice changes again.
+- `buildbridge-logo.svg` / `buildbridge-logo-white.svg` — the icon+wordmark **lockup**, `viewBox="0 0 146 28"`. This is what `components/ui/BrandMark.tsx` uses: `size` sets the height and the width follows the 146:28 ratio (never force it into a square, which crushes the wordmark). White is for primary / primary-dark / gradient backgrounds.
+- `buildbridge-icon.svg` / `buildbridge-icon-white.svg` — the mark alone, above 24px.
+- `buildbridge-icon-small.svg` — the mark at 24px and below (heavier strokes); also `app/icon.svg`, the favicon.
 
-Each set has a Desktop and Mobile cut, and a dark-on-light (`buildbridge-logo*`) / light-on-dark (`buildbridge-logo-white*`, for `--color-primary`/`--color-primary-dark`/gradient backgrounds) variant. Never reference these paths directly — use `BrandMark`, which renders both cuts and toggles visibility at the `sm` breakpoint so the right one shows without a client component. The repo-root `Desktop logo/` and `Mobile logo/` folders, if present, are design-handoff drops, not app assets — don't import from them.
+One file per tone scales to every size, so there are no separate desktop/mobile cuts. Never reference these paths directly — use `BrandMark`.
 
 ## What Not to Do
 

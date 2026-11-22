@@ -1,11 +1,11 @@
 'use client';
 
-import { AlertCircle, ArrowRight, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { createScreenFlow, deleteScreenFlow } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
+import { AlertCircle, ArrowRight, Trash2 } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -25,7 +25,7 @@ type ScreenFlowListProps = {
 };
 
 const selectClassName =
-  'h-10 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 text-[--color-text-body] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]';
+  'h-10 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] px-3 text-[--color-text-body]';
 
 /**
  * "This screen leads to that screen" — always designer-authored, since
@@ -69,7 +69,7 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
     }
 
     setLabel('');
-    toast('Flow added.');
+    toast('Flow added');
     router.refresh();
   }
 
@@ -77,7 +77,7 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
     setDeletingId(flowId);
     await deleteScreenFlow(flowId);
     setDeletingId(null);
-    toast('Flow removed.');
+    toast('Flow removed');
     router.refresh();
   }
 
@@ -88,7 +88,7 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
       {flows.length === 0 && <p className="text-[--color-text-muted]">No flows defined yet.</p>}
 
       {flows.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-2">
           {flows.map((flow) => (
             <li
               key={flow.id}
@@ -115,7 +115,7 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
       )}
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-2">
           <span className="text-[--color-text-body]">From</span>
           <select
             value={sourceScreenId}
@@ -129,7 +129,7 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-2">
           <span className="text-[--color-text-body]">To</span>
           <select
             value={targetScreenId}
@@ -156,13 +156,13 @@ export function ScreenFlowList({ handoffId, screens, flows }: ScreenFlowListProp
         </Button>
       </div>
       {sameScreenError && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {sameScreenError}
         </p>
       )}
       {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {error}
         </p>

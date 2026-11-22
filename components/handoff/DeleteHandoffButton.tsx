@@ -1,12 +1,12 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { deleteHandoff } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { AlertCircle } from '@/components/ui/icons';
 
 type DeleteHandoffButtonProps = {
   handoffId: string;
@@ -36,12 +36,12 @@ export function DeleteHandoffButton({ handoffId }: DeleteHandoffButtonProps) {
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <Button type="button" variant="danger" size="sm" onClick={() => setIsConfirmOpen(true)} className="self-start">
         Delete
       </Button>
       {error && (
-        <p role="alert" className="flex items-center gap-1.5 text-[--color-error]">
+        <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
           {error}
         </p>

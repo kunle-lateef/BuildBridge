@@ -15,6 +15,31 @@
   }
 
   /*
+   * One focus style for every control (code-phase-plan.md, Focus states):
+   * keyboard only, a 2px primary outline 2px off the element, following its
+   * own radius. Mouse clicks never show it, since :focus-visible doesn't
+   * match them.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /*
+   * Text fields show focus on their own border instead (2px primary), so
+   * the outline doesn't float around a box that already has an edge. The
+   * inset shadow adds the second pixel without shifting layout. Applies
+   * on :focus, not :focus-visible, because typing needs the cue either way.
+   */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+
+  /*
    * Tailwind's Preflight resets every heading to font-size/weight:
    * inherit, so an <h1>-<h4> with no explicit type-scale class renders as
    * plain body text — most section headers across the dashboard never set

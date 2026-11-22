@@ -1,5 +1,4 @@
-import { AlertOctagon, CheckCircle2, Clock } from 'lucide-react';
-
+import { AlertOctagon, CheckCircle2, Clock } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 type ReadinessScoreDisplayProps = {
@@ -62,7 +61,7 @@ export function ReadinessScoreDisplay({
         >
           {score}%
         </span>
-        <span className={cn('flex items-center gap-1.5', colorClass)}>
+        <span className={cn('flex items-center gap-2', colorClass)}>
           <Icon aria-hidden="true" size={16} />
           {label}
         </span>

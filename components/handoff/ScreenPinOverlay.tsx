@@ -17,6 +17,8 @@ type ScreenPinOverlayProps = {
   name: string;
   imageUrl: string;
   pins: ScreenPin[];
+  /** Guided review: spotlight this pin and dim the rest to 30%, with no floating card. */
+  focusKey?: string | null;
 };
 
 // The same tokens ProvenanceBadge composes (design-system.md's Color
@@ -45,7 +47,7 @@ const PROVENANCE_ARIA: Record<ProvenanceType, string> = {
  * pin placement isn't achievable there for any screen whose aspect ratio
  * isn't the tile's fixed 16:9.
  */
-export function ScreenPinOverlay({ screenId, name, imageUrl, pins }: ScreenPinOverlayProps) {
+export function ScreenPinOverlay({ screenId, name, imageUrl, pins, focusKey }: ScreenPinOverlayProps) {
   const { containerRef, handleImageLoad, containedRect, naturalSize } = useContainedImageRect();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
@@ -59,7 +61,8 @@ export function ScreenPinOverlay({ screenId, name, imageUrl, pins }: ScreenPinOv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.requestId]);
 
-  const activeKey = hoveredKey ?? clickedKey;
+  const activeKey = focusKey !== undefined ? focusKey : (hoveredKey ?? clickedKey);
+  const isFocusMode = focusKey !== undefined;
 
   return (
     <div ref={containerRef} className="relative h-full w-full">
@@ -75,13 +78,14 @@ export function ScreenPinOverlay({ screenId, name, imageUrl, pins }: ScreenPinOv
               containedRect,
             });
             const isActive = activeKey === pin.key;
+            const dash = pin.provenance === 'Inferred' ? 'dashed' : pin.provenance === 'Suggested' ? 'dotted' : 'solid';
             const colorVar = `var(${PROVENANCE_VAR[pin.provenance]})`;
             const panelOnLeft = leftPercent > 50;
 
             return (
               <div
                 key={pin.key}
-                className="absolute"
+                className={cn('absolute transition-opacity', isFocusMode && !isActive && 'opacity-30')}
                 style={{ left: `${leftPercent}%`, top: `${topPercent}%`, transform: 'translate(-50%, -50%)' }}
               >
                 <button
@@ -93,15 +97,17 @@ export function ScreenPinOverlay({ screenId, name, imageUrl, pins }: ScreenPinOv
                   onBlur={() => setHoveredKey(null)}
                   onClick={() => setClickedKey((prev) => (prev === pin.key ? null : pin.key))}
                   className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-[length:var(--font-desktop-caption-bold-size)] font-bold text-white shadow transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-                    isActive ? 'scale-125' : 'hover:scale-110',
+                    'flex h-6 w-6 items-center justify-center rounded-full border-2 bg-white text-[12px] font-medium leading-4 transition-transform',
+                    isActive ? 'scale-125 shadow-[0_0_0_3px_rgba(43,72,200,0.25)]' : 'hover:scale-110',
                   )}
-                  style={{ backgroundColor: colorVar }}
+                  // Figma pins: white, outlined in the provenance colour, solid /
+                  // dashed / dotted by certainty.
+                  style={{ borderColor: colorVar, borderStyle: dash, color: colorVar }}
                 >
                   {pin.number}
                 </button>
 
-                {isActive && (
+                {isActive && !isFocusMode && (
                   <Card
                     floating
                     className={cn(
@@ -109,14 +115,14 @@ export function ScreenPinOverlay({ screenId, name, imageUrl, pins }: ScreenPinOv
                       panelOnLeft ? 'right-full mr-3' : 'left-full ml-3',
                     )}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <span className="font-medium text-[--color-text-primary]">{pin.findings[0]?.label}</span>
                       <ProvenanceBadge provenance={pin.provenance} />
                     </div>
                     {pin.findings.length > 1 && (
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2">
                         {pin.findings.slice(1).map((finding) => (
-                          <div key={`${finding.findingType}-${finding.findingId}`} className="flex items-center gap-1.5">
+                          <div key={`${finding.findingType}-${finding.findingId}`} className="flex items-center gap-2">
                             <ProvenanceBadge provenance={finding.provenance} />
                             <span className="text-[--color-text-secondary]">{finding.label}</span>
                           </div>

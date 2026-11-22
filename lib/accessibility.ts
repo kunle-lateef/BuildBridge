@@ -8,7 +8,7 @@ const MIN_TOUCH_TARGET_PX = 44;
 // open-ended), not a controlled enum, so "is this interactive" is a keyword
 // match rather than an exact one. Flagged for the developer to confirm or
 // extend, matching the existing convention for undecided interpretive lists
-// elsewhere in this codebase (e.g. InteractionsSection.tsx's state split).
+// elsewhere in this codebase (e.g. lib/export/markdown.ts's state split).
 const INTERACTIVE_TYPE_KEYWORDS = [
   'button',
   'input',
@@ -68,6 +68,8 @@ export function checkTouchTargets(components: TouchTargetInput[]): NewIssueFindi
       recommendation: `Increase the tappable area to at least ${MIN_TOUCH_TARGET_PX}×${MIN_TOUCH_TARGET_PX}px, either by resizing the element or adding padding around it.`,
       provenance: 'Detected',
       confidence: 0.85,
+      screenName: component.screenName,
+      componentName: component.componentName,
     });
   }
 
@@ -205,6 +207,8 @@ export async function checkContrast(inputs: ContrastCheckInput[]): Promise<NewIs
           'Verify the actual text/background color contrast (e.g. with a contrast checker) and adjust if it falls below the WCAG AA 4.5:1 minimum.',
         provenance: 'Suggested',
         confidence: CONTRAST_CONFIDENCE,
+        screenName: input.screenName,
+        componentName: input.componentName,
       });
     } catch {
       // An unreadable image or malformed region must not abort every other

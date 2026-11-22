@@ -33,7 +33,7 @@ export function ComponentInstanceCard({
 }: ComponentInstanceCardProps) {
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2">
         <div className="flex items-center gap-2">
           <span className="font-medium text-[--color-text-primary]">{name}</span>
           <span className="text-[--color-text-muted]">{type}</span>

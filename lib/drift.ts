@@ -55,6 +55,7 @@ export async function getPortfolioDrift(userId: string): Promise<PortfolioDriftF
             property: spec.property,
             value: spec.value,
             unit: spec.unit,
+            numericValue: spec.numericValue,
             handoffId: spec.component.handoff.id,
             handoffName: spec.component.handoff.name,
           },

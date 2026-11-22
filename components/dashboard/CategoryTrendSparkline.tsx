@@ -5,21 +5,23 @@ type CategoryTrendSparklineProps = {
 };
 
 /**
- * Hand-rolled inline SVG — no charting library exists in this codebase and
- * a handful of points doesn't warrant adding one. An area fill under a
- * single emphasized line, a faint zero/hundred baseline, and a highlighted
- * endpoint (the current score) rather than a bare unlabeled squiggle.
+ * A quiet one-line trend for a category row (Figma `08 — Insights`, "Last
+ * 10 analyses"): neutral ink, no fill, scaled to its own range so a small
+ * change is still visible; the row's number carries the actual value.
  */
-export function CategoryTrendSparkline({ points, width = 120, height = 32 }: CategoryTrendSparklineProps) {
+export function CategoryTrendSparkline({ points, width = 96, height = 20 }: CategoryTrendSparklineProps) {
   if (points.length < 2) {
-    return <span className="text-[--color-text-muted]">Not enough runs yet</span>;
+    return <span className="text-[12px] leading-4 text-[--color-text-secondary]">Not enough runs yet</span>;
   }
 
+  const scores = points.map((point) => point.score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const span = Math.max(max - min, 10);
   const stepX = width / (points.length - 1);
-  const toY = (score: number) => height - (Math.max(0, Math.min(100, score)) / 100) * height;
-
-  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${index * stepX} ${toY(point.score)}`).join(' ');
-  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+  const toY = (score: number) => 2 + (height - 4) * (1 - (score - min) / span);
+  const line = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${index * stepX} ${toY(point.score)}`).join(' ');
+  const first = points[0] as { score: number };
   const last = points[points.length - 1] as { score: number };
 
   return (
@@ -28,12 +30,9 @@ export function CategoryTrendSparkline({ points, width = 120, height = 32 }: Cat
       width={width}
       height={height}
       role="img"
-      aria-label={`Trend over the last ${points.length} runs, currently ${last.score}%`}
+      aria-label={`From ${first.score}% to ${last.score}% over the last ${points.length} analyses`}
     >
-      <line x1={0} y1={height} x2={width} y2={height} stroke="var(--color-border)" strokeWidth={1} />
-      <path d={areaPath} fill="var(--color-primary-light)" stroke="none" opacity={0.7} />
-      <path d={linePath} fill="none" stroke="var(--color-primary)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={width} cy={toY(last.score)} r={3.5} fill="var(--color-primary)" stroke="var(--color-background)" strokeWidth={1.5} />
+      <path d={line} fill="none" stroke="var(--color-text-body)" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
