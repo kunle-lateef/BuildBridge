@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { ReadinessBreakdown, type BreakdownData } from '@/components/review/ReadinessBreakdown';
 import { HandoffStatusBadge } from '@/components/ui/HandoffStatusBadge';
 import { cn } from '@/lib/cn';
 import type { HandoffStatus } from '@/lib/types';
@@ -17,6 +18,8 @@ type ReviewHeaderProps = {
   actions: ReactNode;
   /** Replaces the readiness line, e.g. while analysis runs or before it starts. */
   statusLine?: ReactNode;
+  /** The working behind the score; when given, the readiness line opens it. */
+  breakdown?: BreakdownData;
 };
 
 /**
@@ -36,6 +39,7 @@ export function ReviewHeader({
   findingCount,
   actions,
   statusLine,
+  breakdown,
 }: ReviewHeaderProps) {
   const isReady = readinessScore !== null && criticalOpenCount === 0;
 
@@ -71,31 +75,39 @@ export function ReviewHeader({
                   </>
                 )}
               </p>
-              <div className="flex items-center gap-3 text-[12px] leading-4 text-[--color-text-secondary]">
-                <span
-                  className="relative block h-1 w-[72px] rounded-full bg-[--color-surface]"
-                  role="meter"
-                  aria-label="Readiness"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={readinessScore}
-                >
-                  <span
-                    className={cn('block h-full rounded-full', isReady ? 'bg-[--color-success]' : 'bg-[--color-warning]')}
-                    style={{ width: `${readinessScore}%` }}
-                  />
-                  {!isReady && (
+              {(() => {
+                const line = (
+                  <span className="flex items-center gap-3 text-[12px] leading-4 text-[--color-text-secondary]">
                     <span
-                      aria-hidden="true"
-                      className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 rounded-full bg-[--color-error]"
-                      style={{ left: `${readinessScore}%` }}
-                    />
-                  )}
-                </span>
-                <span>
-                  {readinessScore}% readiness · {reviewedCount} of {findingCount} reviewed
-                </span>
-              </div>
+                      className="relative block h-1 w-[72px] rounded-full bg-[--color-surface]"
+                      role="meter"
+                      aria-label="Readiness"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={readinessScore}
+                    >
+                      <span
+                        className={cn('block h-full rounded-full', isReady ? 'bg-[--color-success]' : 'bg-[--color-warning]')}
+                        style={{ width: `${readinessScore}%` }}
+                      />
+                      {!isReady && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 rounded-full bg-[--color-error]"
+                          style={{ left: `${readinessScore}%` }}
+                        />
+                      )}
+                    </span>
+                    <span>
+                      <span className={breakdown ? 'underline decoration-dotted underline-offset-2' : undefined}>
+                        {readinessScore}% readiness
+                      </span>{' '}
+                      · {reviewedCount} of {findingCount} reviewed
+                    </span>
+                  </span>
+                );
+                return breakdown ? <ReadinessBreakdown data={breakdown}>{line}</ReadinessBreakdown> : line;
+              })()}
             </div>
           )}
         </div>
