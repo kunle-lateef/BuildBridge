@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { AlertCircle, Send } from '@/components/ui/icons';
+import { AlertCircle, ArrowRight, Send, X } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/cn';
 
@@ -14,8 +14,16 @@ type ChatMessage = {
   content: string;
 };
 
+/** A finding the designer asked about, e.g. "Pay button · Loading state". */
+export type AskAbout = { label: string; suggestions: string[] };
+
+/** Fired by a finding card's "Ask about this finding"; the header's Ask BuildBridge opens with it. */
+export const ASK_ABOUT_EVENT = 'buildbridge:ask-about';
+
 type AssistantPanelProps = {
   handoffId: string;
+  about?: AskAbout | null;
+  onClearAbout?: () => void;
   className?: string;
 };
 
@@ -27,17 +35,21 @@ type AssistantPanelProps = {
  * not used outside that context (the plan flagged this placement as
  * undecided; this is the call made, not a specified one).
  */
-export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
+export function AssistantPanel({ handoffId, about = null, onClearAbout, className }: AssistantPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function sendMessage(event: React.FormEvent) {
-    event.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+  async function sendMessage(event: React.FormEvent | null, text?: string) {
+    event?.preventDefault();
+    const question = (text ?? input).trim();
+    if (!question || isStreaming) return;
+    // The finding being asked about travels with the question, visibly, so
+    // the answer is about the right thing and the history reads the same
+    // as what was sent.
+    const trimmed = about ? `About ${about.label}: ${question}` : question;
 
     setError(null);
     setInput('');
@@ -93,6 +105,36 @@ export function AssistantPanel({ handoffId, className }: AssistantPanelProps) {
         <p className="shrink-0 text-[--color-text-muted]">
           Ask about this handoff&apos;s confirmed data. Scoped to this handoff only.
         </p>
+
+        {about && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-[6px] bg-[--color-surface] px-2.5 py-1 text-[12px] leading-4">
+            <span className="text-[--color-text-secondary]">Asking about</span>
+            <span className="text-[--color-text-primary]">{about.label}</span>
+            {onClearAbout && (
+              <button type="button" onClick={onClearAbout} aria-label="Stop asking about this finding" className="text-[--color-text-secondary] hover:text-[--color-text-primary]">
+                <X aria-hidden="true" size={12} />
+              </button>
+            )}
+          </span>
+        )}
+
+        {about && messages.length === 0 && about.suggestions.length > 0 && (
+          <div className="flex shrink-0 flex-col gap-2">
+            <h3 className="m-0 text-[11px] font-semibold uppercase leading-4 tracking-[0.12em] text-[--color-text-secondary]">Try asking</h3>
+            {about.suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                disabled={isStreaming}
+                onClick={() => void sendMessage(null, suggestion)}
+                className="flex items-center justify-between gap-3 rounded-[8px] border border-[--color-border] bg-white px-3 py-3 text-left text-[14px] leading-5 text-[--color-text-primary] hover:bg-[--color-background]"
+              >
+                {suggestion}
+                <ArrowRight aria-hidden="true" size={14} className="shrink-0 text-[--color-text-secondary]" />
+              </button>
+            ))}
+          </div>
+        )}
 
         {messages.length > 0 && (
           <div className="flex flex-col gap-2">

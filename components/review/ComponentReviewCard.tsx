@@ -1,12 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { addDesignerNote } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
+import { ASK_ABOUT_EVENT, type AskAbout } from '@/components/review/AssistantPanel';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
 import { DecisionControls } from '@/components/review/DecisionControls';
-import { ArrowDown, ArrowRight, Check } from '@/components/ui/icons';
+import { Button } from '@/components/ui/Button';
+import { AlertCircle, ArrowDown, ArrowRight, Check, MessageSquare, StickyNote } from '@/components/ui/icons';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
+import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/cn';
 import type { FindingType, ProvenanceType, ReviewStatus } from '@/lib/types';
 
@@ -21,6 +27,7 @@ export type SpecificationItem = {
 };
 
 type ComponentReviewCardProps = {
+  handoffId: string;
   id: string;
   name: string;
   type: string;
@@ -67,6 +74,7 @@ const PIN_STYLE: Record<ProvenanceType, string> = {
  * row (AGENTS.md #2).
  */
 export function ComponentReviewCard({
+  handoffId,
   id,
   name,
   type,
@@ -201,10 +209,16 @@ export function ComponentReviewCard({
       </button>
 
       {isOpen && (
-        <div className="flex flex-col pb-3">
+        <div className="flex flex-col">
           {renderGroup('This component', [componentRow])}
           {renderGroup('Specifications', specRows)}
           {renderGroup('States', stateRows)}
+          <CardFooter
+            handoffId={handoffId}
+            componentId={id}
+            componentName={name}
+            selectedRow={[componentRow, ...specRows, ...stateRows].find((row) => `${row.findingType}:${row.id}` === selectedKey) ?? null}
+          />
         </div>
       )}
     </div>
@@ -244,6 +258,106 @@ function FindingRow({ row, isSelected, onSelect }: { row: Row; isSelected: boole
           className="pl-[104px]"
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The card's footer (Figma `04 — Handoff`): "Add note" attaches a note to
+ * this component (it appears on the Notes tab and, for the developer, next
+ * to this component on the share view); "Ask about this finding" opens the
+ * assistant on this component, or on the selected value if there is one.
+ */
+function CardFooter({ handoffId, componentId, componentName, selectedRow }: {
+  handoffId: string; componentId: string; componentName: string; selectedRow: Row | null;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isWriting, setIsWriting] = useState(false);
+  const [note, setNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function saveNote() {
+    setIsSaving(true);
+    setError(null);
+    const result = await addDesignerNote({ handoffId, componentId, content: note });
+    setIsSaving(false);
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    setNote('');
+    setIsWriting(false);
+    toast('Note added');
+    router.refresh();
+  }
+
+  function ask() {
+    const row = selectedRow && selectedRow.findingType !== 'Component' ? selectedRow : null;
+    const rowName = row ? `${row.label}${row.findingType === 'ComponentState' ? ' state' : ''}` : null;
+    const detail: AskAbout = {
+      label: rowName ? `${componentName} · ${rowName}` : componentName,
+      suggestions: rowName
+        ? [
+            `Is the ${componentName} ${rowName.toLowerCase()} confirmed, or still a suggestion?`,
+            `What’s still undecided on the ${componentName}?`,
+            `What would a developer still need to ask about the ${componentName}?`,
+          ]
+        : [
+            `What’s still undecided on the ${componentName}?`,
+            `Which values on the ${componentName} are confirmed so far?`,
+            `What would a developer still need to ask about the ${componentName}?`,
+          ],
+    };
+    window.dispatchEvent(new CustomEvent(ASK_ABOUT_EVENT, { detail }));
+  }
+
+  const noteError = note.trim().length === 0 ? 'Write the note first.' : null;
+
+  return (
+    <div className="mt-3 border-t border-[--color-border] bg-[--color-background]">
+      {isWriting && (
+        <div className="flex flex-col gap-2 px-4 pt-3">
+          <Textarea
+            id={`component-note-${componentId}`}
+            label={`Note on ${componentName}`}
+            hideLabel
+            rows={2}
+            autoFocus
+            maxLength={2000}
+            placeholder={`A note for the developer about the ${componentName}…`}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          {error && (
+            <p role="alert" className="m-0 flex items-center gap-2 text-[12px] text-[--color-error]">
+              <AlertCircle aria-hidden="true" size={12} />
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" disabled={isSaving || !!noteError} onClick={() => void saveNote()}>
+              {isSaving ? 'Adding…' : 'Add note'}
+            </Button>
+            <Button type="button" size="sm" variant="secondary" disabled={isSaving} onClick={() => { setIsWriting(false); setNote(''); setError(null); }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-4 px-4 py-3">
+        {!isWriting && (
+          <button type="button" onClick={() => setIsWriting(true)} className="flex items-center gap-2 text-[14px] font-medium leading-5 text-[--color-text-body] hover:text-[--color-text-primary]">
+            <StickyNote aria-hidden="true" size={14} className="text-[--color-text-secondary]" />
+            Add note
+          </button>
+        )}
+        <button type="button" onClick={ask} className="flex items-center gap-2 text-[14px] font-medium leading-5 text-[--color-text-body] hover:text-[--color-text-primary]">
+          <MessageSquare aria-hidden="true" size={14} className="text-[--color-text-secondary]" />
+          Ask about this finding
+        </button>
+      </div>
     </div>
   );
 }

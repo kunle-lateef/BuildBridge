@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AssistantDrawer } from '@/components/review/AssistantDrawer';
+import { ASK_ABOUT_EVENT, type AskAbout } from '@/components/review/AssistantPanel';
 import { Sparkles } from '@/components/ui/icons';
 
 type AskBuildBridgeFabProps = {
@@ -12,13 +13,25 @@ type AskBuildBridgeFabProps = {
 };
 
 /**
- * Replaces the old bottom-of-page "Ask BuildBridge" section — on a handoff
- * with real content that section was the last of ~10 stacked sections,
- * reachable only after scrolling past everything else. A fixed trigger
- * keeps the assistant one click away regardless of scroll position.
+ * Opens the handoff's assistant. Also opens it when a finding card's "Ask
+ * about this finding" fires ASK_ABOUT_EVENT, so the assistant starts with
+ * that finding and a few questions to try (Figma `04 — Handoff /
+ * Assistant (from a finding)`).
  */
 export function AskBuildBridgeFab({ handoffId, variant = 'fab' }: AskBuildBridgeFabProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [about, setAbout] = useState<AskAbout | null>(null);
+
+  useEffect(() => {
+    function onAsk(event: Event) {
+      const detail = (event as CustomEvent<AskAbout>).detail;
+      if (!detail?.label) return;
+      setAbout(detail);
+      setIsOpen(true);
+    }
+    window.addEventListener(ASK_ABOUT_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_ABOUT_EVENT, onAsk);
+  }, []);
 
   return (
     <>
@@ -35,7 +48,13 @@ export function AskBuildBridgeFab({ handoffId, variant = 'fab' }: AskBuildBridge
         <span className={variant === 'text' ? undefined : 'hidden sm:inline'}>Ask BuildBridge</span>
       </button>
 
-      <AssistantDrawer open={isOpen} onClose={() => setIsOpen(false)} handoffId={handoffId} />
+      <AssistantDrawer
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        handoffId={handoffId}
+        about={about}
+        onClearAbout={() => setAbout(null)}
+      />
     </>
   );
 }

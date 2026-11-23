@@ -159,7 +159,7 @@ export function GapCard({ gap, impact, isLast }: GapCardProps) {
             <Button
               type="button"
               disabled={isSubmitting || Boolean(answerError)}
-              onClick={() => void decide('Override', 'Answer saved.', answer.trim())}
+              onClick={() => void decide('Override', 'Answer saved', answer.trim())}
             >
               {isSubmitting ? 'Saving…' : 'Save answer'}
             </Button>
@@ -173,7 +173,7 @@ export function GapCard({ gap, impact, isLast }: GapCardProps) {
               <button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => void decide('Confirm', 'Kept open.')}
+                onClick={() => void decide('Confirm', 'Kept open')}
                 className="font-medium text-[--color-text-body] hover:underline"
               >
                 Keep open
@@ -182,7 +182,7 @@ export function GapCard({ gap, impact, isLast }: GapCardProps) {
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => void decide('Reject', 'Marked as not a gap.')}
+              onClick={() => void decide('Reject', 'Marked as not a gap')}
               className="font-medium text-[--color-text-body] hover:underline"
             >
               Not a gap

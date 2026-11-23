@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { ComponentReviewCard, type SpecificationItem } from '@/components/review/ComponentReviewCard';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
 import { GapCard, isOpenGap, type PanelGap } from '@/components/review/GapCard';
+import { ReanalysisChangesPanel, ReanalysisNotice, type ReanalysisSummary } from '@/components/review/ReanalysisChanges';
 import { ShortcutHints } from '@/components/review/ReviewShortcuts';
 import { CheckCircle2 } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
@@ -13,6 +14,7 @@ import type { ProvenanceType, ReviewStatus } from '@/lib/types';
 export type { PanelGap };
 
 export type PanelComponent = {
+  handoffId: string;
   id: string;
   name: string;
   type: string;
@@ -32,6 +34,8 @@ type FindingsPanelProps = {
   reviewedCount: number;
   /** Shown above the lists, e.g. the analysis controls before the first run. */
   notice?: ReactNode;
+  /** What the latest re-analysis changed, while something there still needs you. */
+  reanalysis?: ReanalysisSummary | null;
 };
 
 const hasUnreviewed = (component: PanelComponent) =>
@@ -49,14 +53,23 @@ const hasReviewed = (component: PanelComponent) =>
  * 1440"): To review / Reviewed, then gaps as compact rows with what
  * answering each one does to readiness, then components.
  */
-export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, notice }: FindingsPanelProps) {
+export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, notice, reanalysis = null }: FindingsPanelProps) {
   const [view, setView] = useState<'toReview' | 'reviewed'>('toReview');
+  const [showChanges, setShowChanges] = useState(false);
   const criticalOpenCount = gaps.filter((gap) => gap.severity === 'Critical' && isOpenGap(gap)).length;
 
   const visibleGaps = gaps.filter((gap) => (view === 'toReview' ? isOpenGap(gap) : !isOpenGap(gap)));
   const visibleComponents = components.filter((component) =>
     view === 'toReview' ? hasUnreviewed(component) : hasReviewed(component),
   );
+
+  if (showChanges && reanalysis) {
+    return (
+      <aside data-findings-panel className="flex min-w-0 flex-col overflow-y-auto rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
+        <ReanalysisChangesPanel summary={reanalysis} onBack={() => setShowChanges(false)} />
+      </aside>
+    );
+  }
 
   return (
     <aside data-findings-panel className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
@@ -90,6 +103,7 @@ export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, 
 
       <div className="flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-3 [&>*]:shrink-0">
         {notice}
+        {reanalysis && <ReanalysisNotice summary={reanalysis} onOpen={() => setShowChanges(true)} />}
 
         {visibleGaps.length > 0 && (
           <>
