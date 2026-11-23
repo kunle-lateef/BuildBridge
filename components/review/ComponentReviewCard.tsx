@@ -171,6 +171,7 @@ export function ComponentReviewCard({
     >
       <button
         type="button"
+        data-review-nav="component"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         className={cn('flex w-full items-center gap-3 px-4 py-3 text-left', isOpen && 'border-b border-[--color-border]')}
@@ -212,8 +213,8 @@ export function ComponentReviewCard({
 
 function FindingRow({ row, isSelected, onSelect }: { row: Row; isSelected: boolean; onSelect: () => void }) {
   return (
-    <div className={cn('flex flex-col gap-2 px-4 py-2 pr-3', isSelected && 'bg-[--color-background]')}>
-      <button type="button" onClick={onSelect} aria-expanded={isSelected} className="flex items-center gap-2 text-left">
+    <div data-finding-row className={cn('flex flex-col gap-2 px-4 py-2 pr-3', isSelected && 'bg-[--color-background]')}>
+      <button type="button" data-review-nav="row" onClick={onSelect} aria-expanded={isSelected} className="flex items-center gap-2 text-left">
         <span className="w-[96px] shrink-0 truncate text-[14px] leading-5 text-[--color-text-secondary]">{row.label}</span>
         <span
           className={cn(

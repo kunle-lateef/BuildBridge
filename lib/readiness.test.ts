@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateReadiness, deriveHandoffStatus, rankNextBestActions } from './readiness';
+import { calculateReadiness, deriveHandoffStatus, explainReadiness, rankNextBestActions } from './readiness';
 
 describe('calculateReadiness', () => {
   it('scores a clean handoff at 100 with no unresolved critical issue', () => {
@@ -186,5 +186,45 @@ describe('rankNextBestActions', () => {
 
     const deltas = ranked.map((action) => action.delta);
     expect(deltas).toEqual([...deltas].sort((a, b) => b - a));
+  });
+});
+
+describe('explainReadiness', () => {
+  const open = (severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Recommendation', category: Parameters<typeof calculateReadiness>[0][number]['category']) =>
+    ({ severity, category, status: 'Open' as const });
+
+  it('reproduces the Figma example: (60 + 80 + 80 + 80 + 80 + 90) ÷ 6 = 78.3, shown as 78%', () => {
+    const explanation = explainReadiness([
+      open('Critical', 'EdgeCases'),
+      open('High', 'VisualSpecifications'),
+      open('High', 'ResponsiveBehavior'),
+      open('High', 'InteractionStates'),
+      open('High', 'Accessibility'),
+      open('Medium', 'Components'),
+    ]);
+
+    expect(explanation.overall).toBe(78);
+    expect(explanation.exactAverage).toBeCloseTo(78.33, 2);
+    expect(explanation.hasUnresolvedCritical).toBe(true);
+    expect(explanation.categories.map((c) => c.score)).toEqual([60, 80, 80, 80, 80, 90]);
+    expect(explanation.categories[0]).toEqual({ category: 'EdgeCases', score: 60, openGaps: { Critical: 1 }, deducted: 40 });
+  });
+
+  it('always agrees with calculateReadiness, ignores closed gaps, and reports the floor at 0', () => {
+    const issues = [
+      open('Critical', 'Accessibility'),
+      open('Critical', 'Accessibility'),
+      open('Critical', 'Accessibility'),
+      { severity: 'High' as const, category: 'Components' as const, status: 'Resolved' as const },
+      open('Recommendation', 'Components'),
+    ];
+    const explanation = explainReadiness(issues);
+    const accessibility = explanation.categories.find((c) => c.category === 'Accessibility');
+
+    expect(explanation.overall).toBe(calculateReadiness(issues).overall);
+    expect(accessibility).toEqual({ category: 'Accessibility', score: 0, openGaps: { Critical: 3 }, deducted: 100 });
+    expect(explanation.categories.find((c) => c.category === 'Components')).toEqual({
+      category: 'Components', score: 100, openGaps: { Recommendation: 1 }, deducted: 0,
+    });
   });
 });

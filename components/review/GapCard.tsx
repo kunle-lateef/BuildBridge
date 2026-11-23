@@ -78,6 +78,7 @@ export function GapCard({ gap, impact, isLast }: GapCardProps) {
       <div id={`issue-${gap.id}`} className={cn('scroll-mt-20', !isLast && 'border-b border-[--color-border]')}>
         <button
           type="button"
+          data-review-nav="gap"
           onClick={() => setIsOpen(true)}
           aria-expanded={false}
           className="flex w-full items-center gap-2 p-3 text-left hover:bg-[--color-background]"

@@ -43,7 +43,7 @@ export const READINESS_CATEGORIES: ReadinessCategory[] = [
   'Accessibility',
 ];
 
-const SEVERITY_DEDUCTIONS: Record<IssueSeverity, number> = {
+export const SEVERITY_DEDUCTIONS: Record<IssueSeverity, number> = {
   Critical: 40,
   High: 20,
   Medium: 10,
@@ -106,6 +106,53 @@ export function calculateReadiness(issues: ReadinessInputIssue[]): ReadinessResu
   );
 
   return { version: READINESS_ALGORITHM_VERSION, overall, hasUnresolvedCritical, categories };
+}
+
+export type ReadinessCategoryExplanation = {
+  category: ReadinessCategory;
+  score: number;
+  /** Open gaps in this category by severity; severities with none are left out. */
+  openGaps: Partial<Record<IssueSeverity, number>>;
+  /** Points actually taken off (100 − score), after the floor at 0. */
+  deducted: number;
+};
+
+export type ReadinessExplanation = {
+  version: number;
+  overall: number;
+  /** The unrounded average, e.g. 78.33, for "= 78.3, shown as 78%". */
+  exactAverage: number;
+  hasUnresolvedCritical: boolean;
+  /** Lowest score first, the order the Figma breakdown lists them. */
+  categories: ReadinessCategoryExplanation[];
+};
+
+/**
+ * The working behind a readiness score, for the "How 78% is worked out"
+ * panel (Figma `04 — Handoff / Readiness breakdown`). Built on
+ * calculateReadiness itself, so the explanation can never disagree with
+ * the score it explains.
+ */
+export function explainReadiness(issues: ReadinessInputIssue[]): ReadinessExplanation {
+  const result = calculateReadiness(issues);
+  const open = issues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Dismissed');
+
+  const categories = READINESS_CATEGORIES.map((category) => {
+    const openGaps: Partial<Record<IssueSeverity, number>> = {};
+    for (const issue of open) {
+      if (issue.category === category) openGaps[issue.severity] = (openGaps[issue.severity] ?? 0) + 1;
+    }
+    const score = result.categories[category];
+    return { category, score, openGaps, deducted: 100 - score };
+  }).sort((a, b) => a.score - b.score || READINESS_CATEGORIES.indexOf(a.category) - READINESS_CATEGORIES.indexOf(b.category));
+
+  return {
+    version: result.version,
+    overall: result.overall,
+    exactAverage: READINESS_CATEGORIES.reduce((sum, category) => sum + result.categories[category], 0) / READINESS_CATEGORIES.length,
+    hasUnresolvedCritical: result.hasUnresolvedCritical,
+    categories,
+  };
 }
 
 type NextBestAction = {

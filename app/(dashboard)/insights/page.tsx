@@ -11,21 +11,14 @@ import { cn } from '@/lib/cn';
 import { getPortfolioDrift } from '@/lib/drift';
 import { getPortfolioInsights } from '@/lib/insights';
 import { READINESS_CATEGORIES } from '@/lib/readiness';
+import { READINESS_CATEGORY_LABEL } from '@/lib/readinessLabels';
 import type { IssueSeverity } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Insights — BuildBridge',
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  VisualSpecifications: 'Visual specifications',
-  Components: 'Components',
-  ResponsiveBehavior: 'Responsive behavior',
-  InteractionStates: 'Interaction states',
-  EdgeCases: 'Edge cases',
-  Accessibility: 'Accessibility',
-};
-
+const CATEGORY_LABEL = READINESS_CATEGORY_LABEL;
 /** The readiness formula's "ready" line, marked on every category bar. */
 const READY_THRESHOLD = 85;
 

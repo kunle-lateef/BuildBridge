@@ -23,6 +23,7 @@ import type { GuidedItem } from '@/components/review/GuidedReview';
 import { ResponsiveRuleList } from '@/components/review/ResponsiveRuleList';
 import { ReviewCanvas } from '@/components/review/ReviewCanvas';
 import { ReviewHeader, ReviewTabs, type ReviewTab } from '@/components/review/ReviewHeader';
+import { ReviewShortcuts } from '@/components/review/ReviewShortcuts';
 import { ReviewWorkspace } from '@/components/review/ReviewWorkspace';
 import { RunBanner } from '@/components/review/RunBanner';
 import { ShareHandoffButton } from '@/components/review/ShareHandoffButton';
@@ -32,7 +33,7 @@ import { getAnalysisChangelog } from '@/lib/changelog';
 import { db } from '@/lib/db';
 import { getGapAnswers } from '@/lib/gapAnswers';
 import { getLatestDecisions } from '@/lib/latestDecisions';
-import { rankNextBestActions } from '@/lib/readiness';
+import { explainReadiness, rankNextBestActions, SEVERITY_DEDUCTIONS } from '@/lib/readiness';
 import { buildScreenPins } from '@/lib/screenPins';
 import { createSignedReadUrl } from '@/lib/storage';
 import type { AnalysisRunStatus, ProvenanceType } from '@/lib/types';
@@ -593,6 +594,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
           name={handoff.name}
           status={handoff.status}
           readinessScore={handoff.readinessScore}
+          breakdown={handoff.readinessScore === null ? undefined : { ...explainReadiness(issues), deductions: SEVERITY_DEDUCTIONS }}
           criticalOpenCount={unresolvedCriticalCount}
           reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
           findingCount={allFindings.length + issues.length}
@@ -639,6 +641,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
           ]}
         />
 
+        {tab === 'review' && !isGuided && <ReviewShortcuts />}
         {tab === 'review' && (
           <ReviewWorkspace
             handoffId={handoff.id}

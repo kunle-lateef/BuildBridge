@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { ComponentReviewCard, type SpecificationItem } from '@/components/review/ComponentReviewCard';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
 import { GapCard, isOpenGap, type PanelGap } from '@/components/review/GapCard';
+import { ShortcutHints } from '@/components/review/ReviewShortcuts';
 import { CheckCircle2 } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 import type { ProvenanceType, ReviewStatus } from '@/lib/types';
@@ -58,7 +59,7 @@ export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, 
   );
 
   return (
-    <aside className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
+    <aside data-findings-panel className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
       <div className="flex items-center justify-between gap-3 border-b border-[--color-border] py-3 pl-4 pr-3">
         <h2 className="m-0 text-[14px] font-medium leading-5 text-[--color-text-primary]">Findings</h2>
         <div role="radiogroup" aria-label="Show findings" className="flex gap-0.5 rounded-[8px] bg-[--color-surface] p-0.5">
@@ -130,6 +131,7 @@ export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, 
           </p>
         )}
       </div>
+      <ShortcutHints />
     </aside>
   );
 }

@@ -27,10 +27,10 @@ type PendingAction = 'Modify' | 'Override' | null;
  * AnalysisRun (enforced in lib/decisions.ts, not here).
  */
 const ACTION_MESSAGE: Record<'Confirm' | 'Modify' | 'Reject' | 'Override', string> = {
-  Confirm: 'Confirmed.',
-  Modify: 'Modified.',
-  Reject: 'Rejected.',
-  Override: 'Overridden.',
+  Confirm: 'Confirmed',
+  Modify: 'Modified',
+  Reject: 'Rejected',
+  Override: 'Overridden',
 };
 
 export function DecisionControls({
@@ -113,6 +113,7 @@ export function DecisionControls({
           <button
             key={action}
             type="button"
+            data-decision={action}
             disabled={isSubmitting}
             onClick={() => (action === 'Modify' ? setPendingAction('Modify') : void submit(action))}
             className={cn(

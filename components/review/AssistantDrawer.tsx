@@ -92,6 +92,10 @@ export function AssistantDrawer({ open, onClose, handoffId }: AssistantDrawerPro
         role="dialog"
         aria-modal="true"
         aria-label="Ask BuildBridge"
+        // Closed, it's only slid off-screen: hide it from assistive tech and
+        // focus so it isn't announced (or treated) as an open modal.
+        aria-hidden={!open}
+        inert={!open}
         tabIndex={-1}
         className={cn(
           'fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l border-[--color-border] bg-[--color-background] shadow-lg transition-transform duration-300 ease-out focus:outline-none sm:w-[440px]',
