@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { DeveloperFlagForm } from '@/components/handoff/DeveloperFlagForm';
@@ -9,6 +10,7 @@ import { ScreenPinProvider } from '@/components/handoff/ScreenPinProvider';
 import { WhatsChangedBanner } from '@/components/handoff/WhatsChangedBanner';
 import { ShareComponentTable, type ShareRow } from '@/components/share/ShareComponentTable';
 import { ShareTopBar } from '@/components/share/ShareTopBar';
+import { buttonVariants } from '@/components/ui/Button';
 import type { DeveloperHandoffProjection } from '@/lib/share';
 
 type DeveloperViewProps = {
@@ -18,6 +20,8 @@ type DeveloperViewProps = {
   downloadHref: string;
   /** Rendered above the top bar, e.g. the preview's "Preview only" notice. */
   notice?: ReactNode;
+  /** The public /example page (Figma `05 — Share view / Example handoff`): made-up data, flagging off. */
+  isExample?: boolean;
 };
 
 const isDecided = (row: ShareRow) => row.reviewStatus === 'Confirmed' || row.reviewStatus === 'Modified';
@@ -28,7 +32,7 @@ const isDecided = (row: ShareRow) => row.reviewStatus === 'Confirmed' || row.rev
  * preview can never show something different from what a developer sees.
  * Only lib/share.ts's projection reaches it.
  */
-export function DeveloperView({ projection, shareToken, downloadHref, notice }: DeveloperViewProps) {
+export function DeveloperView({ projection, shareToken, downloadHref, notice, isExample = false }: DeveloperViewProps) {
   const openIssues = projection.issues.filter((issue) => issue.status === 'Open' || issue.status === 'InReview');
   const criticalOpen = openIssues.filter((issue) => issue.severity === 'Critical').length;
   const screenNameById = new Map(projection.screens.map((screen) => [screen.id, screen.name]));
@@ -90,7 +94,12 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice }: 
     <ScreenPinProvider>
       <div className="min-h-screen bg-white">
         {notice}
-        <ShareTopBar shareToken={shareToken} name={projection.name} checklist={checklist} downloadHref={downloadHref} />
+        <ShareTopBar shareToken={shareToken} name={projection.name} checklist={checklist} downloadHref={downloadHref} isExample={isExample} />
+        {isExample && (
+          <p className="m-0 border-b border-[--color-border] bg-[--color-primary-light] px-5 py-2.5 text-center text-[12px] leading-4 text-[--color-text-body]">
+            This is an example handoff with made-up data. It’s what a developer sees when a designer shares a link.
+          </p>
+        )}
         <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-10 px-5 py-8 lg:grid-cols-[220px_minmax(0,780px)] lg:px-8">
           <nav aria-label="On this handoff" className="hidden lg:block">
             <div className="sticky top-20 flex flex-col gap-0.5">
@@ -105,6 +114,14 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice }: 
                   {item.count !== undefined && <span className="text-[12px] leading-4">{item.count}</span>}
                 </a>
               ))}
+              {isExample && (
+                <div className="mt-4 flex flex-col gap-1 border-t border-[--color-border] px-3 pt-4">
+                  <span className="text-[12px] font-medium leading-4 text-[--color-text-secondary]">Flags</span>
+                  <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+                    Flagging is off in this example. On a real handoff, developers flag any value and the designer gets it.
+                  </p>
+                </div>
+              )}
             </div>
           </nav>
 
@@ -213,6 +230,17 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice }: 
               <RecentUpdatesSection updates={projection.recentUpdates} />
             </div>
             {shareToken && <DeveloperFlagForm shareToken={shareToken} />}
+            {isExample && (
+              <section className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[--color-border] px-5 py-5">
+                <div className="flex max-w-[460px] flex-col gap-1">
+                  <h2 className="m-0 text-[16px] font-semibold leading-6 text-[--color-text-primary]">Make one for your own screens</h2>
+                  <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">
+                    Upload finished screens. You review what BuildBridge finds, then send the developer a link like this one.
+                  </p>
+                </div>
+                <Link href="/sign-up" className={buttonVariants({ variant: 'primary' })}>Start a handoff</Link>
+              </section>
+            )}
           </main>
         </div>
       </div>

@@ -40,7 +40,7 @@ type DriftSpecInput = ConsistencySpecInput & { handoffId: string; handoffName: s
 export async function getPortfolioDrift(userId: string): Promise<PortfolioDriftFinding[]> {
   const specs = await db.specification.findMany({
     where: {
-      component: { handoff: { ownerId: userId, status: { not: 'Archived' } } },
+      component: { handoff: { ownerId: userId, status: { not: 'Archived' }, isExample: false } },
       reviewStatus: { not: 'Rejected' },
     },
     include: { component: { include: { handoff: { select: { id: true, name: true } } } } },

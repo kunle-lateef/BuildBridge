@@ -16,6 +16,7 @@ type ReviewWorkspaceProps = {
   guidedItems: GuidedItem[];
   isBlocked: boolean;
   shareButton: ReactNode;
+  isExample?: boolean;
 };
 
 /**
@@ -23,7 +24,7 @@ type ReviewWorkspaceProps = {
  * swapped for the guided panel, and the canvas follows the finding being
  * reviewed: it switches to that screen and dims every other pin.
  */
-export function ReviewWorkspace({ handoffId, screens, panel, isGuided, guidedItems, isBlocked, shareButton }: ReviewWorkspaceProps) {
+export function ReviewWorkspace({ handoffId, screens, panel, isGuided, guidedItems, isBlocked, shareButton, isExample = false }: ReviewWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [focus, setFocus] = useState<GuidedItem['pin']>(null);
@@ -45,6 +46,7 @@ export function ReviewWorkspace({ handoffId, screens, panel, isGuided, guidedIte
           onFocus={setFocus}
           onExit={exit}
           shareButton={shareButton}
+          isExample={isExample}
         />
       ) : (
         <Fragment key="panel">{panel}</Fragment>

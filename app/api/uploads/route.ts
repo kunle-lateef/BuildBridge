@@ -76,6 +76,13 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  if (handoff.isExample) {
+    return NextResponse.json(
+      { ok: false, error: { code: 'example_handoff', message: 'You can’t add screens to the example. Start your own handoff instead.' } },
+      { status: 400 },
+    );
+  }
+
   const extension = EXTENSION_BY_MEDIA_TYPE[mediaType];
   // Random key, never the client's filename — see security.md's File
   // Uploads section.

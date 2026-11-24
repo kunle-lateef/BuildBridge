@@ -11,6 +11,7 @@ import { MoreHorizontal } from '@/components/ui/icons';
 type HandoffActionsMenuProps = {
   handoffId: string;
   isArchived: boolean;
+  isExample?: boolean;
 };
 
 /**
@@ -20,7 +21,7 @@ type HandoffActionsMenuProps = {
  * no row to hover, so the fix is a menu instead: same outside-click-to-close
  * pattern as Sidebar's account menu.
  */
-export function HandoffActionsMenu({ handoffId, isArchived }: HandoffActionsMenuProps) {
+export function HandoffActionsMenu({ handoffId, isArchived, isExample = false }: HandoffActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,9 +56,11 @@ export function HandoffActionsMenu({ handoffId, isArchived }: HandoffActionsMenu
           role="menu"
           className="absolute right-0 top-full z-10 mt-2 flex w-max flex-col gap-2 rounded-[--radius-md] border border-[--color-border] bg-[--color-background] p-2 shadow-lg"
         >
-          <DuplicateHandoffButton handoffId={handoffId} />
-          <ArchiveHandoffButton handoffId={handoffId} isArchived={isArchived} />
-          <DeleteHandoffButton handoffId={handoffId} />
+          {/* The example can't be duplicated (the server refuses) and has
+              nothing to archive for: deleting it is the only action. */}
+          {!isExample && <DuplicateHandoffButton handoffId={handoffId} />}
+          {!isExample && <ArchiveHandoffButton handoffId={handoffId} isArchived={isArchived} />}
+          <DeleteHandoffButton handoffId={handoffId} isExample={isExample} />
         </div>
       )}
     </div>

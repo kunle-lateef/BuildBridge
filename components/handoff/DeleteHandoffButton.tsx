@@ -10,9 +10,11 @@ import { AlertCircle } from '@/components/ui/icons';
 
 type DeleteHandoffButtonProps = {
   handoffId: string;
+  /** The example's banner link: "Delete example", with wording for made-up data. */
+  isExample?: boolean;
 };
 
-export function DeleteHandoffButton({ handoffId }: DeleteHandoffButtonProps) {
+export function DeleteHandoffButton({ handoffId, isExample = false }: DeleteHandoffButtonProps) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +39,15 @@ export function DeleteHandoffButton({ handoffId }: DeleteHandoffButtonProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <Button type="button" variant="danger" size="sm" onClick={() => setIsConfirmOpen(true)} className="self-start">
-        Delete
-      </Button>
+      {isExample ? (
+        <button type="button" onClick={() => setIsConfirmOpen(true)} className="self-start text-[12px] leading-4 text-[--color-primary] underline">
+          Delete example
+        </button>
+      ) : (
+        <Button type="button" variant="danger" size="sm" onClick={() => setIsConfirmOpen(true)} className="self-start">
+          Delete
+        </Button>
+      )}
       {error && (
         <p role="alert" className="flex items-center gap-2 text-[--color-error]">
           <AlertCircle aria-hidden="true" size={14} />
@@ -50,9 +58,13 @@ export function DeleteHandoffButton({ handoffId }: DeleteHandoffButtonProps) {
         open={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={() => void handleDelete()}
-        title="Delete this handoff?"
-        description="This permanently deletes every screen, component, analysis, note, and share link on this handoff. This cannot be undone."
-        confirmLabel="Delete"
+        title={isExample ? 'Delete the example?' : 'Delete this handoff?'}
+        description={
+          isExample
+            ? 'Your changes to the example are removed. You can still browse the read-only example at /example.'
+            : 'This permanently deletes every screen, component, analysis, note, and share link on this handoff. This cannot be undone.'
+        }
+        confirmLabel={isExample ? 'Delete example' : 'Delete'}
         variant="danger"
         isConfirming={isPending}
       />

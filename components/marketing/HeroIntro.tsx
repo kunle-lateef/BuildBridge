@@ -69,12 +69,12 @@ export function HeroIntro() {
             Upload finished screens. BuildBridge lists the specs, states and breakpoints it finds and labels each one
             detected, inferred or suggested. You confirm them, then share a read-only link.
           </p>
-          {/* Figma pairs this with "See an example handoff"; that button
-              waits for the /example page (code-phase-plan.md, decision 2)
-              so it never links somewhere that doesn't exist. */}
           <div className={cn('flex flex-wrap gap-3', inClass(2))}>
             <Link href="/sign-up" className={buttonVariants({ variant: 'primary', size: 'lg' })}>
               Start a handoff
+            </Link>
+            <Link href="/example" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+              See an example handoff
             </Link>
           </div>
         </div>

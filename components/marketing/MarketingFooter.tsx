@@ -4,9 +4,7 @@ import { MARKETING_CONTAINER } from '@/components/marketing/container';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { cn } from '@/lib/cn';
 
-// Columns and labels from Figma's footer (`01 — Home` → Footer). Figma's
-// "Example handoff" link waits for the /example page (code-phase-plan.md,
-// decision 2), so the footer never links somewhere that doesn't exist.
+// Columns and labels from Figma's footer (`01 — Home` → Footer).
 const FOOTER_COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: 'Product',
@@ -21,6 +19,7 @@ const FOOTER_COLUMNS: { title: string; links: { href: string; label: string }[] 
     title: 'Get started',
     links: [
       { href: '/sign-up', label: 'Start a handoff' },
+      { href: '/example', label: 'Example handoff' },
       { href: '/sign-in', label: 'Sign in' },
     ],
   },

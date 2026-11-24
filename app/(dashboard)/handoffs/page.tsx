@@ -7,13 +7,18 @@ import { HandoffGrid } from '@/components/dashboard/HandoffGrid';
 import { HandoffList } from '@/components/dashboard/HandoffList';
 import { HandoffToolbar, type HandoffTab } from '@/components/dashboard/HandoffToolbar';
 import { CreateHandoffButton } from '@/components/handoff/CreateHandoffButton';
+import { Button } from '@/components/ui/Button';
 import { GitCompare } from '@/components/ui/icons';
+import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { getRecentActivity } from '@/lib/activity';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getPortfolioDrift } from '@/lib/drift';
+import { EXAMPLE } from '@/lib/example/fixture';
 import { createSignedReadUrl } from '@/lib/storage';
 import type { HandoffStatus } from '@/lib/types';
+
+import { openExampleHandoff } from './example-actions';
 
 export const metadata: Metadata = {
   title: 'Handoffs — BuildBridge',
@@ -149,6 +154,7 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
               id: handoff.id,
               name: handoff.name,
               status: handoff.status,
+              isExample: handoff.isExample,
               readinessScore: handoff.readinessScore,
               thumbnailUrl: firstScreen ? await createSignedReadUrl(firstScreen.asset.storageReference) : null,
             };
@@ -188,6 +194,7 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
                     id: handoff.id,
                     name: handoff.name,
                     status: handoff.status,
+                    isExample: handoff.isExample,
                     readinessScore: handoff.readinessScore,
                     updatedAt: handoff.updatedAt.toISOString(),
                     openIssueCount: handoff._count.handoffIssues,
@@ -224,18 +231,51 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
 const FIRST_STEPS = ['Name it after the feature or flow', 'Upload the finished screens in order', 'Run the analysis and review'];
 
 /**
- * Figma `03 — Dashboard` → "First run — 0". Figma pairs this with a "Try it
- * on an example" card; that card waits for the example handoff flow
- * (isExample copy action and fixture), so it isn't shown yet.
+ * Figma `03 — Dashboard` → "First run — 0": try the example (recommended),
+ * or go straight to your own screens. The example's numbers come from the
+ * fixture itself, so the card can't promise more than it opens.
  */
 function GetStarted() {
+  const findingCount = EXAMPLE.components.reduce(
+    (sum, component) => sum + 1 + component.specifications.length + component.states.length,
+    EXAMPLE.responsiveRules.length,
+  );
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="m-0 text-[20px] font-semibold leading-7 text-[--color-text-primary]">Get started</h2>
-        <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">Start with your own screens.</p>
+        <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">See how a review works first, or go straight to your own screens.</p>
       </div>
-      <div className="flex max-w-[380px] flex-col gap-4 rounded-[12px] border border-[--color-border] bg-white p-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-4 rounded-[12px] border-[1.5px] border-[--color-primary] bg-white p-6">
+        <span className="text-[12px] font-semibold uppercase leading-4 tracking-[1.5px] text-[--color-primary]">
+          Recommended · about 2 minutes
+        </span>
+        <span className="text-[16px] font-semibold leading-6 text-[--color-text-primary]">Try it on an example</span>
+        <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">
+          A real checkout handoff, already analysed. Confirm a value, correct one, answer a gap, then see exactly what the developer gets.
+        </p>
+        <div className="flex flex-col gap-2 rounded-[8px] border border-[--color-border] bg-[--color-background] px-3 py-3">
+          <span className="flex flex-wrap items-baseline gap-2">
+            <span className="text-[14px] font-medium leading-5 text-[--color-text-primary]">{EXAMPLE.name}</span>
+            <span className="text-[12px] leading-4 text-[--color-text-secondary]">
+              {EXAMPLE.screens.length} screens · {findingCount} findings
+            </span>
+          </span>
+          <span className="flex flex-wrap gap-2">
+            <ProvenanceBadge provenance="Detected" />
+            <ProvenanceBadge provenance="Inferred" />
+            <ProvenanceBadge provenance="Suggested" />
+          </span>
+        </div>
+        <form action={openExampleHandoff}>
+          <Button type="submit">Open the example</Button>
+        </form>
+        <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+          Doesn’t use an analysis or a handoff slot. Only you can see it, and you can delete it any time.
+        </p>
+      </div>
+      <div className="flex flex-col gap-4 rounded-[12px] border border-[--color-border] bg-white p-6">
         <span className="text-[12px] font-semibold uppercase leading-4 tracking-[1.5px] text-[--color-text-secondary]">
           Your screens
         </span>
@@ -256,6 +296,7 @@ function GetStarted() {
         <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
           PNG, JPG or WebP, up to 25MB each. The Free plan includes 5 analyses a month and 3 active handoffs.
         </p>
+      </div>
       </div>
     </section>
   );

@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { bulkRecordDecision, recordDesignerDecision } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
-import { Button } from '@/components/ui/Button';
+import { Button, buttonVariants } from '@/components/ui/Button';
 import { AlertCircle } from '@/components/ui/icons';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
@@ -52,6 +53,8 @@ type GuidedReviewProps = {
   onExit: () => void;
   /** The share dialog trigger, for the finish screen. */
   shareButton: ReactNode;
+  /** The example handoff's finish screen: "That's the whole loop". */
+  isExample?: boolean;
 };
 
 /**
@@ -60,7 +63,7 @@ type GuidedReviewProps = {
  * one ticked pass. Every choice is a normal DesignerDecision; skipping
  * records nothing, so a skipped finding simply stays not decided.
  */
-export function GuidedReview({ handoffId, items, isBlocked, onFocus, onExit, shareButton }: GuidedReviewProps) {
+export function GuidedReview({ handoffId, items, isBlocked, onFocus, onExit, shareButton, isExample = false }: GuidedReviewProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [initialGroupCounts] = useState(() =>
@@ -232,6 +235,7 @@ export function GuidedReview({ handoffId, items, isBlocked, onFocus, onExit, sha
             tally={tally}
             skipped={items.filter((item) => skipped.includes(item.key))}
             isBlocked={isBlocked}
+            isExample={isExample}
             shareButton={shareButton}
             onReviewSkipped={() => setSkipped([])}
           />
@@ -478,8 +482,8 @@ function DetectedBatch({ items, disabled, onConfirm, onOneByOne }: {
   );
 }
 
-function FinishStep({ tally, skipped, isBlocked, shareButton, onReviewSkipped }: {
-  tally: Tally; skipped: GuidedItem[]; isBlocked: boolean; shareButton: ReactNode; onReviewSkipped: () => void;
+function FinishStep({ tally, skipped, isBlocked, isExample, shareButton, onReviewSkipped }: {
+  tally: Tally; skipped: GuidedItem[]; isBlocked: boolean; isExample: boolean; shareButton: ReactNode; onReviewSkipped: () => void;
 }) {
   const rows: [string, ReactNode][] = [
     ['Confirmed', tally.confirmed],
@@ -493,12 +497,15 @@ function FinishStep({ tally, skipped, isBlocked, shareButton, onReviewSkipped }:
   return (
     <div className="flex flex-col gap-4">
       <h3 className="m-0 text-[20px] font-semibold leading-7 text-[--color-text-primary]">
-        {isBlocked ? 'Review finished' : 'This handoff is ready to share'}
+        {isExample ? 'That’s the whole loop' : isBlocked ? 'Review finished' : 'This handoff is ready to share'}
       </h3>
       <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">
-        {isBlocked
-          ? 'A critical gap is still open, so the handoff can’t be shared yet. Anything you skipped stays marked as not decided.'
-          : 'Developers will see your decisions, and anything you skipped stays marked as not decided.'}
+        {/* Figma's copy lists what the designer did; this version stays true whatever they chose. */}
+        {isExample
+          ? 'That’s a full review. On your own handoffs, Share handoff sends exactly what the developer view shows, and anything you skipped stays marked as not decided.'
+          : isBlocked
+            ? 'A critical gap is still open, so the handoff can’t be shared yet. Anything you skipped stays marked as not decided.'
+            : 'Developers will see your decisions, and anything you skipped stays marked as not decided.'}
       </p>
       <dl className="m-0 overflow-hidden rounded-[8px] border border-[--color-border]">
         {rows.map(([label, value], index) => (
@@ -508,8 +515,14 @@ function FinishStep({ tally, skipped, isBlocked, shareButton, onReviewSkipped }:
           </div>
         ))}
       </dl>
-      <div className="flex flex-wrap gap-2">
-        {!isBlocked && shareButton}
+      <div className={cn('flex gap-2', isExample ? 'flex-col' : 'flex-wrap')}>
+        {/* The example's button is a preview, not a share, so it shows even when blocked. */}
+        {(isExample || !isBlocked) && shareButton}
+        {isExample && (
+          <Link href="/handoffs" className={buttonVariants({ variant: 'secondary' })}>
+            Start your own handoff
+          </Link>
+        )}
         {skipped.length > 0 && (
           <Button type="button" variant="secondary" onClick={onReviewSkipped}>
             {skippedGap && skipped.length === 1 ? 'Answer the skipped gap' : 'Review what you skipped'}

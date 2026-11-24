@@ -36,7 +36,7 @@ describe('getPortfolioInsights', () => {
     expect(Object.values(result.categoryAverages).every((score) => score === 0)).toBe(true);
   });
 
-  it('excludes Archived handoffs from every query', async () => {
+  it('excludes Archived handoffs and the example from every query', async () => {
     mockDb.handoff.findMany.mockResolvedValue([]);
     mockDb.handoffIssue.groupBy.mockResolvedValue(emptyGroupByRows());
     mockDb.analysisRun.findMany.mockResolvedValue([]);
@@ -44,11 +44,11 @@ describe('getPortfolioInsights', () => {
     await getPortfolioInsights('user-a');
 
     expect(mockDb.handoff.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { ownerId: 'user-a', status: { not: 'Archived' } } }),
+      expect.objectContaining({ where: { ownerId: 'user-a', status: { not: 'Archived' }, isExample: false } }),
     );
     expect(mockDb.handoffIssue.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ handoff: { ownerId: 'user-a', status: { not: 'Archived' } } }),
+        where: expect.objectContaining({ handoff: { ownerId: 'user-a', status: { not: 'Archived' }, isExample: false } }),
       }),
     );
   });

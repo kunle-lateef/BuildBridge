@@ -42,6 +42,15 @@ export async function createShareLink(input: {
     return notFoundError('Handoff not found.');
   }
 
+  // The example is made-up data that only its owner sees; it's never
+  // shared publicly. "See what the developer gets" opens the preview.
+  if (handoff.isExample) {
+    return {
+      ok: false,
+      error: { code: 'example_handoff', message: 'The example handoff can’t be shared. Use “See what the developer gets” to preview it.' },
+    };
+  }
+
   // A handoff that's never been analyzed has zero issues by definition, so
   // the Critical-issue check below would pass trivially — this catches that
   // loophole explicitly rather than relying on "no criticals" to imply

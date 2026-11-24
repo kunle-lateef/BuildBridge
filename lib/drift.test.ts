@@ -34,7 +34,7 @@ describe('getPortfolioDrift', () => {
     expect(mockDb.specification.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          component: { handoff: { ownerId: 'user-a', status: { not: 'Archived' } } },
+          component: { handoff: { ownerId: 'user-a', status: { not: 'Archived' }, isExample: false } },
           reviewStatus: { not: 'Rejected' },
         },
       }),

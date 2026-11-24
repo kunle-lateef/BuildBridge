@@ -9,6 +9,7 @@ type HandoffGridProps = {
     id: string;
     name: string;
     status: HandoffStatus;
+    isExample: boolean;
     readinessScore: number | null;
     thumbnailUrl: string | null;
   }[];
@@ -57,7 +58,7 @@ export function HandoffGrid({ handoffs, isFiltered }: HandoffGridProps) {
             <span title={handoff.name} className="min-w-0 flex-1 truncate text-[--color-text-body]">
               {handoff.name}
             </span>
-            <HandoffStatusBadge status={handoff.status} className="flex-shrink-0 whitespace-nowrap" />
+            <HandoffStatusBadge status={handoff.status} isExample={handoff.isExample} className="flex-shrink-0 whitespace-nowrap" />
           </div>
           {handoff.readinessScore !== null && (
             <span className="font-mono text-[--color-text-secondary]">{handoff.readinessScore}%</span>
