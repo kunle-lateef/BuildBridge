@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
+import { SESSION_EXPIRED_REASON, SIGNED_IN_HINT_COOKIE } from '@/lib/auth-redirect';
 import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 // Two unrelated concerns share this file because Next.js only supports one
@@ -25,8 +26,14 @@ export default auth(async (request) => {
   }
 
   if (!request.auth) {
-    const signInUrl = new URL('/api/auth/signin', request.nextUrl.origin);
-    signInUrl.searchParams.set('callbackUrl', request.nextUrl.href);
+    // Straight to the sign-in page with a same-site path to come back to.
+    // A browser that was signed in (the hint cookie) gets the "You were
+    // signed out" notice instead of a plain sign-in.
+    const signInUrl = new URL('/sign-in', request.nextUrl.origin);
+    signInUrl.searchParams.set('callbackUrl', `${pathname}${request.nextUrl.search}`);
+    if (request.cookies.has(SIGNED_IN_HINT_COOKIE)) {
+      signInUrl.searchParams.set('reason', SESSION_EXPIRED_REASON);
+    }
     return NextResponse.redirect(signInUrl);
   }
 

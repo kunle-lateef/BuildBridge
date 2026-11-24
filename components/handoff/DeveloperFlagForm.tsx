@@ -17,14 +17,17 @@ export type FlagFindingDetail = { findingType: string; findingReference: string;
 
 type SubmitState = 'idle' | 'submitting' | 'submitted' | 'error';
 
-type TrackedFlag = { id: string; trackingToken: string; message: string };
-type FlagStatus = { status: string; kind: string; createdAt: string };
+/** Fired after a flag is sent, so "Your flags" in the nav picks it up. */
+export const FLAG_SENT_EVENT = 'buildbridge:flag-sent';
+
+export type TrackedFlag = { id: string; trackingToken: string; message: string };
+export type FlagStatus = { status: string; kind: string; createdAt: string };
 
 function storageKey(shareToken: string): string {
   return `bb-my-flags:${shareToken}`;
 }
 
-function loadTrackedFlags(shareToken: string): TrackedFlag[] {
+export function loadTrackedFlags(shareToken: string): TrackedFlag[] {
   try {
     const raw = localStorage.getItem(storageKey(shareToken));
     return raw ? (JSON.parse(raw) as TrackedFlag[]) : [];
@@ -110,6 +113,7 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
       } catch {
         // localStorage unavailable — the flag still submitted successfully, it just won't be trackable on return.
       }
+      window.dispatchEvent(new CustomEvent(FLAG_SENT_EVENT));
 
       setState('submitted');
       setMessage('');

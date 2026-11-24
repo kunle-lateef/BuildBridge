@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { bulkRecordDecision, recordDesignerDecision } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
 import { Button, buttonVariants } from '@/components/ui/Button';
@@ -248,6 +248,7 @@ export function GuidedReview({ handoffId, items, isBlocked, onFocus, onExit, sha
             {step === 'batch' ? (
               <>
                 <Hint k="⌘↵">confirm ticked</Hint>
+                <Hint k="↑↓">move</Hint>
                 <Hint k="Space">tick / untick</Hint>
               </>
             ) : active?.group === 'Gaps' ? (
@@ -436,11 +437,27 @@ function DetectedBatch({ items, disabled, onConfirm, onOneByOne }: {
     return next;
   });
 
+  const listRef = useRef<HTMLUListElement>(null);
+
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && ticked.length > 0 && !disabled) {
         onConfirm(ticked, items.filter((item) => unticked.has(item.key)));
+        return;
       }
+      // ↑↓ move between the values; Space (native on a focused checkbox) ticks.
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input:not([type=checkbox]), textarea, select, [contenteditable=true]')) return;
+      const boxes = Array.from(listRef.current?.querySelectorAll<HTMLInputElement>('input[type=checkbox]') ?? []);
+      if (boxes.length === 0) return;
+      event.preventDefault();
+      const current = boxes.indexOf(document.activeElement as HTMLInputElement);
+      const next =
+        current === -1
+          ? event.key === 'ArrowDown' ? 0 : boxes.length - 1
+          : Math.min(boxes.length - 1, Math.max(0, current + (event.key === 'ArrowDown' ? 1 : -1)));
+      boxes[next]?.focus();
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -453,7 +470,7 @@ function DetectedBatch({ items, disabled, onConfirm, onOneByOne }: {
       <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">
         These were measured from the screens, so they’re usually right. Untick anything that looks wrong and it goes back into your queue.
       </p>
-      <ul className="m-0 list-none overflow-hidden rounded-[8px] border border-[--color-border] p-0">
+      <ul ref={listRef} className="m-0 list-none overflow-hidden rounded-[8px] border border-[--color-border] p-0">
         {items.map((item, index) => {
           const isTicked = !unticked.has(item.key);
           return (

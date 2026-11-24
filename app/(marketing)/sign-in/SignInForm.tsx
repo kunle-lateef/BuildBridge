@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { AlertCircle, CheckCircle2 } from '@/components/ui/icons';
 import { Input } from '@/components/ui/Input';
 import { useFieldErrors } from '@/components/ui/useFieldErrors';
+import { SESSION_EXPIRED_REASON, safeCallbackPath } from '@/lib/auth-redirect';
 import type { ActionResult } from '@/lib/types';
 import { signInSchema } from '@/lib/validators/auth';
 
@@ -31,16 +32,23 @@ export function SignInForm() {
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
   const { fieldProps } = useFieldErrors(signInSchema);
   const passwordChanged = searchParams.get('passwordChanged') === '1';
+  const sessionExpired = searchParams.get('reason') === SESSION_EXPIRED_REASON;
 
   useEffect(() => {
     if (state?.ok) {
-      router.push(searchParams.get('callbackUrl') ?? '/handoffs');
+      router.push(safeCallbackPath(searchParams.get('callbackUrl')));
       router.refresh();
     }
   }, [state, router, searchParams]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate>
+      {sessionExpired && !passwordChanged && !state && (
+        <AuthNotice tone="info" icon={<AlertCircle aria-hidden="true" size={16} />} title="You were signed out">
+          For security, sessions end after a while. Sign in again and you’ll go straight back to where you were.
+        </AuthNotice>
+      )}
+
       {passwordChanged && !state && (
         <AuthNotice tone="success" icon={<CheckCircle2 aria-hidden="true" size={14} />}>
           Password changed. Sign in with your new password.
