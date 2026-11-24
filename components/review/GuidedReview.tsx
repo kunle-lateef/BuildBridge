@@ -145,7 +145,7 @@ export function GuidedReview({ handoffId, items, isBlocked, onFocus, onExit, sha
     setIsSubmitting(false);
     setOneByOne((prev) => new Set([...prev, ...unticked.map((item) => item.key)]));
     setTally((prev) => ({ ...prev, confirmed: prev.confirmed + ticked.length }));
-    toast(`${ticked.length} ${ticked.length === 1 ? 'value' : 'values'} confirmed.`);
+    toast(`${ticked.length} ${ticked.length === 1 ? 'value' : 'values'} confirmed`);
     router.refresh();
   }
 

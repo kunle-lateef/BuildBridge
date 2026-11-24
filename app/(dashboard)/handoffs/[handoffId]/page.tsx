@@ -34,6 +34,7 @@ import { db } from '@/lib/db';
 import { getGapAnswers } from '@/lib/gapAnswers';
 import { getLatestDecisions } from '@/lib/latestDecisions';
 import { explainReadiness, rankNextBestActions, SEVERITY_DEDUCTIONS } from '@/lib/readiness';
+import { buildReanalysisSummary } from '@/lib/reanalysis';
 import { buildScreenPins } from '@/lib/screenPins';
 import { createSignedReadUrl } from '@/lib/storage';
 import type { AnalysisRunStatus, ProvenanceType } from '@/lib/types';
@@ -660,6 +661,12 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
               toReviewCount={toReviewCount}
               reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
               notice={components.length === 0 ? analysisBlock : undefined}
+              reanalysis={buildReanalysisSummary({
+                entries: changelogEntries,
+                latestRunId: latestRun?.id ?? null,
+                gapDecisions,
+                gapAnswers,
+              })}
               gaps={issues.map(
                 (issue): PanelGap => ({
                   id: issue.id,
@@ -681,6 +688,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
                     ? pinsByScreen.get(pinScreenId)?.find((candidate) => candidate.key === pinKeyFor(component.id))
                     : undefined;
                   return {
+                    handoffId: handoff.id,
                     id: component.id,
                     name: component.name,
                     type: component.type,
