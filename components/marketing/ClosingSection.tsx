@@ -26,11 +26,12 @@ export function ClosingSection() {
           <p className="max-w-[460px] text-[16px] leading-6 text-[--color-text-secondary]">
             They get every value you confirmed and your answer to every gap, in one read-only link.
           </p>
-          {/* Figma pairs this with "See an example handoff", which waits for
-              the /example page (code-phase-plan.md, decision 2). */}
           <div className="flex flex-wrap gap-3 pt-2">
             <Link href="/sign-up" className={buttonVariants({ variant: 'primary', size: 'lg' })}>
               Start a handoff
+            </Link>
+            <Link href="/example" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+              See an example handoff
             </Link>
           </div>
         </div>

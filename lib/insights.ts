@@ -26,13 +26,13 @@ type PortfolioInsights = {
 export async function getPortfolioInsights(userId: string, trendRunLimit = 10): Promise<PortfolioInsights> {
   const [handoffs, criticalOrHighRows, recentRuns] = await Promise.all([
     db.handoff.findMany({
-      where: { ownerId: userId, status: { not: 'Archived' } },
+      where: { ownerId: userId, status: { not: 'Archived' }, isExample: false },
       select: { id: true },
     }),
     db.handoffIssue.groupBy({
       by: ['category'],
       where: {
-        handoff: { ownerId: userId, status: { not: 'Archived' } },
+        handoff: { ownerId: userId, status: { not: 'Archived' }, isExample: false },
         severity: { in: ['Critical', 'High'] },
         status: { in: ['Open', 'InReview'] },
       },
@@ -40,7 +40,7 @@ export async function getPortfolioInsights(userId: string, trendRunLimit = 10): 
     }),
     db.analysisRun.findMany({
       where: {
-        handoff: { ownerId: userId, status: { not: 'Archived' } },
+        handoff: { ownerId: userId, status: { not: 'Archived' }, isExample: false },
         readinessSnapshot: { not: Prisma.DbNull },
       },
       select: { id: true, createdAt: true, readinessSnapshot: true },

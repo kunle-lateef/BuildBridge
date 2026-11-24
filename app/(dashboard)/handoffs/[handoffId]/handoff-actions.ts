@@ -49,7 +49,8 @@ export async function createHandoff(
   });
 
   const activeHandoffCount = await db.handoff.count({
-    where: { ownerId: session.user.id, status: { not: 'Archived' } },
+    // The example handoff never takes a slot (Figma first run).
+    where: { ownerId: session.user.id, status: { not: 'Archived' }, isExample: false },
   });
 
   const cap = ACTIVE_HANDOFF_CAP[user.planTier];
@@ -116,13 +117,18 @@ export async function duplicateHandoff(sourceHandoffId: string): Promise<ActionR
     return notFoundError('Handoff not found.');
   }
 
+  if (source.isExample) {
+    return { ok: false, error: { code: 'example_handoff', message: 'The example can’t be duplicated. Start your own handoff instead.' } };
+  }
+
   const user = await db.user.findUniqueOrThrow({
     where: { id: session.user.id },
     select: { planTier: true },
   });
 
   const activeHandoffCount = await db.handoff.count({
-    where: { ownerId: session.user.id, status: { not: 'Archived' } },
+    // The example handoff never takes a slot (Figma first run).
+    where: { ownerId: session.user.id, status: { not: 'Archived' }, isExample: false },
   });
 
   const cap = ACTIVE_HANDOFF_CAP[user.planTier];
@@ -264,7 +270,8 @@ export async function unarchiveHandoff(handoffId: string): Promise<ActionResult<
 
   const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { planTier: true } });
   const activeCount = await db.handoff.count({
-    where: { ownerId: session.user.id, status: { not: 'Archived' } },
+    // The example handoff never takes a slot (Figma first run).
+    where: { ownerId: session.user.id, status: { not: 'Archived' }, isExample: false },
   });
   const cap = ACTIVE_HANDOFF_CAP[user.planTier];
 

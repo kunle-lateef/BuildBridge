@@ -9,7 +9,7 @@ import type { ActionResult } from '@/lib/types';
 
 // 2: specifications carry numericValue (drift compares numbers by unit).
 // 3: gaps name their screen/component, linked to ids server-side.
-const CURRENT_ANALYSIS_VERSION = 3;
+export const CURRENT_ANALYSIS_VERSION = 3;
 
 function resolveQuota(user: Pick<User, 'analysisQuota' | 'analysisUsageCount' | 'billingCycleStart'>): {
   quotaRemaining: number;
@@ -40,6 +40,11 @@ export async function startAnalysisRun(
 
   if (!handoff || handoff.ownerId !== userId) {
     return { ok: false, error: { code: 'not_found', message: 'Handoff not found.' } };
+  }
+
+  // The example is already analysed and never uses an analysis.
+  if (handoff.isExample) {
+    return { ok: false, error: { code: 'example_handoff', message: 'The example is already analysed. Start your own handoff to run an analysis.' } };
   }
 
   const processedAssetCount = await db.designAsset.count({

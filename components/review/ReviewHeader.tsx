@@ -20,6 +20,10 @@ type ReviewHeaderProps = {
   statusLine?: ReactNode;
   /** The working behind the score; when given, the readiness line opens it. */
   breakdown?: BreakdownData;
+  /** The example handoff: "Example" badge and its explanation banner (Figma first run). */
+  isExample?: boolean;
+  /** Shown in the example banner, e.g. "Delete example". */
+  exampleAction?: ReactNode;
 };
 
 /**
@@ -40,6 +44,8 @@ export function ReviewHeader({
   actions,
   statusLine,
   breakdown,
+  isExample = false,
+  exampleAction,
 }: ReviewHeaderProps) {
   const isReady = readinessScore !== null && criticalOpenCount === 0;
 
@@ -57,7 +63,7 @@ export function ReviewHeader({
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="m-0 text-[28px] font-semibold leading-9 text-[--color-text-primary]">{name}</h1>
-            <HandoffStatusBadge status={status} />
+            <HandoffStatusBadge status={status} isExample={isExample} />
           </div>
 
           {statusLine}
@@ -114,6 +120,15 @@ export function ReviewHeader({
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
       </div>
+
+      {isExample && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-[8px] bg-[--color-primary-light] px-4 py-3">
+          <p className="m-0 text-[14px] leading-5 text-[--color-text-body]">
+            This is an example handoff. Try anything here: it doesn’t use an analysis or a handoff slot, and only you can see it.
+          </p>
+          {exampleAction}
+        </div>
+      )}
     </header>
   );
 }

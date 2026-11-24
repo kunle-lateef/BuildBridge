@@ -61,6 +61,10 @@ export async function recordUpload(input: {
     return notFoundError('Handoff not found.');
   }
 
+  if (handoff.isExample) {
+    return { ok: false, error: { code: 'example_handoff', message: 'You can’t add screens to the example. Start your own handoff instead.' } };
+  }
+
   const asset = await db.designAsset.create({
     data: {
       handoffId,

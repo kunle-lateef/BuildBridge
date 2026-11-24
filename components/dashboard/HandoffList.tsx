@@ -10,6 +10,7 @@ type HandoffRow = {
   id: string;
   name: string;
   status: HandoffStatus;
+  isExample: boolean;
   readinessScore: number | null;
   updatedAt: string;
   openIssueCount: number;
@@ -67,7 +68,7 @@ export function HandoffList({ handoffs, isFiltered }: HandoffListProps) {
               </Link>
             </span>
             <span role="cell">
-              <HandoffStatusBadge status={handoff.status} />
+              <HandoffStatusBadge status={handoff.status} isExample={handoff.isExample} />
             </span>
             <span role="cell" className="flex items-center gap-2">
               {handoff.readinessScore !== null ? (

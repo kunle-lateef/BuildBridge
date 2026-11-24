@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { DeleteHandoffButton } from '@/components/handoff/DeleteHandoffButton';
 import { DraftScreenList } from '@/components/handoff/DraftScreenList';
 import { HandoffActionsMenu } from '@/components/handoff/HandoffActionsMenu';
 import { ScreenFlowList } from '@/components/handoff/ScreenFlowList';
@@ -460,7 +461,17 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
     imageUrl,
     pins: pinsByScreen.get(screen.id) ?? [],
   }));
-  const actionsMenu = <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />;
+  const actionsMenu = <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} isExample={handoff.isExample} />;
+  // The example is never shared publicly (share-link-actions.ts refuses):
+  // its button opens the developer preview instead (Figma first run).
+  const shareOrPreview = (variant: 'primary' | 'secondary') =>
+    handoff.isExample ? (
+      <Link href={`/handoffs/${handoff.id}/preview`} className={buttonVariants({ variant })}>
+        See what the developer gets
+      </Link>
+    ) : (
+      <ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant={variant} />
+    );
 
   if (phase === 'draft') {
     const cycleEnd = addMonths(owner.billingCycleStart, 1);
@@ -602,9 +613,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
           actions={
             <>
               <AskBuildBridgeFab handoffId={handoff.id} handoffName={handoff.name} variant="text" />
-              {components.length > 0 && (
-                <ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant={isReady ? 'primary' : 'secondary'} />
-              )}
+              {components.length > 0 && shareOrPreview(isReady ? 'primary' : 'secondary')}
               {toReviewCount > 0 && !isGuided && (
                 <Link
                   href={`/handoffs/${handoff.id}?guided=1`}
@@ -613,9 +622,11 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
                   Review next · {toReviewCount} left
                 </Link>
               )}
-              <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} />
+              <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} isExample={handoff.isExample} />
             </>
           }
+          isExample={handoff.isExample}
+          exampleAction={handoff.isExample ? <DeleteHandoffButton handoffId={handoff.id} isExample /> : undefined}
         />
 
         {runStatus === 'PartiallyCompleted' && incompleteStages.length > 0 && (
@@ -649,7 +660,8 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
             isGuided={isGuided}
             guidedItems={guidedItems}
             isBlocked={unresolvedCriticalCount > 0}
-            shareButton={<ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant="primary" />}
+            shareButton={shareOrPreview('primary')}
+            isExample={handoff.isExample}
               screens={screenThumbnails.map(({ screen, imageUrl }) => ({
                 id: screen.id,
                 name: screen.name,
@@ -725,8 +737,9 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
             <TabIntro
               actions={
                 <>
-                  <UploadDropzone handoffId={handoff.id} variant="button" />
-                  {processedScreens.length > 0 && <StartAnalysisButton handoffId={handoff.id} label="Re-analyze" variant="secondary" />}
+                  {/* The example is already analysed and takes no uploads (the server refuses both). */}
+                  {!handoff.isExample && <UploadDropzone handoffId={handoff.id} variant="button" />}
+                  {!handoff.isExample && processedScreens.length > 0 && <StartAnalysisButton handoffId={handoff.id} label="Re-analyze" variant="secondary" />}
                 </>
               }
             >
@@ -750,9 +763,11 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
                 ))}
               </div>
             )}
-            <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
-              Re-analyzing checks new and changed screens. Screens that haven’t changed don’t use an analysis.
-            </p>
+            {!handoff.isExample && (
+              <p className="m-0 text-[12px] leading-4 text-[--color-text-secondary]">
+                Re-analyzing checks new and changed screens. Screens that haven’t changed don’t use an analysis.
+              </p>
+            )}
             <ScreenFlowList
               handoffId={handoff.id}
               screens={processedScreens.map((screen) => ({ id: screen.id, name: screen.name }))}

@@ -30,20 +30,23 @@ const LABEL: Record<HandoffStatus, string> = {
 
 type HandoffStatusBadgeProps = {
   status: HandoffStatus;
+  /** The example handoff reads "Example" instead of its status (Figma first run). */
+  isExample?: boolean;
   className?: string;
 };
 
-export function HandoffStatusBadge({ status, className }: HandoffStatusBadgeProps) {
+export function HandoffStatusBadge({ status, isExample = false, className }: HandoffStatusBadgeProps) {
+  const label = isExample ? 'Example' : LABEL[status];
   return (
     <span
       className={cn(
         'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[--radius-sm] px-2 text-[12px] font-medium leading-4',
-        STYLES[status],
+        isExample ? 'bg-[--color-surface] text-[--color-text-secondary]' : STYLES[status],
         className,
       )}
-      aria-label={`Status: ${LABEL[status]}`}
+      aria-label={`Status: ${label}`}
     >
-      {LABEL[status]}
+      {label}
     </span>
   );
 }
