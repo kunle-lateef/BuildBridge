@@ -662,6 +662,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
             isBlocked={unresolvedCriticalCount > 0}
             shareButton={shareOrPreview('primary')}
             isExample={handoff.isExample}
+            toReviewCount={toReviewCount}
               screens={screenThumbnails.map(({ screen, imageUrl }) => ({
                 id: screen.id,
                 name: screen.name,

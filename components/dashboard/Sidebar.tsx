@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -72,12 +73,22 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col border-r border-[--color-border] bg-white transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:translate-x-0',
+          // Figma "Review — 1280 laptop": below 1440 the sidebar is a 64px icon rail.
+          'lg:max-[1439px]:w-16',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between px-6">
-          <Link href="/handoffs" className="flex items-center">
-            <BrandMark alt="BuildBridge" size={28} />
+        <div className="flex h-16 shrink-0 items-center justify-between px-6 lg:max-[1439px]:h-auto lg:max-[1439px]:flex-col lg:max-[1439px]:justify-center lg:max-[1439px]:gap-3 lg:max-[1439px]:px-0 lg:max-[1439px]:pb-2 lg:max-[1439px]:pt-4">
+          <Link href="/handoffs" className="flex items-center" aria-label="BuildBridge">
+            <BrandMark alt="" size={28} className="lg:max-[1439px]:hidden" />
+            <Image
+              src="/logo/buildbridge-icon.svg"
+              alt=""
+              width={28}
+              height={28}
+              unoptimized
+              className="hidden lg:max-[1439px]:block"
+            />
           </Link>
           <div className="hidden lg:block">{bell}</div>
           <button
@@ -90,9 +101,9 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
           </button>
         </div>
 
-        <div className="px-3 pb-2">{search}</div>
+        <div className="px-3 pb-2 lg:max-[1439px]:flex lg:max-[1439px]:justify-center lg:max-[1439px]:px-0">{search}</div>
 
-        <nav aria-label="Primary" className="flex flex-col gap-0.5 px-3 pt-1">
+        <nav aria-label="Primary" className="flex flex-col gap-0.5 px-3 pt-1 lg:max-[1439px]:items-center lg:max-[1439px]:px-0">
           <SidebarNavLink href="/handoffs" icon={<LayoutGrid aria-hidden size={18} />} count={handoffCount}>
             Handoffs
           </SidebarNavLink>
@@ -106,7 +117,7 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
 
         <div className="flex-1" />
 
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-3 lg:max-[1439px]:hidden">
           <div className="flex flex-col gap-2 rounded-[8px] border border-[--color-border] p-3 text-[12px] leading-4">
             <div className="flex justify-between text-[--color-text-secondary]">
               <span>Analyses this month</span>
@@ -143,7 +154,7 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
 
         <div className="relative border-t border-[--color-border]" ref={accountMenuRef}>
           {isAccountMenuOpen && (
-            <form action={signOutAction} className="absolute bottom-full left-3 right-3 mb-1">
+            <form action={signOutAction} className="absolute bottom-full left-3 right-3 mb-1 lg:max-[1439px]:right-auto lg:max-[1439px]:w-40">
               <button
                 type="submit"
                 className="w-full rounded-[--radius-md] border border-[--color-border] bg-white px-3 py-2 text-left text-[14px] leading-5 text-[--color-text-body] shadow-lg hover:bg-[--color-surface]"
@@ -157,12 +168,13 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
             onClick={() => setIsAccountMenuOpen((prev) => !prev)}
             aria-expanded={isAccountMenuOpen}
             aria-label="Account menu"
-            className="flex w-full items-center gap-3 py-4 pl-6 pr-4 text-left hover:bg-[--color-background]"
+            title={`${userName}\n${userEmail}`}
+            className="flex w-full items-center gap-3 py-4 pl-6 pr-4 text-left hover:bg-[--color-background] lg:max-[1439px]:justify-center lg:max-[1439px]:px-0"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[--color-primary-light] text-[12px] font-medium leading-4 text-[--color-primary-dark]">
               {initial}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col">
+            <span className="flex min-w-0 flex-1 flex-col lg:max-[1439px]:hidden">
               <span className="truncate text-[14px] font-medium leading-5 text-[--color-text-primary]" title={userName}>
                 {userName}
               </span>
@@ -170,7 +182,7 @@ export function Sidebar({ userName, userEmail, signOutAction, handoffCount, usag
                 {userEmail}
               </span>
             </span>
-            <ArrowDown aria-hidden="true" size={16} className="shrink-0 text-[--color-text-secondary]" />
+            <ArrowDown aria-hidden="true" size={16} className="shrink-0 text-[--color-text-secondary] lg:max-[1439px]:hidden" />
           </button>
         </div>
       </aside>

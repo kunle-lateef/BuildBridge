@@ -622,3 +622,10 @@ including the cap dialog (decision 1) → `/example` (decision 2) → new behavi
 - Guided review (04): ↑↓ move between the Detected values, Space ticks or unticks, and the hint bar shows "↑↓ move".
 - Share view (05): "Your flags" under the nav lists the flags this browser sent (up to 5, newest first) with their status from the tracking route: Open, Acknowledged, Resolved. A status that changed since the last visit counts as an update ("• 1 update", outlined card). The Resolved line reads "Check the handoff for what changed." instead of Figma's "Check Responsive and Implementation notes", which the app can't promise. Off in the example.
 - Verified in the browser: expired redirect (forced sign-out via sessionVersion) shows the notice and returns to /handoffs?tab=x; a normal sign-out shows the plain sign-in; ↓↓↓↑ then Space unticks the 2nd value; flag sent → Open → resolved in the database → "1 update" and outline, gone on the next visit.
+
+## Laptop layout, 1280 (04) — 2026-11-24, branch design/laptop-layout
+- Figma "Review — 1280 laptop" and "…, findings hidden". From `lg` up to 1439px the sidebar is a 64px icon rail: logo mark, bell, a 40×36 search square, 40×36 nav icons with hover/focus tooltips, and the avatar (account menu). The plan card is hidden in the rail. From 1440 it is the full 240px sidebar, and phones keep the full drawer.
+- Page padding is 24px beside the rail and 40px with the full sidebar.
+- Findings panel: 404px below 1440, 420px from 1440. The header gets » ("Hide findings panel"), which collapses it to a 48px rail with « and "N to review". The canvas takes the width. The choice is remembered per browser (`bb-findings-hidden`), applies from `xl` only, and guided review always shows its panel.
+- Verified in the browser at 1280×800 against Figma (rail 64, search/nav 40×36, padding 24, panel 404), hide → reload → still hidden → « shows it again, the tooltip on hover, and 1440 unchanged (240 sidebar, 420 panel).
+- Known: on a full page load, a hidden panel shows for a moment before it collapses, because the choice is read in the browser after the page renders.

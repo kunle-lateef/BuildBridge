@@ -6,6 +6,7 @@ import { onOpenInPanel, onReviewFinding, type AskAbout } from '@/components/revi
 import { AssistantPanel } from '@/components/review/AssistantPanel';
 import { ComponentReviewCard, type SpecificationItem } from '@/components/review/ComponentReviewCard';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
+import { useFindingsVisibility } from '@/components/review/FindingsVisibility';
 import { GapCard, isOpenGap, type PanelGap } from '@/components/review/GapCard';
 import { ReanalysisChangesPanel, ReanalysisNotice, type ReanalysisSummary } from '@/components/review/ReanalysisChanges';
 import { ShortcutHints } from '@/components/review/ReviewShortcuts';
@@ -63,6 +64,7 @@ export function FindingsPanel({ handoffId, handoffName, gaps, components, toRevi
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [hasOpenedAssistant, setHasOpenedAssistant] = useState(false);
   const [about, setAbout] = useState<AskAbout | null>(null);
+  const visibility = useFindingsVisibility();
 
   useEffect(
     () =>
@@ -174,6 +176,17 @@ export function FindingsPanel({ handoffId, handoffName, gaps, components, toRevi
             </button>
           ))}
         </div>
+        {visibility && (
+          <button
+            type="button"
+            onClick={visibility.hide}
+            aria-label="Hide findings panel"
+            title="Hide findings"
+            className="ml-auto hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[--color-border] text-[14px] font-medium text-[--color-text-primary] hover:bg-[--color-surface] xl:flex"
+          >
+            »
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-3 [&>*]:shrink-0">
