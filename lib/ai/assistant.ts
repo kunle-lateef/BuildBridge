@@ -1,3 +1,4 @@
+import { buildSourceIndex, tagFor, type SourceIndex } from '@/lib/ai/assistantSources';
 import { assistantReplyContentSchema } from '@/lib/ai/schemas';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -11,7 +12,16 @@ import type { DeveloperHandoffProjection } from '@/lib/share';
  * state are included explicitly so the model can honor the "prefer
  * designer-confirmed information" rule from its system prompt.
  */
-export function buildAssistantContextSummary(projection: DeveloperHandoffProjection): string {
+export function buildAssistantContextSummary(
+  projection: DeveloperHandoffProjection,
+  index: SourceIndex = buildSourceIndex(projection),
+): string {
+  // Each finding line starts with its short tag ([S3]) so an answer can
+  // cite it; see lib/ai/assistantSources.ts. Tags, never database ids.
+  const tag = (findingId: string, kind: Parameters<typeof tagFor>[2]) => {
+    const value = tagFor(index, findingId, kind);
+    return value ? `[${value}] ` : '';
+  };
   const lines: string[] = [
     `Handoff: ${projection.name}`,
     projection.description ? `Description: ${projection.description}` : null,
@@ -21,18 +31,18 @@ export function buildAssistantContextSummary(projection: DeveloperHandoffProject
   ].filter((line): line is string => line !== null);
 
   for (const component of projection.components) {
-    lines.push(`Component: ${component.name} (${component.type}) — review status: ${component.reviewStatus}`);
+    lines.push(`${tag(component.id, 'component')}Component: ${component.name} (${component.type}) — review status: ${component.reviewStatus}`);
     if (component.description) lines.push(`  Description: ${component.description}`);
 
     for (const spec of component.specifications) {
       lines.push(
-        `  Spec — ${spec.property}: ${spec.value}${spec.unit ?? ''} [${spec.provenance}, ${spec.reviewStatus}]`,
+        `  ${tag(spec.id, 'specification')}Spec — ${spec.property}: ${spec.value}${spec.unit ?? ''} [${spec.provenance}, ${spec.reviewStatus}]`,
       );
     }
 
     for (const state of component.states) {
       lines.push(
-        `  State — ${state.name}: ${state.description ?? 'no description'} [${state.provenance}, ${state.reviewStatus}]`,
+        `  ${tag(state.id, 'state')}State — ${state.name}: ${state.description ?? 'no description'} [${state.provenance}, ${state.reviewStatus}]`,
       );
     }
   }
@@ -41,7 +51,7 @@ export function buildAssistantContextSummary(projection: DeveloperHandoffProject
     lines.push('', 'Responsive behavior:');
     for (const rule of projection.responsiveRules) {
       lines.push(
-        `  ${rule.viewportCategory}${rule.screenName ? ` (${rule.screenName})` : ''}: ${rule.behavior} [${rule.provenance}, ${rule.reviewStatus}]`,
+        `  ${tag(rule.id, 'responsive')}${rule.viewportCategory}${rule.screenName ? ` (${rule.screenName})` : ''}: ${rule.behavior} [${rule.provenance}, ${rule.reviewStatus}]`,
       );
     }
   }
@@ -49,7 +59,7 @@ export function buildAssistantContextSummary(projection: DeveloperHandoffProject
   if (projection.issues.length > 0) {
     lines.push('', 'Open questions / issues:');
     for (const issue of projection.issues) {
-      lines.push(`  [${issue.severity}] ${issue.title} — ${issue.description} (status: ${issue.status})`);
+      lines.push(`  ${tag(issue.id, 'gap')}[${issue.severity}] ${issue.title} — ${issue.description} (status: ${issue.status})`);
     }
   }
 

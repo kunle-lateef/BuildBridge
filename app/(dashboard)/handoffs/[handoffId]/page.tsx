@@ -601,7 +601,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
           findingCount={allFindings.length + issues.length}
           actions={
             <>
-              <AskBuildBridgeFab handoffId={handoff.id} variant="text" />
+              <AskBuildBridgeFab handoffId={handoff.id} handoffName={handoff.name} variant="text" />
               {components.length > 0 && (
                 <ShareHandoffButton handoffId={handoff.id} shareLinks={shareLinkItems} variant={isReady ? 'primary' : 'secondary'} />
               )}
@@ -658,6 +658,8 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
               }))}
             panel={
             <FindingsPanel
+              handoffId={handoff.id}
+              handoffName={handoff.name}
               toReviewCount={toReviewCount}
               reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
               notice={components.length === 0 ? analysisBlock : undefined}

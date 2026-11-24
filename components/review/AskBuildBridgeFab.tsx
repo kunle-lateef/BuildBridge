@@ -3,41 +3,39 @@
 import { useEffect, useState } from 'react';
 
 import { AssistantDrawer } from '@/components/review/AssistantDrawer';
-import { ASK_ABOUT_EVENT, type AskAbout } from '@/components/review/AssistantPanel';
+import { onOpenInDrawer, openAssistant, type AskAbout } from '@/components/review/assistantEvents';
 import { Sparkles } from '@/components/ui/icons';
 
 type AskBuildBridgeFabProps = {
   handoffId: string;
+  handoffName: string;
   /** 'text' is the Review header's borderless button (Figma); 'fab' the floating one. */
   variant?: 'fab' | 'text';
 };
 
 /**
- * Opens the handoff's assistant. Also opens it when a finding card's "Ask
- * about this finding" fires ASK_ABOUT_EVENT, so the assistant starts with
- * that finding and a few questions to try (Figma `04 — Handoff /
- * Assistant (from a finding)`).
+ * Opens Ask BuildBridge. On the Review tab the findings panel takes it, in
+ * place of the findings (Figma `04 — Handoff / Assistant`); on any other
+ * tab there's no findings panel, so this drawer opens instead.
  */
-export function AskBuildBridgeFab({ handoffId, variant = 'fab' }: AskBuildBridgeFabProps) {
+export function AskBuildBridgeFab({ handoffId, handoffName, variant = 'fab' }: AskBuildBridgeFabProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [about, setAbout] = useState<AskAbout | null>(null);
 
-  useEffect(() => {
-    function onAsk(event: Event) {
-      const detail = (event as CustomEvent<AskAbout>).detail;
-      if (!detail?.label) return;
-      setAbout(detail);
-      setIsOpen(true);
-    }
-    window.addEventListener(ASK_ABOUT_EVENT, onAsk);
-    return () => window.removeEventListener(ASK_ABOUT_EVENT, onAsk);
-  }, []);
+  useEffect(
+    () =>
+      onOpenInDrawer((next) => {
+        setAbout(next);
+        setIsOpen(true);
+      }),
+    [],
+  );
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={() => openAssistant(null)}
         className={
           variant === 'text'
             ? 'flex h-10 items-center gap-2 rounded-[--radius-md] px-3 text-[14px] font-semibold leading-5 text-[--color-text-body] hover:bg-[--color-surface]'
@@ -52,6 +50,7 @@ export function AskBuildBridgeFab({ handoffId, variant = 'fab' }: AskBuildBridge
         open={isOpen}
         onClose={() => setIsOpen(false)}
         handoffId={handoffId}
+        handoffName={handoffName}
         about={about}
         onClearAbout={() => setAbout(null)}
       />
