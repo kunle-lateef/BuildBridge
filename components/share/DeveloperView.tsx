@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { DeveloperFlagForm } from '@/components/handoff/DeveloperFlagForm';
+import { YourFlags } from '@/components/share/YourFlags';
 import { EdgeCasesSection } from '@/components/handoff/EdgeCasesSection';
 import { ImplementationNotesSection } from '@/components/handoff/ImplementationNotesSection';
 import { RecentUpdatesSection } from '@/components/handoff/RecentUpdatesSection';
@@ -114,6 +115,7 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice, is
                   {item.count !== undefined && <span className="text-[12px] leading-4">{item.count}</span>}
                 </a>
               ))}
+              {shareToken && !isExample && <YourFlags shareToken={shareToken} />}
               {isExample && (
                 <div className="mt-4 flex flex-col gap-1 border-t border-[--color-border] px-3 pt-4">
                   <span className="text-[12px] font-medium leading-4 text-[--color-text-secondary]">Flags</span>

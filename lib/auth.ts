@@ -2,8 +2,29 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import { cookies } from 'next/headers';
 
+import { SIGNED_IN_HINT_COOKIE, SIGNED_IN_HINT_MAX_AGE } from '@/lib/auth-redirect';
 import { db } from '@/lib/db';
+
+async function setSignedInHint(isSignedIn: boolean) {
+  try {
+    const store = await cookies();
+    if (isSignedIn) {
+      store.set(SIGNED_IN_HINT_COOKIE, '1', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: SIGNED_IN_HINT_MAX_AGE,
+      });
+    } else {
+      store.delete(SIGNED_IN_HINT_COOKIE);
+    }
+  } catch {
+    // Outside a request that can set cookies: the hint is only a nicety.
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -50,6 +71,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  // The "was signed in" hint behind the session-expired notice (see
+  // lib/auth-redirect.ts). Both run inside the server action or route that
+  // signs in or out, so the response can carry the cookie change.
+  events: {
+    async signIn() {
+      await setSignedInHint(true);
+    },
+    async signOut() {
+      await setSignedInHint(false);
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

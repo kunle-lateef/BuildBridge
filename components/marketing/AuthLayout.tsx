@@ -68,7 +68,7 @@ export function AuthNotice({
   title,
   children,
 }: {
-  tone: 'error' | 'success';
+  tone: 'error' | 'success' | 'info';
   icon: ReactNode;
   title?: string;
   children?: ReactNode;
@@ -78,13 +78,31 @@ export function AuthNotice({
       role={tone === 'error' ? 'alert' : 'status'}
       className={cn(
         'flex gap-2.5 rounded-[8px] px-3.5 py-3 text-[14px] leading-5',
-        tone === 'error' ? 'bg-[--color-error-light]' : 'bg-[--color-success-light]',
+        tone === 'error' && 'bg-[--color-error-light]',
+        tone === 'success' && 'bg-[--color-success-light]',
+        tone === 'info' && 'bg-[--color-info-light]',
       )}
     >
-      <span className={cn('pt-0.5', tone === 'error' ? 'text-[--color-error]' : 'text-[--color-text-body]')}>{icon}</span>
+      <span
+        className={cn(
+          'pt-0.5',
+          tone === 'error' && 'text-[--color-error]',
+          tone === 'success' && 'text-[--color-text-body]',
+          tone === 'info' && 'text-[--color-info]',
+        )}
+      >
+        {icon}
+      </span>
       <span className="flex flex-col gap-0.5">
         {title && (
-          <span className={cn('font-medium', tone === 'error' ? 'text-[--color-error]' : 'text-[--color-text-body]')}>
+          <span
+            className={cn(
+              'font-medium',
+              tone === 'error' && 'text-[--color-error]',
+              tone === 'success' && 'text-[--color-text-body]',
+              tone === 'info' && 'text-[--color-text-primary]',
+            )}
+          >
             {title}
           </span>
         )}
