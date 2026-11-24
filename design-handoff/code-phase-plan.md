@@ -629,3 +629,23 @@ including the cap dialog (decision 1) → `/example` (decision 2) → new behavi
 - Findings panel: 404px below 1440, 420px from 1440. The header gets » ("Hide findings panel"), which collapses it to a 48px rail with « and "N to review". The canvas takes the width. The choice is remembered per browser (`bb-findings-hidden`), applies from `xl` only, and guided review always shows its panel.
 - Verified in the browser at 1280×800 against Figma (rail 64, search/nav 40×36, padding 24, panel 404), hide → reload → still hidden → « shows it again, the tooltip on hover, and 1440 unchanged (240 sidebar, 420 panel).
 - Known: on a full page load, a hidden panel shows for a moment before it collapses, because the choice is read in the browser after the page renders.
+
+## Phone layouts (03, 04, 05) — 2026-11-24, branch design/phone-layouts
+- Dashboard (Figma "Handoffs — Mobile 390", "…, menu open", "…, notifications open"):
+  - The top bar has menu, logo, a search icon (opens the ⌘K palette through `buildbridge:open-search`) and the bell, all 44px. The bell shows a dot on phones and the count in the sidebar.
+  - Notifications open as a sheet 16px from the edges, over a dimmed page.
+  - Page padding is 16px. "Needs your attention" comes first and shows two items, then "Show all N" (a checkbox, so no client JS).
+  - The tabs sit on the page without the search/sort/view controls. Rows are cards (name and %, then the status, open gaps in red, flags and the time).
+  - No activity feed on phones; a usage card closes the page (below lg, where the sidebar is a drawer).
+- Review page below lg (Figma "Review — Readiness breakdown · Mobile 390"):
+  - A handoff top bar (⋯ menu, name, back) replaces the app bar, via `body:has([data-phone-topbar]) [data-app-topbar]`.
+  - A status card (Not ready + bar + status, the red line, the readiness line that opens the breakdown sheet, Review next + Share).
+  - The canvas is 400px tall and swipes between screens, labelled "Checkout 1 of 4 · swipe for more". Small ‹ › buttons stay beside the label so switching never needs a swipe (not in Figma).
+  - Findings without the panel frame or the To review/Reviewed header.
+- Share view below sm/lg (Figma "Share view — Mobile 390"):
+  - The top bar shows the logo and Read-only only.
+  - "Jump to" (native select of sections and each component) replaces the side nav.
+  - Value rows stack (property, value and ⋯ on one line, labels below). Each group shows 3 values and then "Show N more".
+  - "Your flags" sits under the flag form. No more sideways scroll.
+- Verified in the browser at 390: dashboard against Figma, search opening the palette, the notifications sheet, Review header/card/breakdown sheet, the share view (no overflow, Show 2 more, Jump to scrolls). Desktop (1440) unchanged.
+- Not done: Draft · Mobile 390 (needs a draft handoff locally), "Example handoff — Mobile 390" and "Flag a value · Mobile 390", the share view's ‹ icon (no clear target on a public page) and the edge-cases "Show N more gaps", and the attention "→ Makes it ready" line. Phone triage is its own task.

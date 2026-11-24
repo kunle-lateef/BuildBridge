@@ -35,7 +35,8 @@ export function ShareTopBar({ shareToken, name, checklist, downloadHref, isExamp
         <Link href="/" className="shrink-0">
           <BrandMark alt="BuildBridge" size={24} />
         </Link>
-        <span className="min-w-0 truncate text-[14px] font-medium leading-5 text-[--color-text-primary]">{name}</span>
+        {/* Phones (Figma "Share view — Mobile 390"): logo and the pill only; the name heads the page. */}
+        <span className="hidden min-w-0 truncate text-[14px] font-medium leading-5 text-[--color-text-primary] sm:block">{name}</span>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] bg-[--color-surface] px-2 py-0.5 text-[12px] font-medium leading-4 text-[--color-text-secondary]">
           {!isExample && <Lock aria-hidden="true" size={12} />}
           {isExample ? 'Example' : 'Read-only'}
@@ -65,6 +66,7 @@ export function ShareTopBar({ shareToken, name, checklist, downloadHref, isExamp
           <Button
             type="button"
             variant="secondary"
+            className="max-sm:hidden"
             onClick={() => document.getElementById('flag')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
           >
             Flag something

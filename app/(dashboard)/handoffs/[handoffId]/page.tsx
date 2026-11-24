@@ -627,6 +627,22 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
           }
           isExample={handoff.isExample}
           exampleAction={handoff.isExample ? <DeleteHandoffButton handoffId={handoff.id} isExample /> : undefined}
+          phoneMenu={
+            <HandoffActionsMenu handoffId={handoff.id} isArchived={handoff.status === 'Archived'} isExample={handoff.isExample} />
+          }
+          phoneActions={
+            <>
+              {toReviewCount > 0 && !isGuided && (
+                <Link
+                  href={`/handoffs/${handoff.id}?guided=1`}
+                  className={buttonVariants({ variant: isReady ? 'secondary' : 'primary' })}
+                >
+                  Review next · {toReviewCount} left
+                </Link>
+              )}
+              {components.length > 0 && shareOrPreview(isReady ? 'primary' : 'secondary')}
+            </>
+          }
         />
 
         {runStatus === 'PartiallyCompleted' && incompleteStages.length > 0 && (

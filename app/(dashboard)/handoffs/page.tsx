@@ -15,6 +15,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getPortfolioDrift } from '@/lib/drift';
 import { EXAMPLE } from '@/lib/example/fixture';
+import { summarizeUsage } from '@/lib/plan-limits';
 import { createSignedReadUrl } from '@/lib/storage';
 import type { HandoffStatus } from '@/lib/types';
 
@@ -98,6 +99,17 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
     getPortfolioDrift(session.user.id),
   ]);
 
+  // Phones show the plan usage on the page (Figma "Handoffs — Mobile 390"),
+  // since the sidebar that carries it is a drawer there.
+  const [planUser, activeHandoffCount] = await Promise.all([
+    db.user.findUniqueOrThrow({
+      where: { id: session.user.id },
+      select: { planTier: true, analysisQuota: true, analysisUsageCount: true, billingCycleStart: true },
+    }),
+    db.handoff.count({ where: { ...ownedNotArchived, isExample: false } }),
+  ]);
+  const usage = summarizeUsage(planUser, activeHandoffCount);
+
   const countFor = (target: HandoffStatus) => statusCounts.find((row) => row.status === target)?._count ?? 0;
   const totalCount = statusCounts.reduce((sum, row) => sum + row._count, 0);
   const tabs: HandoffTab[] = TAB_STATUSES.map((tab) => ({
@@ -166,16 +178,19 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="m-0 text-[28px] font-semibold leading-9 text-[--color-text-primary]">Handoffs</h1>
+        <h1 className="m-0 text-[26px] font-semibold leading-[34px] tracking-[-0.5px] text-[--color-text-primary] sm:text-[28px] sm:leading-9 sm:tracking-normal">
+          Handoffs
+        </h1>
         {!isFirstRun && <CreateHandoffButton />}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex min-w-0 flex-col gap-8">
+        <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
           {isFirstRun ? (
             <GetStarted />
           ) : (
-            <section className="overflow-hidden rounded-[12px] border border-[--color-border] bg-white">
+            // On phones the tabs sit on the page and the rows become a card list (Figma "Handoffs — Mobile 390").
+            <section className="flex flex-col gap-6 sm:block sm:gap-0 sm:overflow-hidden sm:rounded-[12px] sm:border sm:border-[--color-border] sm:bg-white">
               <HandoffToolbar
                 tabs={tabs}
                 currentStatus={statusFilter}
@@ -184,7 +199,7 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
                 currentView={isGridView ? 'grid' : 'list'}
               />
               {isGridView ? (
-                <div className="p-4">
+                <div className="sm:p-4">
                   <HandoffGrid isFiltered={Boolean(statusFilter) || Boolean(searchQuery)} handoffs={gridHandoffs} />
                 </div>
               ) : (
@@ -204,10 +219,15 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
               )}
             </section>
           )}
-          <ActivityFeed events={activity} />
+          {/* Phones leave the activity feed out (Figma "Handoffs — Mobile 390"). */}
+          <div className="hidden sm:block">
+            <ActivityFeed events={activity} />
+          </div>
+          <UsageCard usage={usage} />
         </div>
 
-        <div className="flex flex-col gap-6">
+        {/* Phones put what needs attention first. */}
+        <div className="flex flex-col gap-6 max-sm:order-first">
           <AttentionQueue items={attentionItems} />
           {driftHandoffCount > 0 && (
             <div className="flex gap-3 rounded-[12px] border border-[--color-border] bg-white px-4 py-3">
@@ -228,7 +248,33 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
   );
 }
 
-const FIRST_STEPS = ['Name it after the feature or flow', 'Upload the finished screens in order', 'Run the analysis and review'];
+/**
+ * Plan usage for phones and tablets, where the sidebar that carries it is a
+ * drawer (Figma "Handoffs — Mobile 390"). Same numbers as the sidebar card.
+ */
+function UsageCard({ usage }: { usage: ReturnType<typeof summarizeUsage> }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-[8px] border border-[--color-border] bg-white px-4 py-3 text-[12px] leading-4 tracking-[0.2px] lg:hidden">
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-[14px] font-medium leading-5 tracking-normal text-[--color-text-primary]">
+          {usage.used} of {usage.quota} analyses used
+        </span>
+        <span className="text-[--color-text-secondary]">{usage.planLabel}</span>
+      </div>
+      {usage.projectedOver !== null && (
+        <span className="text-[--color-error]">
+          On pace for about {usage.projectedOver}, over your limit. Resets {usage.resetsOn}.
+        </span>
+      )}
+      <span className="text-[--color-text-secondary]">
+        {usage.activeCount} of {usage.activeCap} active handoffs.
+        {usage.activeCount >= usage.activeCap && ' Archive one to start a new handoff.'}
+      </span>
+    </div>
+  );
+}
+
+const FIRST_STEPS =['Name it after the feature or flow', 'Upload the finished screens in order', 'Run the analysis and review'];
 
 /**
  * Figma `03 — Dashboard` → "First run — 0": try the example (recommended),

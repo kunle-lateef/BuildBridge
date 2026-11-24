@@ -31,6 +31,9 @@ type ShareComponentTableProps = {
 
 const isDecided = (row: ShareRow) => row.reviewStatus === 'Confirmed' || row.reviewStatus === 'Modified';
 
+/** Phones show this many values per group before "Show N more". */
+const PHONE_ROWS = 3;
+
 /**
  * One component on the developer's share view (Figma `05 — Share view`):
  * the designer's note, then a table of values split into Decided and "Not
@@ -67,9 +70,10 @@ export function ShareComponentTable({ shareToken, id, name, type, screenName, no
         </p>
       )}
 
+      {/* Phones (Figma "Share view — Mobile 390"): each value is two lines, property and value, then its labels. */}
       <div className="overflow-x-auto rounded-[8px] border border-[--color-border] bg-white">
-        <table className="w-full min-w-[520px] border-collapse text-[12px] leading-4">
-          <thead>
+        <table className="w-full border-collapse text-[12px] leading-4 max-sm:block sm:min-w-[520px]">
+          <thead className="max-sm:hidden">
             <tr className="bg-[--color-background] text-left text-[--color-text-secondary]">
               <th scope="col" className="px-3 py-2 font-medium">Property</th>
               <th scope="col" className="px-3 py-2 font-medium">Value</th>
@@ -88,11 +92,13 @@ export function ShareComponentTable({ shareToken, id, name, type, screenName, no
 function Group({ label, rows, isDecided: decided, shareToken, componentName }: {
   label: string; rows: ShareRow[]; isDecided: boolean; shareToken?: string; componentName: string;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   if (rows.length === 0) return null;
+  const hiddenOnPhone = isExpanded ? 0 : Math.max(0, rows.length - PHONE_ROWS);
   return (
-    <tbody>
-      <tr className="border-t border-[--color-border]">
-        <th colSpan={4} scope="colgroup" className="px-3 pb-1.5 pt-3 text-left font-medium text-[--color-text-primary]">
+    <tbody className="max-sm:block">
+      <tr className="border-t border-[--color-border] max-sm:block max-sm:[tbody:first-of-type>&]:border-t-0">
+        <th colSpan={4} scope="colgroup" className="px-3 pb-1.5 pt-3 text-left font-medium text-[--color-text-primary] max-sm:block max-sm:px-4">
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className={cn('h-1.5 w-1.5 rounded-full border border-[--color-text-body]', decided && 'bg-[--color-text-body]')} />
             {label}
@@ -100,14 +106,38 @@ function Group({ label, rows, isDecided: decided, shareToken, componentName }: {
           </span>
         </th>
       </tr>
-      {rows.map((row) => (
-        <Row key={`${row.findingType}:${row.id}`} row={row} isMuted={!decided} shareToken={shareToken} componentName={componentName} />
+      {rows.map((row, index) => (
+        <Row
+          key={`${row.findingType}:${row.id}`}
+          row={row}
+          isMuted={!decided}
+          shareToken={shareToken}
+          componentName={componentName}
+          isHiddenOnPhone={index >= rows.length - hiddenOnPhone}
+        />
       ))}
+      {hiddenOnPhone > 0 && (
+        <tr className="block border-t border-[--color-border] sm:hidden">
+          <td className="block px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="text-[14px] font-medium leading-5 text-[--color-primary] underline"
+            >
+              Show {hiddenOnPhone} more
+            </button>
+          </td>
+        </tr>
+      )}
     </tbody>
   );
 }
 
-function Row({ row, isMuted, shareToken, componentName }: { row: ShareRow; isMuted: boolean; shareToken?: string; componentName: string }) {
+function Row({ row, isMuted, shareToken, componentName, isHiddenOnPhone }: {
+  row: ShareRow; isMuted: boolean; shareToken?: string; componentName: string;
+  /** Past the first few on phones, until "Show N more". */
+  isHiddenOnPhone: boolean;
+}) {
   const [isImplemented, setIsImplemented] = useState(row.isImplemented);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -155,15 +185,22 @@ function Row({ row, isMuted, shareToken, componentName }: { row: ShareRow; isMut
   }
 
   return (
-    <tr className="group border-t border-[--color-border] hover:bg-[--color-background]">
-      <th scope="row" className={cn('px-3 py-2.5 text-left text-[14px] font-normal leading-5', isMuted ? 'text-[--color-text-muted]' : 'text-[--color-text-secondary]')}>
+    <tr
+      className={cn(
+        'group border-t border-[--color-border] hover:bg-[--color-background]',
+        // Phones: property | value | ⋯ on one line, the labels under the value.
+        'max-sm:grid max-sm:grid-cols-[96px_minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3',
+        isHiddenOnPhone && 'max-sm:hidden',
+      )}
+    >
+      <th scope="row" className={cn('px-3 py-2.5 text-left text-[14px] font-normal leading-5 max-sm:p-0', isMuted ? 'text-[--color-text-muted]' : 'text-[--color-text-secondary]')}>
         {row.property}
       </th>
-      <td className={cn('px-3 py-2.5', row.isMono ? 'font-mono text-[13px] leading-[18px]' : 'text-[14px] leading-5', isMuted ? 'text-[--color-text-muted]' : 'text-[--color-text-primary]')}>
+      <td className={cn('px-3 py-2.5 max-sm:min-w-0 max-sm:break-words max-sm:p-0', row.isMono ? 'font-mono text-[13px] leading-[18px]' : 'text-[14px] leading-5', isMuted ? 'text-[--color-text-muted]' : 'text-[--color-text-primary]')}>
         {row.value || '—'}
         {copied && <span className="ml-2 font-sans text-[12px] text-[--color-text-secondary]">Copied</span>}
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2.5 max-sm:col-start-2 max-sm:col-end-4 max-sm:row-start-2 max-sm:p-0">
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <ProvenanceBadge provenance={row.provenance} />
           {isImplemented ? (
@@ -175,14 +212,14 @@ function Row({ row, isMuted, shareToken, componentName }: { row: ShareRow; isMut
           )}
         </span>
       </td>
-      <td ref={menuRef} className="relative px-2 py-2.5 text-right">
+      <td ref={menuRef} className="relative px-2 py-2.5 text-right max-sm:col-start-3 max-sm:row-start-1 max-sm:p-0">
         <button
           type="button"
           aria-label={`Actions for ${row.property}`}
           aria-haspopup="menu"
           aria-expanded={isMenuOpen}
           onClick={() => setIsMenuOpen((open) => !open)}
-          className="grid h-6 w-6 place-items-center rounded-[6px] text-[--color-text-secondary] opacity-0 hover:bg-[--color-surface] focus-visible:opacity-100 group-hover:opacity-100 aria-expanded:opacity-100"
+          className="grid h-6 w-6 place-items-center rounded-[6px] text-[--color-text-secondary] opacity-0 hover:bg-[--color-surface] focus-visible:opacity-100 group-hover:opacity-100 aria-expanded:opacity-100 max-sm:opacity-100"
         >
           <MoreHorizontal aria-hidden="true" size={16} />
         </button>

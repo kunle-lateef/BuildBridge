@@ -2,7 +2,10 @@ import Link from 'next/link';
 
 import { CheckCircle2, Flag } from '@/components/ui/icons';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
+import { cn } from '@/lib/cn';
 import { formatRelativeTime } from '@/lib/relativeTime';
+
+const PHONE_VISIBLE = 2;
 
 export type AttentionItem =
   | { kind: 'CriticalIssue'; id: string; title: string; handoffId: string; handoffName: string; createdAt: string }
@@ -26,9 +29,13 @@ type AttentionQueueProps = {
  * first. Each item deep-links to the finding on its handoff.
  */
 export function AttentionQueue({ items }: AttentionQueueProps) {
+  // Phones show the first two and "Show all N" (Figma "Handoffs — Mobile 390").
+  // A plain checkbox drives it, so this stays a server component.
+  const hasMore = items.length > PHONE_VISIBLE;
+
   return (
-    <section className="overflow-hidden rounded-[12px] border border-[--color-border] bg-white">
-      <h2 className="m-0 flex items-center gap-2 border-b border-[--color-border] px-4 py-4 text-[14px] font-medium leading-5 text-[--color-text-primary]">
+    <section className="group overflow-hidden rounded-[12px] border border-[--color-border] bg-white">
+      <h2 className="m-0 flex items-center gap-2 border-b border-[--color-border] px-4 py-3 text-[14px] font-medium leading-5 text-[--color-text-primary] sm:py-4">
         Needs your attention
         {items.length > 0 && (
           <span className="rounded-[4px] bg-[--color-error-light] px-2 py-px text-[12px] font-medium leading-4 text-[--color-error]">
@@ -47,9 +54,13 @@ export function AttentionQueue({ items }: AttentionQueueProps) {
           {items.map((item, index) => (
             <li
               key={`${item.kind}-${item.id}`}
-              className={`relative flex flex-col gap-1.5 px-4 py-3 hover:bg-[--color-background] ${
-                index < items.length - 1 ? 'border-b border-[--color-border]' : ''
-              }`}
+              className={cn(
+                'relative flex flex-col gap-1.5 px-4 py-3 hover:bg-[--color-background]',
+                (index < items.length - 1 || hasMore) && 'border-b border-[--color-border]',
+                // The last row only needs a line above "Show all", which phones show until it's used.
+                index === items.length - 1 && hasMore && 'sm:border-b-0 max-sm:group-has-[:checked]:border-b-0',
+                index >= PHONE_VISIBLE && 'max-sm:hidden max-sm:group-has-[:checked]:flex',
+              )}
             >
               <span className="flex items-center gap-2 text-[12px] leading-4 text-[--color-text-secondary]">
                 {item.kind === 'CriticalIssue' ? (
@@ -76,6 +87,12 @@ export function AttentionQueue({ items }: AttentionQueueProps) {
             </li>
           ))}
         </ul>
+      )}
+      {hasMore && (
+        <label className="block cursor-pointer px-4 py-3 text-[14px] font-medium leading-5 text-[--color-primary] underline sm:hidden group-has-[:checked]:hidden">
+          <input type="checkbox" className="sr-only" />
+          Show all {items.length}
+        </label>
       )}
     </section>
   );

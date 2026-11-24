@@ -47,8 +47,9 @@ export function HandoffToolbar({ tabs, currentStatus, currentSort, currentQuery,
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-[--color-border] px-4 pr-3 sm:flex-row sm:items-center sm:justify-between">
-      <nav aria-label="Filter by status" className="-mb-px flex gap-6 overflow-x-auto">
+    // Phones (Figma "Handoffs — Mobile 390"): the tabs alone, on the page, 16px apart.
+    <div className="flex flex-col gap-2 border-b border-[--color-border] sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:pr-3">
+      <nav aria-label="Filter by status" className="-mb-px flex gap-4 overflow-x-auto sm:gap-6">
         {tabs.map((tab) => {
           const isActive = tab.status === currentStatus;
           return (
@@ -57,7 +58,7 @@ export function HandoffToolbar({ tabs, currentStatus, currentSort, currentQuery,
               href={hrefWith({ status: tab.status })}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex shrink-0 items-center gap-2 whitespace-nowrap pb-3 pt-4 text-[14px] leading-5',
+                'flex shrink-0 items-center gap-2 whitespace-nowrap py-3 text-[14px] leading-5 sm:pb-3 sm:pt-4',
                 isActive
                   ? 'border-b-2 border-[--color-primary] font-medium text-[--color-text-primary]'
                   : 'text-[--color-text-secondary] hover:text-[--color-text-primary]',
@@ -70,7 +71,7 @@ export function HandoffToolbar({ tabs, currentStatus, currentSort, currentQuery,
         })}
       </nav>
 
-      <div className="flex items-center gap-2 pb-2 sm:pb-0">
+      <div className="hidden items-center gap-2 sm:flex">
         {isSearchOpen ? (
           <form
             onSubmit={(event) => {

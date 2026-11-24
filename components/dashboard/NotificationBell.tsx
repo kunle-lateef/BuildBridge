@@ -58,22 +58,35 @@ export function NotificationBell({ notifications, align = 'right' }: Notificatio
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
-        className="relative flex h-8 w-8 items-center justify-center rounded-[--radius-md] text-[--color-text-primary] hover:bg-[--color-surface]"
+        className="relative flex h-11 w-11 items-center justify-center rounded-[--radius-md] text-[--color-text-primary] hover:bg-[--color-surface] lg:h-8 lg:w-8"
       >
         <Bell aria-hidden="true" size={18} />
         {unreadCount > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[--color-primary] px-1 text-[10px] font-semibold text-white"
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <>
+            {/* Phones show a dot (Figma "Handoffs — Mobile 390"), the sidebar a count. */}
+            <span aria-hidden="true" className="absolute left-[26px] top-[11px] h-2 w-2 rounded-full bg-[--color-primary] lg:hidden" />
+            <span
+              aria-hidden="true"
+              className="absolute -right-1 -top-1 hidden h-4 min-w-4 items-center justify-center rounded-full bg-[--color-primary] px-1 text-[10px] font-semibold text-white lg:flex"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          </>
         )}
       </button>
 
       {isOpen && (
+        // Phones: the page dims under the top bar (Figma "…, notifications open").
         <div
-          className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} z-50 mt-2 w-80 rounded-[--radius-lg] border border-[--color-border] bg-white shadow-lg`}
+          aria-hidden="true"
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-[69px] z-40 bg-[rgba(14,19,32,0.4)] lg:hidden"
+        />
+      )}
+
+      {isOpen && (
+        <div
+          className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} z-50 mt-2 w-80 rounded-[--radius-lg] border border-[--color-border] bg-white shadow-lg max-lg:fixed max-lg:inset-x-4 max-lg:top-[77px] max-lg:mt-0 max-lg:w-auto`}
         >
           <div className="flex items-center justify-between border-b border-[--color-border] px-4 py-2">
             <span className="text-[--color-text-body]">Notifications</span>
