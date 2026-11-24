@@ -83,7 +83,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <NotificationBell notifications={bellNotifications} />
             </header>
 
-            <main className="w-full px-5 py-8 lg:px-10 lg:py-10">{children}</main>
+            {/* 24px padding beside the icon rail, 40px with the full sidebar (Figma 1280 / 1440). */}
+            <main className="w-full px-5 py-8 lg:p-6 min-[1440px]:px-10 min-[1440px]:py-10">{children}</main>
           </div>
         </div>
       </MobileSidebarProvider>
