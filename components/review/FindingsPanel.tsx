@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { onOpenInPanel, onReviewFinding, type AskAbout } from '@/components/review/assistantEvents';
+import { AssistantPanel } from '@/components/review/AssistantPanel';
 import { ComponentReviewCard, type SpecificationItem } from '@/components/review/ComponentReviewCard';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
 import { GapCard, isOpenGap, type PanelGap } from '@/components/review/GapCard';
@@ -28,6 +30,8 @@ export type PanelComponent = {
 };
 
 type FindingsPanelProps = {
+  handoffId: string;
+  handoffName: string;
   gaps: PanelGap[];
   components: PanelComponent[];
   toReviewCount: number;
@@ -53,9 +57,51 @@ const hasReviewed = (component: PanelComponent) =>
  * 1440"): To review / Reviewed, then gaps as compact rows with what
  * answering each one does to readiness, then components.
  */
-export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, notice, reanalysis = null }: FindingsPanelProps) {
+export function FindingsPanel({ handoffId, handoffName, gaps, components, toReviewCount, reviewedCount, notice, reanalysis = null }: FindingsPanelProps) {
   const [view, setView] = useState<'toReview' | 'reviewed'>('toReview');
   const [showChanges, setShowChanges] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [hasOpenedAssistant, setHasOpenedAssistant] = useState(false);
+  const [about, setAbout] = useState<AskAbout | null>(null);
+
+  useEffect(
+    () =>
+      onOpenInPanel((next) => {
+        setAbout(next);
+        setHasOpenedAssistant(true);
+        setIsAssistantOpen(true);
+        setShowChanges(false);
+      }),
+    [],
+  );
+
+  // "Review this finding" / "Answer the gap": back to the findings, then to
+  // that gap or component (opened). A responsive rule with no component
+  // lives on the Responsive tab, so that one isn't claimed here.
+  useEffect(
+    () =>
+      onReviewFinding((source) => {
+        if (source.kind !== 'gap' && !source.componentId) return false;
+        setIsAssistantOpen(false);
+        setShowChanges(false);
+        const targetId = source.kind === 'gap' ? `issue-${source.findingId}` : `component-${source.componentId}`;
+        const reveal = (attempt: number) => {
+          const target = document.getElementById(targetId);
+          if (!target) {
+            if (attempt === 0) setView((current) => (current === 'toReview' ? 'reviewed' : 'toReview'));
+            if (attempt < 2) window.setTimeout(() => reveal(attempt + 1), 60);
+            return;
+          }
+          target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          const opener = target.querySelector<HTMLButtonElement>('[data-review-nav][aria-expanded="false"]');
+          opener?.click();
+          opener?.focus({ preventScroll: true });
+        };
+        window.setTimeout(() => reveal(0), 60);
+        return true;
+      }),
+    [],
+  );
   const criticalOpenCount = gaps.filter((gap) => gap.severity === 'Critical' && isOpenGap(gap)).length;
 
   const visibleGaps = gaps.filter((gap) => (view === 'toReview' ? isOpenGap(gap) : !isOpenGap(gap)));
@@ -63,15 +109,44 @@ export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, 
     view === 'toReview' ? hasUnreviewed(component) : hasReviewed(component),
   );
 
+  // The assistant takes the panel's place (Figma `04 — Handoff /
+  // Assistant`), full screen on phones. It stays mounted once opened, so
+  // closing it and coming back keeps the conversation.
+  const assistant = hasOpenedAssistant ? (
+    <div
+      className={cn(
+        isAssistantOpen
+          ? 'fixed inset-0 z-50 flex flex-col bg-white lg:static lg:z-auto lg:h-[calc(100vh-240px)] lg:min-h-[560px] lg:overflow-hidden lg:rounded-[12px] lg:border lg:border-[--color-border] xl:h-[calc(100vh-120px)]'
+          : 'hidden',
+      )}
+    >
+      <AssistantPanel
+        handoffId={handoffId}
+        handoffName={handoffName}
+        about={about}
+        onClearAbout={() => setAbout(null)}
+        onClose={() => setIsAssistantOpen(false)}
+      />
+    </div>
+  ) : null;
+
+  // Same fragment shape in every branch, assistant first, so React keeps it.
+  if (isAssistantOpen) return <>{assistant}</>;
+
   if (showChanges && reanalysis) {
     return (
-      <aside data-findings-panel className="flex min-w-0 flex-col overflow-y-auto rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
-        <ReanalysisChangesPanel summary={reanalysis} onBack={() => setShowChanges(false)} />
-      </aside>
+      <>
+        {assistant}
+        <aside data-findings-panel className="flex min-w-0 flex-col overflow-y-auto rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
+          <ReanalysisChangesPanel summary={reanalysis} onBack={() => setShowChanges(false)} />
+        </aside>
+      </>
     );
   }
 
   return (
+    <>
+    {assistant}
     <aside data-findings-panel className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
       <div className="flex items-center justify-between gap-3 border-b border-[--color-border] py-3 pl-4 pr-3">
         <h2 className="m-0 text-[14px] font-medium leading-5 text-[--color-text-primary]">Findings</h2>
@@ -147,6 +222,7 @@ export function FindingsPanel({ gaps, components, toReviewCount, reviewedCount, 
       </div>
       <ShortcutHints />
     </aside>
+    </>
   );
 }
 

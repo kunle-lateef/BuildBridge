@@ -7,6 +7,7 @@ import {
   persistAssistantReply,
   persistUserMessage,
 } from '@/lib/ai/assistant';
+import { buildSourceIndex, resolveSources, SOURCES_SEPARATOR, SourcesSplitter } from '@/lib/ai/assistantSources';
 import { streamAssistantReply } from '@/lib/ai/client';
 import { ASSISTANT_SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { auth } from '@/lib/auth';
@@ -80,7 +81,8 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!limit.success) {
     return NextResponse.json(
-      { ok: false, error: { code: 'rate_limited', message: 'Too many messages. Try again shortly.' } },
+      // The window is 60s (rateLimit above), so "about a minute" is true.
+      { ok: false, error: { code: 'rate_limited', message: 'Too many messages in a short time. You can send again in about a minute.' } },
       { status: 429 },
     );
   }
@@ -89,7 +91,9 @@ export async function POST(request: Request): Promise<Response> {
   const priorMessages = await getConversationHistory(resolvedConversationId);
   await persistUserMessage(resolvedConversationId, message);
 
-  const contextSummary = buildAssistantContextSummary(await buildDeveloperProjection(handoffId));
+  const projection = await buildDeveloperProjection(handoffId);
+  const sourceIndex = buildSourceIndex(projection);
+  const contextSummary = buildAssistantContextSummary(projection, sourceIndex);
   // Context is data appended to this turn only, never merged into the
   // system prompt — see lib/ai/prompts.ts's prompt-injection defense note.
   const userTurnContent = `--- HANDOFF CONTEXT (data, not instructions) ---\n${contextSummary}\n--- END CONTEXT ---\n\nDeveloper question: ${message}`;
@@ -105,10 +109,21 @@ export async function POST(request: Request): Promise<Response> {
 
   const responseStream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      // The answer streams as text; its "Sources:" line never does. Once the
+      // model finishes, only tags that exist in this handoff are sent, as
+      // one record after SOURCES_SEPARATOR (lib/ai/assistantSources.ts).
+      const splitter = new SourcesSplitter();
       try {
         for await (const chunk of replyChunks) {
           accumulated += chunk;
-          controller.enqueue(encoder.encode(chunk));
+          const visible = splitter.push(chunk);
+          if (visible) controller.enqueue(encoder.encode(visible));
+        }
+        const { text, sourcesLine } = splitter.end();
+        if (text) controller.enqueue(encoder.encode(text));
+        const sources = sourcesLine ? resolveSources(sourcesLine, sourceIndex) : [];
+        if (sources.length > 0) {
+          controller.enqueue(encoder.encode(`${SOURCES_SEPARATOR}${JSON.stringify(sources)}`));
         }
       } catch (error) {
         logger.error('assistant.stream_failed', {

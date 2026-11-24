@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { AssistantPanel, type AskAbout } from '@/components/review/AssistantPanel';
-import { Sparkles, X } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 type AssistantDrawerProps = {
   open: boolean;
   onClose: () => void;
   handoffId: string;
+  handoffName: string;
   /** Set when opened from a finding ("Ask about this finding"). */
   about?: AskAbout | null;
   onClearAbout?: () => void;
@@ -33,7 +33,7 @@ const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:
  * — this is deliberately "Modal's a11y behavior wearing Sidebar's visual
  * shape" rather than a third, novel pattern.
  */
-export function AssistantDrawer({ open, onClose, handoffId, about = null, onClearAbout }: AssistantDrawerProps) {
+export function AssistantDrawer({ open, onClose, handoffId, handoffName, about = null, onClearAbout }: AssistantDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   // The panel stays mounted even while closed so the close transition can
   // animate (see the class note below) — but createPortal(..., document.body)
@@ -105,25 +105,9 @@ export function AssistantDrawer({ open, onClose, handoffId, about = null, onClea
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[--color-border] p-4">
-          <h2 className="flex items-center gap-2 text-[--color-text-primary]">
-            <Sparkles aria-hidden="true" size={18} className="text-[--color-ai-suggested]" />
-            Ask BuildBridge
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-[--radius-sm] p-2 text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary]"
-          >
-            <X aria-hidden="true" size={18} />
-          </button>
-        </div>
-        {/* No padding here — AssistantPanel now owns its own internal
-            padding so its footer row can span edge-to-edge independently
-            of its scrollable message area. */}
+        {/* The panel has its own header (title, New, close), as in Figma. */}
         <div className="min-h-0 flex-1">
-          <AssistantPanel handoffId={handoffId} about={about} onClearAbout={onClearAbout} className="h-full border-0 p-0" />
+          <AssistantPanel handoffId={handoffId} handoffName={handoffName} about={about} onClearAbout={onClearAbout} onClose={onClose} />
         </div>
       </div>
     </>,

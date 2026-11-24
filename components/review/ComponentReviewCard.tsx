@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { addDesignerNote } from '@/app/(dashboard)/handoffs/[handoffId]/actions';
-import { ASK_ABOUT_EVENT, type AskAbout } from '@/components/review/AssistantPanel';
+import { openAssistant, type AskAbout } from '@/components/review/assistantEvents';
 import type { ComponentStateItem } from '@/components/review/ComponentStateList';
 import { DecisionControls } from '@/components/review/DecisionControls';
 import { Button } from '@/components/ui/Button';
@@ -310,7 +310,7 @@ function CardFooter({ handoffId, componentId, componentName, selectedRow }: {
             `What would a developer still need to ask about the ${componentName}?`,
           ],
     };
-    window.dispatchEvent(new CustomEvent(ASK_ABOUT_EVENT, { detail }));
+    openAssistant(detail);
   }
 
   const noteError = note.trim().length === 0 ? 'Write the note first.' : null;
