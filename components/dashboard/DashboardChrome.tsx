@@ -7,6 +7,23 @@ import { RailTooltip } from '@/components/dashboard/SidebarNavLink';
 import { Search } from '@/components/ui/icons';
 import { useModKey } from '@/components/ui/useModKey';
 
+/** Opens the palette from outside the sidebar, e.g. the phone top bar's search icon. */
+const OPEN_SEARCH_EVENT = 'buildbridge:open-search';
+
+/** The phone top bar's search icon (Figma "Handoffs — Mobile 390"): same palette as ⌘K. */
+export function MobileSearchButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event(OPEN_SEARCH_EVENT))}
+      aria-label="Search handoffs and pages"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[--radius-md] text-[--color-text-primary] hover:bg-[--color-surface]"
+    >
+      <Search aria-hidden="true" size={20} />
+    </button>
+  );
+}
+
 type DashboardChromeProps = {
   handoffs: { id: string; name: string }[];
 };
@@ -28,7 +45,12 @@ export function DashboardChrome({ handoffs }: DashboardChromeProps) {
     }
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const openFromElsewhere = () => setOpen(true);
+    window.addEventListener(OPEN_SEARCH_EVENT, openFromElsewhere);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener(OPEN_SEARCH_EVENT, openFromElsewhere);
+    };
   }, []);
 
   return (

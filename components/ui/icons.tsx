@@ -1,4 +1,5 @@
 import {
+  ArrowLeft01Icon,
   ArrowRight01Icon,
   Alert02Icon,
   CubeIcon,
@@ -92,6 +93,7 @@ export const AlertOctagon = makeIcon(Alert02Icon, 'AlertOctagon');
 export const AlertTriangle = makeIcon(Alert02Icon, 'AlertTriangle');
 export const ArrowRight = makeIcon(ArrowRight02Icon, 'ArrowRight');
 export const ChevronRight = makeIcon(ArrowRight01Icon, 'ChevronRight');
+export const ArrowLeft = makeIcon(ArrowLeft01Icon, 'ArrowLeft');
 export const Bell = makeIcon(Notification01Icon, 'Bell');
 export const Check = makeIcon(Tick02Icon, 'Check');
 export const CheckCircle2 = makeIcon(CheckmarkCircle02Icon, 'CheckCircle2');

@@ -36,7 +36,9 @@ export function HandoffList({ handoffs, isFiltered }: HandoffListProps) {
   }
 
   return (
-    <div role="table" aria-label="Handoffs" className="overflow-x-auto">
+    <>
+    <PhoneHandoffList handoffs={handoffs} />
+    <div role="table" aria-label="Handoffs" className="hidden overflow-x-auto sm:block">
       <div className="min-w-[640px]">
         <div
           role="row"
@@ -116,5 +118,55 @@ export function HandoffList({ handoffs, isFiltered }: HandoffListProps) {
         ))}
       </div>
     </div>
+    </>
+  );
+}
+
+/**
+ * Phones (Figma "Handoffs — Mobile 390"): one card of rows, each the name
+ * and readiness, then the status and a line of what's open and when.
+ */
+function PhoneHandoffList({ handoffs }: { handoffs: HandoffRow[] }) {
+  return (
+    <ul aria-label="Handoffs" className="m-0 list-none overflow-hidden rounded-[12px] border border-[--color-border] bg-white p-0 sm:hidden">
+      {handoffs.map((handoff, index) => {
+        const extras = [
+          handoff.openFlagCount > 0 && `${handoff.openFlagCount} ${handoff.openFlagCount === 1 ? 'flag' : 'flags'}`,
+          formatRelativeTime(handoff.updatedAt),
+        ].filter(Boolean);
+        return (
+          <li
+            key={handoff.id}
+            className={`relative flex flex-col gap-2 px-4 py-3 active:bg-[--color-background] ${
+              index < handoffs.length - 1 ? 'border-b border-[--color-border]' : ''
+            }`}
+          >
+            <span className="flex items-center gap-2 text-[14px] font-medium leading-5">
+              <Link
+                href={`/handoffs/${handoff.id}`}
+                className="min-w-0 flex-1 truncate text-[--color-text-primary] after:absolute after:inset-0"
+              >
+                {handoff.name}
+              </Link>
+              {handoff.readinessScore !== null && (
+                <span className="shrink-0 tabular-nums text-[--color-text-secondary]">{handoff.readinessScore}%</span>
+              )}
+            </span>
+            <span className="flex min-w-0 items-center gap-2 text-[12px] leading-4 tracking-[0.2px] text-[--color-text-secondary]">
+              <HandoffStatusBadge status={handoff.status} isExample={handoff.isExample} />
+              <span className="truncate">
+                {handoff.openIssueCount > 0 && (
+                  <span className="text-[--color-error]">
+                    {handoff.openIssueCount} open {handoff.openIssueCount === 1 ? 'gap' : 'gaps'}
+                    {' · '}
+                  </span>
+                )}
+                {extras.join(' · ')}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

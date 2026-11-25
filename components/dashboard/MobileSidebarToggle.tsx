@@ -12,7 +12,7 @@ export function MobileSidebarToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[--radius-md] text-[--color-text-secondary] hover:bg-[--color-surface] hover:text-[--color-text-primary] lg:hidden"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[--radius-md] text-[--color-text-primary] hover:bg-[--color-surface] lg:hidden"
       aria-label="Open navigation menu"
     >
       <Menu aria-hidden="true" size={20} />

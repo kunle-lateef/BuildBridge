@@ -48,6 +48,15 @@
    * already do) still wins, since utility classes cascade after @layer
    * base.
    */
+  /*
+   * A page with its own phone top bar (the Review page's handoff bar, Figma
+   * "Review — Readiness breakdown · Mobile 390") replaces the app's one.
+   * CSS rather than state, so neither bar flashes on load.
+   */
+  body:has([data-phone-topbar]) [data-app-topbar] {
+    display: none;
+  }
+
   h1 {
     font-size: var(--font-desktop-heading-2-semi-bold-size);
     font-weight: var(--font-desktop-heading-2-semi-bold-weight);

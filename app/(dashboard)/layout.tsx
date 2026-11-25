@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { DashboardChrome } from '@/components/dashboard/DashboardChrome';
+import { DashboardChrome, MobileSearchButton } from '@/components/dashboard/DashboardChrome';
 import { MobileSidebarProvider } from '@/components/dashboard/MobileSidebarProvider';
 import { MobileSidebarToggle } from '@/components/dashboard/MobileSidebarToggle';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
@@ -73,18 +73,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
           <div className="flex min-w-0 flex-1 flex-col">
             {/* Phones only: the sidebar is a drawer, so its logo and bell live up here. */}
-            <header className="sticky top-0 z-20 flex h-[57px] shrink-0 items-center justify-between gap-3 border-b border-[--color-border] bg-white px-4 lg:hidden">
-              <div className="flex items-center gap-2">
-                <MobileSidebarToggle />
-                <Link href="/handoffs">
-                  <BrandMark alt="BuildBridge" size={24} />
-                </Link>
-              </div>
+            {/* Figma "Handoffs — Mobile 390": menu, logo, then search and the bell, 44px targets. */}
+            <header data-app-topbar className="sticky top-0 z-20 flex shrink-0 items-center gap-1 border-b border-[--color-border] bg-white px-2 py-3 lg:hidden">
+              <MobileSidebarToggle />
+              <Link href="/handoffs" aria-label="BuildBridge">
+                <BrandMark alt="" size={28} />
+              </Link>
+              <span className="flex-1" />
+              <MobileSearchButton />
               <NotificationBell notifications={bellNotifications} />
             </header>
 
-            {/* 24px padding beside the icon rail, 40px with the full sidebar (Figma 1280 / 1440). */}
-            <main className="w-full px-5 py-8 lg:p-6 min-[1440px]:px-10 min-[1440px]:py-10">{children}</main>
+            {/* 16px on phones, 24px beside the icon rail, 40px with the full sidebar (Figma 390 / 1280 / 1440). */}
+            <main className="w-full px-4 pb-8 pt-6 lg:p-6 min-[1440px]:px-10 min-[1440px]:py-10">{children}</main>
           </div>
         </div>
       </MobileSidebarProvider>

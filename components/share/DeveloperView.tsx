@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { DeveloperFlagForm } from '@/components/handoff/DeveloperFlagForm';
+import { JumpTo } from '@/components/share/JumpTo';
 import { YourFlags } from '@/components/share/YourFlags';
 import { EdgeCasesSection } from '@/components/handoff/EdgeCasesSection';
 import { ImplementationNotesSection } from '@/components/handoff/ImplementationNotesSection';
@@ -169,6 +170,16 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice, is
               )}
             </section>
 
+            <JumpTo
+              targets={nav
+                .filter((item) => item.href !== '#overview')
+                .flatMap((item) =>
+                  item.href === '#components'
+                    ? tables.map(({ component }) => ({ href: `#component-${component.id}`, label: `Components · ${component.name}` }))
+                    : [{ href: item.href, label: item.label }],
+                )}
+            />
+
             {projection.screens.length > 0 && (
               <section id="screens" className="flex scroll-mt-24 flex-col gap-3">
                 <h2 className="m-0 text-[20px] font-semibold leading-7 text-[--color-text-primary]">Screens</h2>
@@ -232,6 +243,12 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice, is
               <RecentUpdatesSection updates={projection.recentUpdates} />
             </div>
             {shareToken && <DeveloperFlagForm shareToken={shareToken} />}
+            {/* The side nav (and its "Your flags") is hidden below lg, so phones get the list here. */}
+            {shareToken && !isExample && (
+              <div className="-mt-4 lg:hidden">
+                <YourFlags shareToken={shareToken} />
+              </div>
+            )}
             {isExample && (
               <section className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[--color-border] px-5 py-5">
                 <div className="flex max-w-[460px] flex-col gap-1">

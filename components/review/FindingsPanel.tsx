@@ -149,8 +149,10 @@ export function FindingsPanel({ handoffId, handoffName, gaps, components, toRevi
   return (
     <>
     {assistant}
-    <aside data-findings-panel className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white xl:max-h-[calc(100vh-120px)]">
-      <div className="flex items-center justify-between gap-3 border-b border-[--color-border] py-3 pl-4 pr-3">
+    {/* Phones and tablets (Figma Mobile 390): no panel frame or header; the
+        gaps and components sit straight on the page under the canvas. */}
+    <aside data-findings-panel className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-[--color-border] bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent xl:max-h-[calc(100vh-120px)]">
+      <div className="flex items-center justify-between gap-3 border-b border-[--color-border] py-3 pl-4 pr-3 max-lg:hidden">
         <h2 className="m-0 text-[14px] font-medium leading-5 text-[--color-text-primary]">Findings</h2>
         <div role="radiogroup" aria-label="Show findings" className="flex gap-0.5 rounded-[8px] bg-[--color-surface] p-0.5">
           {(
@@ -189,7 +191,7 @@ export function FindingsPanel({ handoffId, handoffName, gaps, components, toRevi
         )}
       </div>
 
-      <div className="flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-3 [&>*]:shrink-0">
+      <div className="flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-3 max-lg:overflow-visible max-lg:px-0 max-lg:pt-0 [&>*]:shrink-0">
         {notice}
         {reanalysis && <ReanalysisNotice summary={reanalysis} onOpen={() => setShowChanges(true)} />}
 
