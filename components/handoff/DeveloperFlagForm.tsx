@@ -11,10 +11,6 @@ type DeveloperFlagFormProps = {
   shareToken: string;
 };
 
-/** Fired by a row's "Flag this value" so the form opens about that one value. */
-export const FLAG_FINDING_EVENT = 'buildbridge:flag-finding';
-export type FlagFindingDetail = { findingType: string; findingReference: string; label: string };
-
 type SubmitState = 'idle' | 'submitting' | 'submitted' | 'error';
 
 /** Fired after a flag is sent, so "Your flags" in the nav picks it up. */
@@ -25,6 +21,39 @@ export type FlagStatus = { status: string; kind: string; createdAt: string };
 
 function storageKey(shareToken: string): string {
   return `bb-my-flags:${shareToken}`;
+}
+
+/**
+ * Sends a flag through the public route and remembers it in this browser
+ * (for "Your flags"). Shared by this form and the row's "Flag this value"
+ * popover. Returns an error message, or null when it was sent.
+ */
+export async function submitFlag(
+  shareToken: string,
+  payload: { kind: 'Mismatch' | 'Question'; message: string; submittedByName?: string; findingType?: string; findingReference?: string },
+): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/share/${shareToken}/flags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result: { ok: boolean; data?: { id: string; trackingToken: string }; error?: { message?: string } } =
+      await response.json();
+    if (!response.ok || !result.ok || !result.data) {
+      return result.error?.message ?? 'Something went wrong. Please try again.';
+    }
+    try {
+      const tracked = [...loadTrackedFlags(shareToken), { id: result.data.id, trackingToken: result.data.trackingToken, message: payload.message }];
+      localStorage.setItem(storageKey(shareToken), JSON.stringify(tracked));
+    } catch {
+      // localStorage unavailable — the flag still submitted successfully, it just won't be trackable on return.
+    }
+    window.dispatchEvent(new CustomEvent(FLAG_SENT_EVENT));
+    return null;
+  } catch {
+    return 'Something went wrong. Please try again.';
+  }
 }
 
 export function loadTrackedFlags(shareToken: string): TrackedFlag[] {
@@ -57,19 +86,6 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
   const [state, setState] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [trackedFlags, setTrackedFlags] = useState<TrackedFlag[]>([]);
-  const [target, setTarget] = useState<FlagFindingDetail | null>(null);
-
-  useEffect(() => {
-    function onFlag(event: Event) {
-      const detail = (event as CustomEvent<FlagFindingDetail>).detail;
-      setTarget(detail);
-      setState('idle');
-      document.getElementById('flag')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => document.getElementById('developer-flag-message')?.focus(), 300);
-    }
-    window.addEventListener(FLAG_FINDING_EVENT, onFlag);
-    return () => window.removeEventListener(FLAG_FINDING_EVENT, onFlag);
-  }, []);
 
   const messageError = messageTouched && message.trim().length === 0 ? 'Message cannot be empty.' : undefined;
 
@@ -82,46 +98,19 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
     setState('submitting');
     setError(null);
 
-    try {
-      const response = await fetch(`/api/share/${shareToken}/flags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind,
-          message,
-          submittedByName: submittedByName.trim() || undefined,
-          ...(target ? { findingType: target.findingType, findingReference: target.findingReference } : {}),
-        }),
-      });
-
-      const result: { ok: boolean; data?: { id: string; trackingToken: string }; error?: { message?: string } } =
-        await response.json();
-
-      if (!response.ok || !result.ok || !result.data) {
-        setState('error');
-        setError(result.error?.message ?? 'Something went wrong. Please try again.');
-        return;
-      }
-
-      const nextTracked = [
-        ...trackedFlags,
-        { id: result.data.id, trackingToken: result.data.trackingToken, message },
-      ];
-      setTrackedFlags(nextTracked);
-      try {
-        localStorage.setItem(storageKey(shareToken), JSON.stringify(nextTracked));
-      } catch {
-        // localStorage unavailable — the flag still submitted successfully, it just won't be trackable on return.
-      }
-      window.dispatchEvent(new CustomEvent(FLAG_SENT_EVENT));
-
-      setState('submitted');
-      setMessage('');
-      setTarget(null);
-    } catch {
+    const failure = await submitFlag(shareToken, {
+      kind,
+      message,
+      submittedByName: submittedByName.trim() || undefined,
+    });
+    if (failure) {
       setState('error');
-      setError('Something went wrong. Please try again.');
+      setError(failure);
+      return;
     }
+    setTrackedFlags(loadTrackedFlags(shareToken));
+    setState('submitted');
+    setMessage('');
   }
 
   if (state === 'submitted') {
@@ -148,16 +137,6 @@ export function DeveloperFlagForm({ shareToken }: DeveloperFlagFormProps) {
         </p>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {target && (
-          <p className="m-0 flex items-center justify-between gap-2 rounded-[8px] bg-[--color-surface] px-3 py-2 text-[14px] leading-5 text-[--color-text-body]">
-            <span>
-              About: <span className="font-medium">{target.label}</span>
-            </span>
-            <button type="button" onClick={() => setTarget(null)} className="text-[--color-text-secondary] underline">
-              Clear
-            </button>
-          </p>
-        )}
         <fieldset className="flex gap-4">
           <legend className="sr-only">Flag type</legend>
           <label className="flex items-center gap-2 text-[--color-text-body]">

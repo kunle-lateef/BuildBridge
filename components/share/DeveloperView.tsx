@@ -13,6 +13,7 @@ import { WhatsChangedBanner } from '@/components/handoff/WhatsChangedBanner';
 import { ShareComponentTable, type ShareRow } from '@/components/share/ShareComponentTable';
 import { ShareTopBar } from '@/components/share/ShareTopBar';
 import { buttonVariants } from '@/components/ui/Button';
+import { cn } from '@/lib/cn';
 import type { DeveloperHandoffProjection } from '@/lib/share';
 
 type DeveloperViewProps = {
@@ -250,7 +251,18 @@ export function DeveloperView({ projection, shareToken, downloadHref, notice, is
               </div>
             )}
             {isExample && (
-              <section className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[--color-border] px-5 py-5">
+              // Phones (Figma "Example handoff — Mobile 390"): the flagging note and one full-width button.
+              <div className="flex flex-col gap-4 sm:hidden">
+                <p className="m-0 text-[12px] leading-4 tracking-[0.2px] text-[--color-text-secondary]">
+                  Flagging is off in this example. On a real handoff, developers can flag any value for the designer.
+                </p>
+                <Link href="/sign-up" className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'w-full')}>
+                  Start a handoff
+                </Link>
+              </div>
+            )}
+            {isExample && (
+              <section className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[--color-border] px-5 py-5 max-sm:hidden">
                 <div className="flex max-w-[460px] flex-col gap-1">
                   <h2 className="m-0 text-[16px] font-semibold leading-6 text-[--color-text-primary]">Make one for your own screens</h2>
                   <p className="m-0 text-[14px] leading-5 text-[--color-text-secondary]">
