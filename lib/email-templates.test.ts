@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analysisEmail, developerFlagEmail, escapeHtml, implementationMarkedEmail, passwordResetEmail } from './email-templates';
+import {
+  analysisEmail,
+  continueReviewEmail,
+  developerFlagEmail,
+  escapeHtml,
+  implementationMarkedEmail,
+  passwordResetEmail,
+} from './email-templates';
 
 const APP = 'https://app.example.test';
 const base = {
@@ -15,6 +22,22 @@ const base = {
   readinessScore: 78,
   isReady: false,
 };
+
+describe('continue-review email (phone triage "Email me a link")', () => {
+  it('says how many values are left, links to the review and has no notifications footer', () => {
+    const email = continueReviewEmail({ appUrl: APP, handoffName: 'Ledger · Checkout v3', valuesLeft: 26, reviewUrl: `${APP}/handoffs/h1` });
+    expect(email.subject).toBe('Finish reviewing: Ledger · Checkout v3');
+    expect(email.preview).toBe('26 values left to review.');
+    expect(email.text).toContain('Open the review: https://app.example.test/handoffs/h1');
+    expect(email.html).not.toContain('Turn off emails');
+  });
+
+  it('escapes the handoff name in the HTML', () => {
+    const email = continueReviewEmail({ appUrl: APP, handoffName: '<b>x</b>', valuesLeft: 1, reviewUrl: `${APP}/handoffs/h1` });
+    expect(email.html).toContain('&lt;b&gt;x&lt;/b&gt;');
+    expect(email.text).toContain('1 value in <b>x</b>');
+  });
+});
 
 describe('email templates (Figma 12 — Emails)', () => {
   it('analysis finished: subject, preview and summary rows', () => {

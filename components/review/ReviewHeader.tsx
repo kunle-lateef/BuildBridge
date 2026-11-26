@@ -100,8 +100,7 @@ export function ReviewHeader({
             data-phone-topbar
             className="sticky top-0 z-20 -mx-4 -mt-6 flex items-center gap-1 border-b border-[--color-border] bg-white px-1 py-2 lg:hidden"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center">{phoneMenu}</span>
-            <span className="min-w-0 flex-1 truncate text-[16px] font-medium leading-6 text-[--color-text-primary]">{name}</span>
+            {/* Back on the left, ⋯ on the right, as in Figma "Phone triage — 0". */}
             <Link
               href="/handoffs"
               aria-label="Back to handoffs"
@@ -109,6 +108,8 @@ export function ReviewHeader({
             >
               <ArrowLeft aria-hidden="true" size={20} />
             </Link>
+            <span className="min-w-0 flex-1 truncate text-[16px] font-medium leading-6 text-[--color-text-primary]">{name}</span>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center">{phoneMenu}</span>
           </div>
 
           <h1 className="sr-only lg:hidden">{name}</h1>

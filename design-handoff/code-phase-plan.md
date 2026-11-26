@@ -662,3 +662,19 @@ including the cap dialog (decision 1) → `/example` (decision 2) → new behavi
 - Draft and analysis headers on phones: 26px title with ⋯ beside it, no breadcrumb (Figma "Draft — Ready to analyze · Mobile 390"). The header is now a two-column grid; desktop looks the same.
 - Verified in the browser: the draft at 390, the flag sheet at 390 (sent a flag; Sent state; Your flags updated), the popover at 1440, /example at 390 (one gap, then all 6, the note and the button), and the desktop Review header.
 - Not seen in the browser: "Makes it ready" (the local account has no open critical gaps). Still open: the share view's ‹ icon (needs a decision).
+
+## Phone triage (04) — 2026-11-25, branch design/phone-triage
+Decided with the developer (Nov 25): add flag replies, build "Email me a link", and phones open on Needs you with the full Review one tap away.
+- Phones (below lg) open the Review tab on `PhoneTriage` (Figma "Phone triage — 0…3"):
+  - Home: back · name · ⋯; a state card; "Needs you N" (open gaps by severity, then open developer flags, newest first); the values card with "Email me a link"; "See everything" (`?view=all`, the full Review with "Back to what needs you"); a sticky "Start with the gap/flag" + Share.
+  - Gap step: the screen cropped around the gap's component, severity and provenance, title, description, "Suggested fix:", an answer box, and "Answering this makes the handoff ready." / "adds about N% readiness" (same rule as the findings panel). Sticky Save answer (an Override decision) / Not a gap (Reject). Skip records nothing.
+  - Flag step: chip and what it's about, the quoted message, "What the handoff says now" (the value with decided/not decided yet), the reply box, sticky "Reply and resolve" / Acknowledge.
+  - "Also answer … with this" appears only when the flag is about a gap itself. A shared component isn't enough: a reply about height must never answer a contrast gap.
+  - End: "You're all caught up" (or "Done for now" with what's left) and the values card.
+- Flag replies: migration `20261125061518_add_developer_flag_reply` adds nullable `reply` and `replied_at` to developer_flags (no backfill). `replyToDeveloperFlag` (owner only) stores the reply and resolves the flag. The tracking route returns the reply behind both tokens; "Your flags" shows "Designer's reply: …"; the Developer feedback tab shows "Your reply: …".
+  - **Production needs this migration run by hand before the deploy** (see memory: migrations are manual).
+- Email me a link: `emailReviewLink` (owner only, 3 an hour) sends `continueReviewEmail` ("Finish reviewing: {handoff}", the values left, "Open the review") to the signed-in designer only. There's no Figma frame for this email; it follows the `12 — Emails` frame, with no notifications footer.
+- The Review page's phone top bar now has back on the left and ⋯ on the right, as in the triage frames.
+- Tests: `triage-actions.test.ts` (reply: no session, empty, other owner, success; email link: no session, other owner, rate limit, success with count), the template test, and the tracking route returning the reply.
+- Verified in the browser at 390: Needs you (10 items, sizes match Figma), Start, the gap step, Skip, the flag step (fixed the related-gap match), Reply and resolve (stored Resolved with the reply), `?view=all`, and desktop unchanged.
+- Not seen in the browser: the screen crop's image (MinIO isn't running locally), the caught-up screen, and sending the email (not sent from here; unit-tested).

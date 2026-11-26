@@ -21,6 +21,8 @@ import { DesignerNoteThread } from '@/components/review/DesignerNoteThread';
 import { DeveloperFlagPanel, type DeveloperFlagItem } from '@/components/review/DeveloperFlagPanel';
 import { FindingsPanel, type PanelComponent, type PanelGap } from '@/components/review/FindingsPanel';
 import type { GuidedItem } from '@/components/review/GuidedReview';
+import { PhoneTriage, type TriageItem } from '@/components/review/PhoneTriage';
+import { cn } from '@/lib/cn';
 import { ResponsiveRuleList } from '@/components/review/ResponsiveRuleList';
 import { ReviewCanvas } from '@/components/review/ReviewCanvas';
 import { ReviewHeader, ReviewTabs, type ReviewTab } from '@/components/review/ReviewHeader';
@@ -44,7 +46,8 @@ import { getOwnedHandoffOrNull } from './actions';
 
 type HandoffDetailPageProps = {
   params: Promise<{ handoffId: string }>;
-  searchParams?: Promise<{ tab?: string; guided?: string }>;
+  /** `view=all`: on phones, the full Review instead of phone triage. */
+  searchParams?: Promise<{ tab?: string; guided?: string; view?: string }>;
 };
 
 export async function generateMetadata({ params }: HandoffDetailPageProps): Promise<Metadata> {
@@ -152,7 +155,7 @@ async function buildStageProgress(handoffId: string, runStatus: AnalysisRunStatu
 
 export default async function HandoffDetailPage({ params, searchParams }: HandoffDetailPageProps) {
   const { handoffId } = await params;
-  const { tab: tabParam, guided: guidedParam } = (await searchParams) ?? {};
+  const { tab: tabParam, guided: guidedParam, view: viewParam } = (await searchParams) ?? {};
   const handoff = await getOwnedHandoffOrNull(handoffId);
 
   if (!handoff) {
@@ -311,6 +314,70 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
     if (findingType === 'HandoffIssue') return issues.find((issue) => issue.id === reference)?.title ?? null;
     return null;
   };
+
+  // Phone triage (Figma "Phone triage — 0…3"): open gaps, most severe first,
+  // then open developer flags, newest first. Everything comes from data
+  // already loaded above.
+  const SEVERITY_RANK: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3, Recommendation: 4 };
+  const imageByScreenId = new Map(screenThumbnails.map(({ screen, imageUrl }) => [screen.id, imageUrl]));
+  const isDecidedStatus = (status: string) => status === 'Confirmed' || status === 'Modified';
+  const openGapsBySeverity = issues.filter(isOpenIssue).sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9));
+  const findingNow = (findingType: string | null, reference: string | null): string | null => {
+    if (findingType === 'Specification') {
+      const spec = allSpecifications.find((candidate) => candidate.id === reference);
+      return spec ? `${spec.value}${spec.unit ?? ''} · ${isDecidedStatus(spec.reviewStatus) ? 'decided' : 'not decided yet'}` : null;
+    }
+    if (findingType === 'ComponentState') {
+      const state = allStates.find((candidate) => candidate.id === reference);
+      return state ? `${state.description ?? state.name} · ${isDecidedStatus(state.reviewStatus) ? 'decided' : 'not decided yet'}` : null;
+    }
+    if (findingType === 'ResponsiveRule') {
+      const rule = responsiveRules.find((candidate) => candidate.id === reference);
+      return rule ? `${rule.behavior} · ${isDecidedStatus(rule.reviewStatus) ? 'decided' : 'not decided yet'}` : null;
+    }
+    return null;
+  };
+  const triageItems: TriageItem[] = [
+    ...openGapsBySeverity.map((issue): TriageItem => {
+      const screenId = issue.componentId ? pinScreenIdByComponentId.get(issue.componentId) : undefined;
+      const pin = screenId ? pinsByScreen.get(screenId)?.find((candidate) => candidate.key === `component:${issue.componentId}`) : undefined;
+      const imageUrl = screenId ? imageByScreenId.get(screenId) : undefined;
+      const delta = deltaById[issue.id] ?? 0;
+      return {
+        kind: 'gap',
+        id: issue.id,
+        severity: issue.severity,
+        provenance: issue.provenance,
+        title: issue.title,
+        description: issue.description,
+        recommendation: issue.recommendation,
+        where: gapLocation(issue.screenId ?? screenId ?? null, issue.componentId),
+        impact: issue.severity === 'Critical' && unresolvedCriticalCount === 1 ? 'ready' : delta > 0 ? delta : null,
+        crop: pin && imageUrl && screenId ? { imageUrl, region: pin.region, name: screenNameById.get(screenId) ?? 'Screen' } : null,
+      };
+    }),
+    ...developerFlags
+      .filter((flag) => flag.status === 'Open')
+      .map((flag): TriageItem => {
+        // Only a gap the flag is itself about. Sharing a component isn't
+        // enough: a reply about height must never answer a contrast gap.
+        const relatedGap =
+          flag.findingType === 'HandoffIssue' ? openGapsBySeverity.find((issue) => issue.id === flag.findingReference) : undefined;
+        return {
+          kind: 'flag',
+          id: flag.id,
+          flagKind: flag.kind,
+          message: flag.message,
+          from: flag.submittedByName,
+          createdAt: flag.createdAt.toISOString(),
+          about: findingLabel(flag.findingType, flag.findingReference),
+          saysNow: relatedGap
+            ? `${relatedGap.title} · ${relatedGap.severity} gap, still open`
+            : findingNow(flag.findingType, flag.findingReference),
+          relatedGap: relatedGap ? { id: relatedGap.id, title: relatedGap.title } : null,
+        };
+      }),
+  ];
   const GAP_DECISION_LABEL: Partial<Record<string, string>> = { Reject: 'Not a gap', Override: 'Answered', Confirm: 'Keep open' };
   const conflictContext = Object.fromEntries(
     changelogEntries.flatMap((entry) => entry.conflicts).flatMap((ref) => {
@@ -598,10 +665,30 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
   }
 
   const incompleteStages = stages?.filter((stage) => stage.status === 'incomplete') ?? [];
+  // Phones open the Review tab on what needs the designer (phone triage);
+  // "See everything" (?view=all) shows the full Review below.
+  const isPhoneTriage = tab === 'review' && !isGuided && viewParam !== 'all';
 
   return (
     <ScreenPinProvider>
-      <div className="flex flex-col gap-5">
+      {isPhoneTriage && (
+        <div className="lg:hidden">
+          <PhoneTriage
+            handoffId={handoff.id}
+            name={handoff.name}
+            menu={actionsMenu}
+            readinessScore={handoff.readinessScore}
+            criticalOpenCount={unresolvedCriticalCount}
+            reviewedCount={reviewedFindingCount + (issues.length - openGapCount)}
+            findingCount={allFindings.length + issues.length}
+            items={triageItems}
+            valuesLeft={allFindings.length - reviewedFindingCount}
+            shareSecondary={components.length > 0 ? shareOrPreview('secondary') : null}
+            sharePrimary={components.length > 0 ? shareOrPreview('primary') : null}
+          />
+        </div>
+      )}
+      <div className={cn('flex flex-col gap-5', isPhoneTriage && 'max-lg:hidden')}>
         <ReviewHeader
           name={handoff.name}
           status={handoff.status}
@@ -644,6 +731,12 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
             </>
           }
         />
+
+        {viewParam === 'all' && tab === 'review' && (
+          <Link href={`/handoffs/${handoff.id}`} className="text-[14px] font-medium leading-5 text-[--color-primary] underline lg:hidden">
+            Back to what needs you
+          </Link>
+        )}
 
         {runStatus === 'PartiallyCompleted' && incompleteStages.length > 0 && (
           <RunBanner
@@ -836,6 +929,7 @@ export default async function HandoffDetailPage({ params, searchParams }: Handof
                   status: flag.status,
                   createdAt: flag.createdAt.toISOString(),
                   target: findingLabel(flag.findingType, flag.findingReference),
+                  reply: flag.reply,
                 }))}
               />
             ) : (

@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 
 import {
   analysisEmail,
+  continueReviewEmail,
   developerFlagEmail,
   implementationMarkedEmail,
   passwordResetEmail,
@@ -61,6 +62,17 @@ export async function sendDeveloperFlagNotificationEmail(
   input: { handoffName: string; kind: 'Mismatch' | 'Question'; target: string | null; message: string; feedbackUrl: string },
 ): Promise<void> {
   await send(to, developerFlagEmail({ ...input, appUrl: env.NEXT_PUBLIC_APP_URL }));
+}
+
+/**
+ * Phone triage's "Email me a link" (emailReviewLink). The designer asked
+ * for it themselves, so it isn't gated on notification settings.
+ */
+export async function sendContinueReviewEmail(
+  to: string,
+  input: { handoffName: string; valuesLeft: number; reviewUrl: string },
+): Promise<void> {
+  await send(to, continueReviewEmail({ ...input, appUrl: env.NEXT_PUBLIC_APP_URL }));
 }
 
 /** Called only from lib/notifications.ts, gated on User.emailNotificationsEnabled. */

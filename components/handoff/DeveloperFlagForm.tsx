@@ -17,7 +17,7 @@ type SubmitState = 'idle' | 'submitting' | 'submitted' | 'error';
 export const FLAG_SENT_EVENT = 'buildbridge:flag-sent';
 
 export type TrackedFlag = { id: string; trackingToken: string; message: string };
-export type FlagStatus = { status: string; kind: string; createdAt: string };
+export type FlagStatus = { status: string; kind: string; createdAt: string; reply?: string | null };
 
 function storageKey(shareToken: string): string {
   return `bb-my-flags:${shareToken}`;
