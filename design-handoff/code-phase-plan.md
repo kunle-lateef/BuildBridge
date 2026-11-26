@@ -649,3 +649,16 @@ including the cap dialog (decision 1) → `/example` (decision 2) → new behavi
   - "Your flags" sits under the flag form. No more sideways scroll.
 - Verified in the browser at 390: dashboard against Figma, search opening the palette, the notifications sheet, Review header/card/breakdown sheet, the share view (no overflow, Show 2 more, Jump to scrolls). Desktop (1440) unchanged.
 - Not done: Draft · Mobile 390 (needs a draft handoff locally), "Example handoff — Mobile 390" and "Flag a value · Mobile 390", the share view's ‹ icon (no clear target on a public page) and the edge-cases "Show N more gaps", and the attention "→ Makes it ready" line. Phone triage is its own task.
+
+## Phone leftovers (03, 04, 05) — 2026-11-25, branch design/phone-leftovers
+- Flag a value (Figma "Share view — Flag a value", "Flag sent", "Flag a value · Mobile 390"):
+  - A value's ⋯ "Flag this value" now opens `FlagValuePopover`. It's a 380px popover under the ⋯ on desktop (kept on screen) and a bottom sheet over a dimmed page on phones.
+  - It contains the value chip, Mismatch/Question as a two-option switch, message (⌘↵ sends), optional name, "The designer sees which value this is about.", and Cancel / Send flag.
+  - Sent: "Sent. The designer will see it." with "Flag something else" (goes to the form) and Done.
+  - Sending is shared with the end-of-page form (`submitFlag`), so both join "Your flags". The old "About: …" hand-off to the form is gone.
+- Example handoff on phones: the top bar shows only the Example pill, and the page ends with the flagging-off note and a full-width "Start a handoff" in place of the closing card.
+- Edge cases on phones show the first gap and "Show N more gaps" (a checkbox, no client JS).
+- "→ Makes it ready" on a critical attention item when it's the handoff's last open critical gap (formula v1: an open critical blocks sharing). Same rule as the findings panel; nothing is calculated differently.
+- Draft and analysis headers on phones: 26px title with ⋯ beside it, no breadcrumb (Figma "Draft — Ready to analyze · Mobile 390"). The header is now a two-column grid; desktop looks the same.
+- Verified in the browser: the draft at 390, the flag sheet at 390 (sent a flag; Sent state; Your flags updated), the popover at 1440, /example at 390 (one gap, then all 6, the note and the button), and the desktop Review header.
+- Not seen in the browser: "Makes it ready" (the local account has no open critical gaps). Still open: the share view's ‹ icon (needs a decision).

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button, buttonVariants } from '@/components/ui/Button';
 import { Copy, Download, Lock } from '@/components/ui/icons';
+import { cn } from '@/lib/cn';
 
 /**
  * The share view's top bar (Figma `05 — Share view`): logo, handoff name,
@@ -58,7 +59,7 @@ export function ShareTopBar({ shareToken, name, checklist, downloadHref, isExamp
           Download as Markdown
         </a>
         {isExample && (
-          <Link href="/sign-up" className={buttonVariants({ variant: 'primary' })}>
+          <Link href="/sign-up" className={cn(buttonVariants({ variant: 'primary' }), 'max-sm:hidden')}>
             Start a handoff
           </Link>
         )}

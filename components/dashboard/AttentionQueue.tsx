@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { CheckCircle2, Flag } from '@/components/ui/icons';
+import { ArrowRight, CheckCircle2, Flag } from '@/components/ui/icons';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { cn } from '@/lib/cn';
 import { formatRelativeTime } from '@/lib/relativeTime';
@@ -8,7 +8,16 @@ import { formatRelativeTime } from '@/lib/relativeTime';
 const PHONE_VISIBLE = 2;
 
 export type AttentionItem =
-  | { kind: 'CriticalIssue'; id: string; title: string; handoffId: string; handoffName: string; createdAt: string }
+  | {
+      kind: 'CriticalIssue';
+      id: string;
+      title: string;
+      handoffId: string;
+      handoffName: string;
+      createdAt: string;
+      /** It's the handoff's last open critical gap, so answering it lifts the block on sharing. */
+      makesItReady: boolean;
+    }
   | {
       kind: 'DeveloperFlag';
       flagKind: 'Mismatch' | 'Question';
@@ -84,6 +93,12 @@ export function AttentionQueue({ items }: AttentionQueueProps) {
                 {item.title}
               </Link>
               <span className="text-[12px] leading-4 text-[--color-text-secondary]">{item.handoffName}</span>
+              {item.kind === 'CriticalIssue' && item.makesItReady && (
+                <span className="flex items-center gap-1 text-[12px] font-medium leading-4 tracking-[0.2px] text-[--color-success]">
+                  <ArrowRight aria-hidden="true" size={12} />
+                  Makes it ready
+                </span>
+              )}
             </li>
           ))}
         </ul>

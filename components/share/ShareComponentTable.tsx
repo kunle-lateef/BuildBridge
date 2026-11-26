@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { FLAG_FINDING_EVENT, type FlagFindingDetail } from '@/components/handoff/DeveloperFlagForm';
+import { FlagValuePopover } from '@/components/share/FlagValuePopover';
 import { Check, Copy, Flag, MoreHorizontal, StickyNote } from '@/components/ui/icons';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { cn } from '@/lib/cn';
@@ -142,6 +142,12 @@ function Row({ row, isMuted, shareToken, componentName, isHiddenOnPhone }: {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLTableCellElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [flagAnchor, setFlagAnchor] = useState<DOMRect | null>(null);
+  const closeFlag = useCallback(() => {
+    setFlagAnchor(null);
+    menuButtonRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -174,13 +180,10 @@ function Row({ row, isMuted, shareToken, componentName, isHiddenOnPhone }: {
     setIsMenuOpen(false);
   }
 
+  // Opens the "Flag this value" popover (a sheet on phones) under the ⋯.
   function flag() {
-    const detail: FlagFindingDetail = {
-      findingType: row.findingType,
-      findingReference: row.id,
-      label: `${componentName} · ${row.property}`,
-    };
-    window.dispatchEvent(new CustomEvent(FLAG_FINDING_EVENT, { detail }));
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (rect) setFlagAnchor(rect);
     setIsMenuOpen(false);
   }
 
@@ -213,7 +216,20 @@ function Row({ row, isMuted, shareToken, componentName, isHiddenOnPhone }: {
         </span>
       </td>
       <td ref={menuRef} className="relative px-2 py-2.5 text-right max-sm:col-start-3 max-sm:row-start-1 max-sm:p-0">
+        {flagAnchor && shareToken && (
+          <FlagValuePopover
+            shareToken={shareToken}
+            label={`${componentName} · ${row.property}`}
+            value={row.value}
+            isMono={row.isMono}
+            findingType={row.findingType}
+            findingReference={row.id}
+            anchor={flagAnchor}
+            onClose={closeFlag}
+          />
+        )}
         <button
+          ref={menuButtonRef}
           type="button"
           aria-label={`Actions for ${row.property}`}
           aria-haspopup="menu"

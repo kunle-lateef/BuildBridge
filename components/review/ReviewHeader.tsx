@@ -154,7 +154,7 @@ export function ReviewHeader({
         </>
       )}
 
-      <nav aria-label="Breadcrumb" className={cn('text-[12px] leading-4 text-[--color-text-secondary]', hasPhoneLayout && 'hidden lg:block')}>
+      <nav aria-label="Breadcrumb" className={cn('hidden text-[12px] leading-4 text-[--color-text-secondary] sm:block', hasPhoneLayout && 'sm:hidden lg:block')}>
         <Link href="/handoffs" className="text-[--color-primary] hover:underline">
           Handoffs
         </Link>
@@ -162,13 +162,24 @@ export function ReviewHeader({
         <span>{name}</span>
       </nav>
 
-      <div className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', hasPhoneLayout && 'hidden lg:flex')}>
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="m-0 text-[28px] font-semibold leading-9 text-[--color-text-primary]">{name}</h1>
-            <HandoffStatusBadge status={status} isExample={isExample} />
-          </div>
+      {/* Title and actions share the first row; everything else spans below,
+          so on phones the ⋯ sits beside the title (Figma "Draft — Ready to analyze · Mobile 390"). */}
+      <div
+        className={cn(
+          'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2',
+          hasPhoneLayout && 'hidden lg:grid',
+        )}
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <h1 className="m-0 text-[26px] font-semibold leading-[34px] tracking-[-0.5px] text-[--color-text-primary] sm:text-[28px] sm:leading-9 sm:tracking-normal">
+            {name}
+          </h1>
+          <HandoffStatusBadge status={status} isExample={isExample} />
+        </div>
 
+        <div className="col-start-2 row-start-1 flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+
+        <div className="col-span-2 flex min-w-0 flex-col gap-2 empty:hidden">
           {statusLine}
           {!statusLine && readinessScore !== null && (
             <div className="flex flex-col gap-1.5">
@@ -188,8 +199,6 @@ export function ReviewHeader({
             </div>
           )}
         </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
       </div>
 
       {isExample && (

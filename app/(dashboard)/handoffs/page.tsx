@@ -101,14 +101,22 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
 
   // Phones show the plan usage on the page (Figma "Handoffs — Mobile 390"),
   // since the sidebar that carries it is a drawer there.
-  const [planUser, activeHandoffCount] = await Promise.all([
+  const [planUser, activeHandoffCount, openCriticalCounts] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: session.user.id },
       select: { planTier: true, analysisQuota: true, analysisUsageCount: true, billingCycleStart: true },
     }),
     db.handoff.count({ where: { ...ownedNotArchived, isExample: false } }),
+    // "→ Makes it ready" goes on a handoff's last open critical gap (readiness
+    // formula v1: an open critical gap blocks sharing), as in the findings panel.
+    db.handoffIssue.groupBy({
+      by: ['handoffId'],
+      where: { handoff: ownedNotArchived, severity: 'Critical', status: { in: ['Open', 'InReview'] } },
+      _count: true,
+    }),
   ]);
   const usage = summarizeUsage(planUser, activeHandoffCount);
+  const openCriticalsByHandoff = new Map(openCriticalCounts.map((row) => [row.handoffId, row._count]));
 
   const countFor = (target: HandoffStatus) => statusCounts.find((row) => row.status === target)?._count ?? 0;
   const totalCount = statusCounts.reduce((sum, row) => sum + row._count, 0);
@@ -127,6 +135,7 @@ export default async function HandoffsPage({ searchParams }: HandoffsPageProps) 
         handoffId: issue.handoff.id,
         handoffName: issue.handoff.name,
         createdAt: issue.createdAt.toISOString(),
+        makesItReady: openCriticalsByHandoff.get(issue.handoff.id) === 1,
       }),
     ),
     ...openFlags.map(

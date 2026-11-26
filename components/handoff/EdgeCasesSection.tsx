@@ -2,7 +2,10 @@ import { FindingPinLink } from '@/components/handoff/FindingPinLink';
 import { ProvenanceBadge } from '@/components/ui/ProvenanceBadge';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
+import { cn } from '@/lib/cn';
 import type { IssueSeverity, IssueStatus, ProvenanceType, ReadinessCategory } from '@/lib/types';
+
+const PHONE_VISIBLE = 1;
 
 type EdgeCasesSectionProps = {
   issues: {
@@ -33,14 +36,24 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
     return null;
   }
 
+  // Phones show the first gap and "Show N more gaps" (Figma "Share view —
+  // Mobile 390"). A plain checkbox drives it, so this stays a server component.
+  const hiddenOnPhone = issues.length - PHONE_VISIBLE;
+
   return (
-    <section className="flex flex-col gap-3">
+    <section className="group/gaps flex flex-col gap-3">
       <h2 className="text-[length:var(--font-desktop-heading-3-semi-bold-size)] font-semibold text-[--color-text-primary]">
         Edge cases &amp; open questions
       </h2>
       <div className="flex flex-col gap-3">
-        {issues.map((issue) => (
-          <div key={issue.id} className="flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4">
+        {issues.map((issue, index) => (
+          <div
+            key={issue.id}
+            className={cn(
+              'flex flex-col gap-2 rounded-[--radius-lg] border border-[--color-border] p-4',
+              index >= PHONE_VISIBLE && 'max-sm:hidden max-sm:group-has-[:checked]/gaps:flex',
+            )}
+          >
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2">
               <SeverityBadge severity={issue.severity} />
               <span className="font-medium text-[--color-text-primary]">{issue.title}</span>
@@ -69,6 +82,12 @@ export function EdgeCasesSection({ issues }: EdgeCasesSectionProps) {
           </div>
         ))}
       </div>
+      {hiddenOnPhone > 0 && (
+        <label className="cursor-pointer text-[14px] font-medium leading-5 text-[--color-primary] underline sm:hidden group-has-[:checked]/gaps:hidden">
+          <input type="checkbox" className="sr-only" />
+          Show {hiddenOnPhone} more {hiddenOnPhone === 1 ? 'gap' : 'gaps'}
+        </label>
+      )}
     </section>
   );
 }
