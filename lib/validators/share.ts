@@ -55,3 +55,9 @@ export const updateDeveloperFlagStatusSchema = z.object({
   developerFlagId: z.string().min(1),
   status: z.enum(['Acknowledged', 'Resolved', 'Open']),
 });
+
+/** The designer's reply to a flag ("Reply and resolve", phone triage). Replying always resolves it. */
+export const replyToDeveloperFlagSchema = z.object({
+  developerFlagId: z.string().min(1),
+  reply: z.string().trim().min(1, 'Write a reply first.').max(2000),
+});

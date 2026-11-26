@@ -185,6 +185,27 @@ ${button('Open developer feedback', feedbackUrl)}` }),
   };
 }
 
+// --- Continue on a computer (phone triage "Email me a link") ---------------
+//
+// Not in Figma `12 — Emails`; follows the same frame. Sent only because the
+// designer asked for it on their phone, so there's no notifications footer.
+
+export function continueReviewEmail({ appUrl, handoffName, valuesLeft, reviewUrl }: {
+  appUrl: string; handoffName: string; valuesLeft: number; reviewUrl: string;
+}): EmailContent {
+  const values = plural(valuesLeft, 'value');
+  const body = `${values} in ${handoffName} still need you to confirm, change or reject them. That’s easier with the screen beside you, so here’s the link for your computer.`;
+  const why = 'You asked for this link from your phone.';
+  return {
+    subject: `Finish reviewing: ${handoffName}`,
+    preview: `${values} left to review.`,
+    html: layout({ appUrl, preview: `${values} left to review.`, title: 'Pick up where you left off', footer: false,
+      body: `${paragraph(escapeHtml(body))}${button('Open the review', reviewUrl)}
+<p style="margin:16px 0 0;font:400 12px/16px ${FONT};color:${C.secondary};">${escapeHtml(why)}</p>` }),
+    text: `Pick up where you left off\n\n${body}\n\nOpen the review: ${reviewUrl}\n\n${why}`,
+  };
+}
+
 // --- Marked implemented -----------------------------------------------------
 
 export function implementationMarkedEmail({ appUrl, handoffName, finding, handoffUrl }: {

@@ -20,6 +20,8 @@ export type DeveloperFlagItem = {
   createdAt: string;
   /** What the flag is about, e.g. "Pay button · Hover"; null for the whole handoff. */
   target: string | null;
+  /** The designer's reply (phone triage "Reply and resolve"), which the developer sees. */
+  reply: string | null;
 };
 
 type DeveloperFlagPanelProps = {
@@ -117,6 +119,11 @@ function FlagCard({ flag }: { flag: DeveloperFlagItem }) {
         <time dateTime={flag.createdAt} className="ml-auto text-[--color-text-secondary]">{relativeTime(flag.createdAt)}</time>
       </div>
       <p className="m-0 whitespace-pre-line text-[14px] leading-5 text-[--color-text-primary]">{flag.message}</p>
+      {flag.reply && (
+        <p className="m-0 whitespace-pre-line rounded-[8px] bg-[--color-surface] px-3 py-2 text-[14px] leading-5 text-[--color-text-body]">
+          <span className="font-medium text-[--color-text-primary]">Your reply:</span> {flag.reply}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[12px] leading-4 text-[--color-text-secondary]">
           {flag.submittedByName ? `From ${flag.submittedByName}` : 'From a developer · no name given'}

@@ -14,3 +14,4 @@ export * from './share-link-actions';
 export * from './note-actions';
 export * from './screen-flow-actions';
 export * from './developer-flag-actions';
+export * from './triage-actions';

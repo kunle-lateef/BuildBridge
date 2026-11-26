@@ -74,6 +74,7 @@ describe('GET /api/share/[token]/flags/track/[trackingToken]', () => {
       status: 'Acknowledged',
       kind: 'Mismatch',
       createdAt,
+      reply: null,
     });
 
     const response = await GET(new Request('http://localhost'), params());
@@ -82,8 +83,24 @@ describe('GET /api/share/[token]/flags/track/[trackingToken]', () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       ok: true,
-      data: { status: 'Acknowledged', kind: 'Mismatch', createdAt: createdAt.toISOString() },
+      data: { status: 'Acknowledged', kind: 'Mismatch', createdAt: createdAt.toISOString(), reply: null },
     });
+  });
+
+  it('returns the designer’s reply once there is one', async () => {
+    const createdAt = new Date('2026-08-15T00:00:00Z');
+    mockDb.developerFlag.findUnique.mockResolvedValue({
+      handoffId: 'handoff-1',
+      status: 'Resolved',
+      kind: 'Question',
+      createdAt,
+      reply: 'Not sticky. It stacks below the form until 1024px.',
+    });
+
+    const response = await GET(new Request('http://localhost'), params());
+    const body = await response.json();
+
+    expect(body.data).toMatchObject({ status: 'Resolved', reply: 'Not sticky. It stacks below the form until 1024px.' });
   });
 
   it('looks up by the hash of the tracking token, never the raw token itself', async () => {

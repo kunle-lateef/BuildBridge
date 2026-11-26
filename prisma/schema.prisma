@@ -739,6 +739,13 @@ model DeveloperFlag {
 
   status DeveloperFlagStatus @default(Open)
 
+  // The designer's reply (Figma `04 — Handoff` → "Phone triage — 2"),
+  // shown to the submitter under "Your flags" through the tracking route.
+  // Written only by replyToDeveloperFlag, by the handoff's owner; the
+  // developer's own message above stays immutable. Null until replied.
+  reply     String?   @db.Text
+  repliedAt DateTime? @map("replied_at")
+
   // Lets the anonymous submitter check their own flag's status later
   // without authentication — see app/api/share/[token]/flags/track/. A
   // Prisma cuid() id is NOT random enough to serve as a bearer capability

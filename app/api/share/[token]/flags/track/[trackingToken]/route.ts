@@ -41,12 +41,17 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<R
 
   const flag = await db.developerFlag.findUnique({
     where: { trackingTokenHash: hashSecureToken(parsedTrackingToken.data) },
-    select: { handoffId: true, status: true, kind: true, createdAt: true },
+    select: { handoffId: true, status: true, kind: true, createdAt: true, reply: true },
   });
 
   if (!flag || flag.handoffId !== shareLink.handoffId) {
     return notFound();
   }
 
-  return NextResponse.json({ ok: true, data: { status: flag.status, kind: flag.kind, createdAt: flag.createdAt } });
+  // The designer's reply is written for this submitter, so it's returned
+  // only behind both tokens, like the status.
+  return NextResponse.json({
+    ok: true,
+    data: { status: flag.status, kind: flag.kind, createdAt: flag.createdAt, reply: flag.reply },
+  });
 }

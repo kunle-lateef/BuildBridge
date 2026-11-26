@@ -19,7 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
   Resolved: 'bg-[--color-success-light] text-[--color-success]',
 };
 
-type Row = TrackedFlag & { status: string | null; isUpdate: boolean };
+type Row = TrackedFlag & { status: string | null; reply: string | null; isUpdate: boolean };
 
 function seenKey(shareToken: string): string {
   return `bb-my-flags-seen:${shareToken}`;
@@ -50,14 +50,14 @@ export function YourFlags({ shareToken }: { shareToken: string }) {
       setRows([]);
       return;
     }
-    setRows((prev) => flags.map((flag) => prev.find((row) => row.id === flag.id) ?? { ...flag, status: null, isUpdate: false }));
+    setRows((prev) => flags.map((flag) => prev.find((row) => row.id === flag.id) ?? { ...flag, status: null, reply: null, isUpdate: false }));
 
     const statuses = await Promise.all(
       flags.map(async (flag) => {
         try {
           const response = await fetch(`/api/share/${shareToken}/flags/track/${flag.trackingToken}`);
           const result: { ok: boolean; data?: FlagStatus } = await response.json();
-          return result.ok && result.data ? result.data.status : null;
+          return result.ok && result.data ? result.data : null;
         } catch {
           return null;
         }
@@ -66,9 +66,9 @@ export function YourFlags({ shareToken }: { shareToken: string }) {
 
     const seen = loadSeen(shareToken);
     const next = flags.map((flag, index) => {
-      const status = statuses[index] ?? null;
+      const status = statuses[index]?.status ?? null;
       const before = seen[flag.id];
-      return { ...flag, status, isUpdate: Boolean(status && before && before !== status) };
+      return { ...flag, status, reply: statuses[index]?.reply ?? null, isUpdate: Boolean(status && before && before !== status) };
     });
     setRows((prev) =>
       // An update stays outlined for the rest of this visit.
@@ -126,10 +126,16 @@ export function YourFlags({ shareToken }: { shareToken: string }) {
                 {row.status}
               </span>
             )}
-            {row.status === 'Resolved' && (
+            {row.reply ? (
               <span className="text-[12px] leading-4 tracking-[0.2px] text-[--color-text-body]">
-                The designer marked this resolved. Check the handoff for what changed.
+                <span className="font-medium text-[--color-text-primary]">Designer’s reply:</span> {row.reply}
               </span>
+            ) : (
+              row.status === 'Resolved' && (
+                <span className="text-[12px] leading-4 tracking-[0.2px] text-[--color-text-body]">
+                  The designer marked this resolved. Check the handoff for what changed.
+                </span>
+              )
             )}
           </li>
         ))}
